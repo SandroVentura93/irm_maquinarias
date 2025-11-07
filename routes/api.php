@@ -22,5 +22,6 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 // Rutas para búsqueda de clientes y productos en ventas
 Route::get('/clientes', [BusquedaController::class, 'clientes']);
+Route::get('/clientes/buscar/{documento}', [BusquedaController::class, 'buscarPorDocumento']);
 Route::get('/productos', [BusquedaController::class, 'productos']);
 Route::get('/productos/{id}', [BusquedaController::class, 'producto']);

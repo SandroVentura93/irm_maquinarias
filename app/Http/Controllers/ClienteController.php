@@ -140,4 +140,41 @@ class ClienteController extends Controller
 
         return response()->json($clientes);
     }
+
+    /**
+     * Buscar cliente por documento específico.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function buscarPorDocumento(Request $request)
+    {
+        $documento = $request->query('documento');
+
+        if (!$documento) {
+            return response()->json(['error' => 'Documento requerido'], 400);
+        }
+
+        $cliente = Cliente::where('numero_documento', $documento)->first();
+
+        if ($cliente) {
+            return response()->json([
+                'encontrado' => true,
+                'cliente' => [
+                    'id' => $cliente->id_cliente,
+                    'documento' => $cliente->numero_documento,
+                    'nombre' => $cliente->nombre_completo,
+                    'direccion' => $cliente->direccion,
+                    'telefono' => $cliente->telefono,
+                    'email' => $cliente->correo,
+                    'tipo_documento' => $cliente->tipo_documento
+                ]
+            ]);
+        }
+
+        return response()->json([
+            'encontrado' => false,
+            'mensaje' => 'Cliente no encontrado en la base de datos'
+        ]);
+    }
 }

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de Formulario de Cliente - IRM Maquinarias</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h2><i class="fas fa-bug text-danger"></i> Prueba de Formulario de Cliente</h2>
+                <p class="text-muted">Esta página permite probar la funcionalidad de búsqueda de clientes paso a paso.</p>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Panel de prueba -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-search"></i> Búsqueda de Cliente</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Buscador -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="buscar_documento" class="form-label">
+                                    <i class="fas fa-id-card text-primary"></i> RUC/DNI Cliente
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="buscar_documento" 
+                                           placeholder="Ingrese RUC (11 dígitos) o DNI (8 dígitos)"
+                                           maxlength="11"
+                                           value="12345678">
+                                    <button type="button" 
+                                            class="btn btn-info" 
+                                            id="btnBuscarCliente">
+                                        <i class="fas fa-search"></i> Buscar
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Pruebas Rápidas:</label><br>
+                                <button type="button" class="btn btn-sm btn-outline-primary me-2" onclick="probarDocumento('12345678')">DNI: 12345678</button>
+                                <button type="button" class="btn btn-sm btn-outline-success me-2" onclick="probarDocumento('20556677889')">RUC: 20556677889</button>
+                                <button type="button" class="btn btn-sm btn-outline-warning" onclick="probarDocumento('99999999')">No Existe</button>
+                            </div>
+                        </div>
+
+                        <!-- Campos de resultado -->
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="cliente_nombre">Nombre/Razón Social</label>
+                                <input type="text" class="form-control bg-light" id="cliente_nombre" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="cliente_direccion">Dirección</label>
+                                <input type="text" class="form-control bg-light" id="cliente_direccion" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="cliente_telefono">Teléfono</label>
+                                <input type="text" class="form-control bg-light" id="cliente_telefono" readonly>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-4">
+                                <label for="cliente_correo">Correo</label>
+                                <input type="text" class="form-control bg-light" id="cliente_correo" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="cliente_ubigeo">Ubigeo</label>
+                                <input type="text" class="form-control bg-light" id="cliente_ubigeo" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="cliente_estado">Estado</label>
+                                <input type="text" class="form-control bg-light" id="cliente_estado" readonly>
+                            </div>
+                        </div>
+
+                        <!-- Mensaje -->
+                        <div id="mensajeCliente" class="mt-3" style="display: none;">
+                            <div class="alert alert-info">
+                                <span id="textoMensaje"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel de debug -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-code text-success"></i> Debug Info</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="debug-log" class="debug-info" style="height: 400px; overflow-y: scroll;">
+                            <strong>🚀 Prueba inicializada</strong><br>
+                            Esperando interacción del usuario...<br><br>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="limpiarLog()">
+                            <i class="fas fa-trash"></i> Limpiar Log
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales para debug
+        let debugLog = document.getElementById('debug-log');
+        
+        function log(mensaje) {
+            const timestamp = new Date().toLocaleTimeString();
+            debugLog.innerHTML += `[${timestamp}] ${mensaje}<br>`;
+            debugLog.scrollTop = debugLog.scrollHeight;
+            console.log(mensaje);
+        }
+
+        function limpiarLog() {
+            debugLog.innerHTML = '<strong>🧹 Log limpiado</strong><br>';
+        }
+
+        function probarDocumento(documento) {
+            document.getElementById('buscar_documento').value = documento;
+            log(`📝 Documento establecido: ${documento}`);
+            buscarClientePorDocumento();
+        }
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            log('📄 DOM cargado completamente');
+            
+            const btnBuscar = document.getElementById('btnBuscarCliente');
+            if (btnBuscar) {
+                btnBuscar.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    log('🖱️ Click en botón buscar detectado');
+                    buscarClientePorDocumento();
+                });
+                log('✅ Event listener del botón configurado');
+            } else {
+                log('❌ No se encontró el botón de búsqueda');
+            }
+
+            const inputDocumento = document.getElementById('buscar_documento');
+            if (inputDocumento) {
+                inputDocumento.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        log('⌨️ Enter presionado en input documento');
+                        buscarClientePorDocumento();
+                    }
+                });
+                log('✅ Event listener del input configurado');
+            } else {
+                log('❌ No se encontró el input de documento');
+            }
+
+            log('🎉 Configuración completa - Listo para pruebas');
+        });
+
+        function buscarClientePorDocumento() {
+            log('🔍 === INICIANDO BÚSQUEDA ===');
+            
+            try {
+                const inputDocumento = document.getElementById('buscar_documento');
+                if (!inputDocumento) {
+                    log('❌ Error: Input documento no encontrado');
+                    return;
+                }
+                
+                const documento = inputDocumento.value.trim();
+                log(`📄 Documento a buscar: "${documento}"`);
+                
+                if (!documento) {
+                    log('⚠️ Warning: Documento vacío');
+                    mostrarMensaje('Por favor ingrese un RUC o DNI', 'warning');
+                    return;
+                }
+                
+                if (!/^\d+$/.test(documento)) {
+                    log('❌ Error: Documento contiene caracteres no numéricos');
+                    mostrarMensaje('El documento debe contener solo números', 'danger');
+                    return;
+                }
+                
+                if (documento.length < 8 || documento.length > 11) {
+                    log('❌ Error: Longitud de documento inválida');
+                    mostrarMensaje('El documento debe tener entre 8 y 11 dígitos', 'danger');
+                    return;
+                }
+                
+                log('✅ Validaciones pasadas, consultando API...');
+                mostrarMensaje('🔍 Buscando cliente...', 'info');
+                
+                consultarAPI(documento);
+                
+            } catch (error) {
+                log(`❌ Error en buscarClientePorDocumento: ${error.message}`);
+                mostrarMensaje('Error interno: ' + error.message, 'danger');
+            }
+        }
+
+        function consultarAPI(documento) {
+            log('🌐 === CONSULTANDO API ===');
+            
+            const url = `/api/clientes/buscar/${encodeURIComponent(documento)}`;
+            log(`📡 URL: ${url}`);
+            
+            const startTime = Date.now();
+            
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                const duration = Date.now() - startTime;
+                log(`📡 Respuesta recibida en ${duration}ms`);
+                log(`📊 Status: ${response.status}`);
+                log(`📊 Status Text: ${response.statusText}`);
+                
+                if (response.status === 404) {
+                    log('ℹ️ Cliente no encontrado (404)');
+                    mostrarMensaje('Cliente no encontrado en la base de datos', 'warning');
+                    limpiarCampos();
+                    return null;
+                }
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                log('✅ Respuesta OK, parseando JSON...');
+                return response.json();
+            })
+            .then(data => {
+                if (data === null) {
+                    log('ℹ️ Datos nulos (cliente no encontrado)');
+                    return;
+                }
+                
+                log('📊 === DATOS RECIBIDOS ===');
+                log(`Datos completos: ${JSON.stringify(data, null, 2)}`);
+                
+                if (data && data.id) {
+                    log('✅ Cliente encontrado, procesando datos...');
+                    procesarDatosCliente(data);
+                } else {
+                    log('❌ Estructura de datos inválida');
+                    mostrarMensaje('Error: Datos del cliente inválidos', 'danger');
+                }
+            })
+            .catch(error => {
+                const duration = Date.now() - startTime;
+                log(`❌ Error después de ${duration}ms: ${error.message}`);
+                mostrarMensaje('Error al consultar: ' + error.message, 'danger');
+            });
+        }
+
+        function procesarDatosCliente(data) {
+            log('🔄 === PROCESANDO DATOS DEL CLIENTE ===');
+            
+            const campos = {
+                'cliente_nombre': data.nombre || 'No disponible',
+                'cliente_direccion': data.direccion || 'No disponible',
+                'cliente_telefono': data.telefono || 'No disponible',
+                'cliente_correo': data.correo || 'No disponible',
+                'cliente_ubigeo': data.id_ubigeo || 'No disponible',
+                'cliente_estado': data.activo ? 'Activo' : 'Inactivo'
+            };
+            
+            log('📝 Campos a llenar:');
+            Object.keys(campos).forEach(campo => {
+                log(`  - ${campo}: "${campos[campo]}"`);
+            });
+            
+            // Llenar campos
+            let camposLlenados = 0;
+            Object.keys(campos).forEach(campoId => {
+                const elemento = document.getElementById(campoId);
+                if (elemento) {
+                    elemento.value = campos[campoId];
+                    elemento.classList.add('is-valid');
+                    log(`✅ ${campoId} llenado correctamente`);
+                    camposLlenados++;
+                } else {
+                    log(`❌ Campo ${campoId} no encontrado en DOM`);
+                }
+            });
+            
+            log(`📊 Resumen: ${camposLlenados}/${Object.keys(campos).length} campos llenados`);
+            
+            if (camposLlenados > 0) {
+                mostrarMensaje(`✅ Cliente encontrado: ${data.nombre}`, 'success');
+            } else {
+                mostrarMensaje('❌ Error al llenar los campos', 'danger');
+            }
+        }
+
+        function limpiarCampos() {
+            log('🧹 Limpiando campos...');
+            
+            const campos = [
+                'cliente_nombre', 'cliente_direccion', 'cliente_telefono',
+                'cliente_correo', 'cliente_ubigeo', 'cliente_estado'
+            ];
+            
+            campos.forEach(campoId => {
+                const elemento = document.getElementById(campoId);
+                if (elemento) {
+                    elemento.value = '';
+                    elemento.classList.remove('is-valid', 'is-invalid');
+                }
+            });
+            
+            log('✅ Campos limpiados');
+        }
+
+        function mostrarMensaje(texto, tipo) {
+            const mensajeDiv = document.getElementById('mensajeCliente');
+            const textoSpan = document.getElementById('textoMensaje');
+            const alertDiv = mensajeDiv.querySelector('.alert');
+            
+            alertDiv.classList.remove('alert-info', 'alert-success', 'alert-warning', 'alert-danger');
+            alertDiv.classList.add(`alert-${tipo}`);
+            
+            textoSpan.textContent = texto;
+            mensajeDiv.style.display = 'block';
+            
+            log(`💬 Mensaje mostrado (${tipo}): ${texto}`);
+        }
+
+        // Prueba automática al cargar
+        window.addEventListener('load', function() {
+            log('🚀 Página completamente cargada');
+            log('ℹ️ Puede usar los botones de "Pruebas Rápidas" o escribir un documento manualmente');
+        });
+    </script>
+</body>
+</html>

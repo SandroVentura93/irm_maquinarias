@@ -18,26 +18,22 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-3">
-                        <label for="fecha">Fecha</label>
-                        <input type="date" class="form-control" id="fecha" name="fecha" value="{{ date('Y-m-d') }}" required>
+                    <div class="col-md-4">
+                        <label for="fecha">Fecha y Hora</label>
+                        <input type="datetime-local" class="form-control" id="fecha" name="fecha" value="{{ date('Y-m-d\TH:i') }}" required>
                     </div>
-                    <div class="col-md-3">
-                        <label for="hora">Hora</label>
-                        <input type="time" class="form-control" id="hora" name="hora" value="{{ date('H:i') }}" required>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="tipo_comprobante_id">Tipo Comprobante</label>
-                        <select class="form-control" id="tipo_comprobante_id" name="tipo_comprobante_id" required>
+                    <div class="col-md-4">
+                        <label for="id_tipo_comprobante">Tipo Comprobante</label>
+                        <select class="form-control" id="id_tipo_comprobante" name="id_tipo_comprobante" required>
                             <option value="">Seleccionar</option>
                             @foreach($tiposComprobante as $tipo)
                                 <option value="{{ $tipo->id_tipo_comprobante }}">{{ $tipo->descripcion }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label for="moneda_id">Moneda</label>
-                        <select class="form-control" id="moneda_id" name="moneda_id" required>
+                    <div class="col-md-4">
+                        <label for="id_moneda">Moneda</label>
+                        <select class="form-control" id="id_moneda" name="id_moneda" required>
                             <option value="">Seleccionar</option>
                             @foreach($monedas as $moneda)
                                 <option value="{{ $moneda->id_moneda }}" {{ $moneda->codigo_iso == 'PEN' ? 'selected' : '' }}>
@@ -48,13 +44,18 @@
                     </div>
                 </div>
                 <div class="row mt-3">
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <label for="serie">Serie</label>
                         <input type="text" class="form-control" id="serie" name="serie" value="B001" required>
                     </div>
-                    <div class="col-md-3">
-                        <label for="correlativo">Correlativo</label>
-                        <input type="text" class="form-control" id="correlativo" name="correlativo" value="{{ str_pad(1, 8, '0', STR_PAD_LEFT) }}" required readonly>
+                    <div class="col-md-4">
+                        <label for="numero">Número</label>
+                        <input type="text" class="form-control" id="numero" name="numero" value="{{ str_pad(1, 8, '0', STR_PAD_LEFT) }}" required readonly>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="id_vendedor">Vendedor</label>
+                        <input type="hidden" id="id_vendedor" name="id_vendedor" value="{{ Auth::id() }}">
+                        <input type="text" class="form-control" value="{{ Auth::user()->nombre ?? 'Usuario Actual' }}" readonly>
                     </div>
                 </div>
             </div>
@@ -63,22 +64,98 @@
         <!-- Cliente -->
         <div class="card mb-4">
             <div class="card-header">
-                <h6 class="m-0 font-weight-bold text-primary">Cliente</h6>
+                <h6 class="m-0 font-weight-bold text-primary">Información del Cliente</h6>
             </div>
             <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <label for="cliente_id">Cliente</label>
-                        <select class="form-control" id="cliente_id" name="cliente_id" required>
-                            <option value="">Seleccionar Cliente</option>
-                            @foreach($clientes as $cliente)
-                                <option value="{{ $cliente->id_cliente }}">{{ $cliente->nombre }} - {{ $cliente->documento }}</option>
-                            @endforeach
-                        </select>
+                <!-- Buscador por RUC/DNI -->
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="buscar_documento" class="form-label">
+                            <i class="fas fa-id-card text-primary"></i> RUC/DNI Cliente
+                        </label>
+                        <div class="input-group">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="buscar_documento" 
+                                   placeholder="Ingrese RUC (11 dígitos) o DNI (8 dígitos)"
+                                   maxlength="11"
+                                   pattern="[0-9]+"
+                                   title="Solo números permitidos"
+                                   autocomplete="off">
+                            <button type="button" 
+                                    class="btn btn-info" 
+                                    id="btnBuscarCliente" 
+                                    onclick="buscarCliente()"
+                                    title="Buscar cliente por RUC o DNI">
+                                <i class="fas fa-search"></i>
+                                <span class="d-none d-sm-inline"> Buscar</span>
+                            </button>
+                        </div>
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i> 
+                            RUC: 11 dígitos (empresas) | DNI: 8 dígitos (personas)
+                        </small>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="cliente_nombre" class="form-label">
+                            <i class="fas fa-user text-success"></i> Nombre/Razón Social
+                        </label>
+                        <input type="text" 
+                               class="form-control bg-light" 
+                               id="cliente_nombre" 
+                               readonly 
+                               placeholder="Se completará automáticamente"
+                               title="Nombre completo del cliente">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="cliente_direccion" class="form-label">
+                            <i class="fas fa-map-marker-alt text-warning"></i> Dirección
+                        </label>
+                        <input type="text" 
+                               class="form-control bg-light" 
+                               id="cliente_direccion" 
+                               readonly 
+                               placeholder="Se completará automáticamente"
+                               title="Dirección del cliente">
+                    </div>
+                </div>
+
+                <!-- Campos adicionales del cliente -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label for="cliente_telefono" class="form-label">
+                            <i class="fas fa-phone text-info"></i> Teléfono
+                        </label>
+                        <input type="text" 
+                               class="form-control bg-light" 
+                               id="cliente_telefono" 
+                               readonly 
+                               placeholder="Se completará automáticamente"
+                               title="Teléfono del cliente">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="cliente_correo" class="form-label">
+                            <i class="fas fa-envelope text-secondary"></i> Correo Electrónico
+                        </label>
+                        <input type="email" 
+                               class="form-control bg-light" 
+                               id="cliente_correo" 
+                               readonly 
+                               placeholder="Se completará automáticamente"
+                               title="Correo electrónico del cliente">
                     </div>
                     <div class="col-md-6">
-                        <label for="observaciones">Observaciones</label>
-                        <input type="text" class="form-control" id="observaciones" name="observaciones" placeholder="Observaciones adicionales">
+                        <label for="id_cliente" class="form-label">
+                            <i class="fas fa-users text-primary"></i> Cliente (Selección Manual)
+                        </label>
+                        <select class="form-control" id="id_cliente" name="id_cliente" required>
+                            <option value="">Seleccionar Cliente</option>
+                            @foreach($clientes as $cliente)
+                                <option value="{{ $cliente->id_cliente }}">
+                                    {{ $cliente->nombre_completo }} - {{ $cliente->numero_documento }} ({{ $cliente->tipo_documento }})
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
                 </div>
             </div>
@@ -196,6 +273,9 @@
 @endsection
 
 @section('scripts')
+<!-- JavaScript externo para búsqueda de cliente -->
+<script src="{{ asset('js/buscar-cliente.js') }}"></script>
+
 <script>
 let productos = [];
 

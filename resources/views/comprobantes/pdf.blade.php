@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $tipoComprobante->descripcion }} - {{ $venta->serie }}-{{ $venta->numero }}</title>
+    <title>{{ $tipoComprobante->descripcion ?? 'COMPROBANTE' }} - {{ $venta->serie }}-{{ $venta->numero }}</title>
     <style>
         * {
             margin: 0;
@@ -252,7 +252,7 @@
             
             <div class="document-info">
                 <div class="document-type">
-                    <h2>{{ strtoupper($tipoComprobante->descripcion) }}</h2>
+                    <h2>{{ strtoupper($tipoComprobante->descripcion ?? 'COMPROBANTE') }}</h2>
                     <div class="document-number">{{ $venta->serie }}-{{ $venta->numero }}</div>
                 </div>
                 <div class="document-details">

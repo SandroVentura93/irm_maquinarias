@@ -29,12 +29,37 @@ class BusquedaController extends Controller
         $resultado = $clientes->map(function($cliente) {
             return [
                 'id' => $cliente->id_cliente,
-                'nombre' => $cliente->nombre ?: $cliente->razon_social,
-                'numero_documento' => $cliente->numero_documento
+                'nombre' => $cliente->nombre_completo,
+                'numero_documento' => $cliente->numero_documento,
+                'tipo_documento' => $cliente->tipo_documento
             ];
         });
         
         return response()->json($resultado);
+    }
+    
+    public function buscarPorDocumento($documento)
+    {
+        $cliente = Cliente::where('activo', true)
+            ->where('numero_documento', $documento)
+            ->first();
+        
+        if (!$cliente) {
+            return response()->json(['error' => 'Cliente no encontrado'], 404);
+        }
+        
+        return response()->json([
+            'id' => $cliente->id_cliente,
+            'tipo_documento' => $cliente->tipo_documento,
+            'numero_documento' => $cliente->numero_documento,
+            'razon_social' => $cliente->razon_social,
+            'nombre' => $cliente->nombre_completo, // Usar el accessor para el nombre completo
+            'direccion' => $cliente->direccion,
+            'id_ubigeo' => $cliente->id_ubigeo,
+            'telefono' => $cliente->telefono,
+            'correo' => $cliente->correo,
+            'activo' => $cliente->activo
+        ]);
     }
     
     public function productos(Request $request)

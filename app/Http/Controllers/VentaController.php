@@ -50,12 +50,12 @@ class VentaController extends Controller
     {
         $validatedData = $request->validate([
             'fecha' => 'required|date',
-            'hora' => 'required|string',
-            'cliente_id' => 'required|exists:clientes,id_cliente',
-            'tipo_comprobante_id' => 'required|integer',
+            'id_cliente' => 'required|exists:clientes,id_cliente',
+            'id_tipo_comprobante' => 'required|integer',
             'serie' => 'required|string',
-            'correlativo' => 'required|string',
-            'moneda_id' => 'required|integer',
+            'numero' => 'required|string',
+            'id_moneda' => 'required|integer',
+            'id_vendedor' => 'nullable|integer',
             'productos' => 'required|array',
             'productos.*.producto_id' => 'required|exists:productos,id_producto',
             'productos.*.cantidad' => 'required|integer|min:1',
@@ -69,13 +69,13 @@ class VentaController extends Controller
 
             // Crear la venta
             $venta = new Venta();
-            $venta->fecha = $validatedData['fecha'] . ' ' . $validatedData['hora'];
-            $venta->id_cliente = $validatedData['cliente_id'];
-            $venta->id_vendedor = auth()->user()->id_usuario; // Asignar el usuario logueado como vendedor
-            $venta->id_tipo_comprobante = $validatedData['tipo_comprobante_id'];
+            $venta->fecha = $validatedData['fecha'];
+            $venta->id_cliente = $validatedData['id_cliente'];
+            $venta->id_vendedor = $validatedData['id_vendedor'] ?: auth()->user()->id_usuario;
+            $venta->id_tipo_comprobante = $validatedData['id_tipo_comprobante'];
             $venta->serie = $validatedData['serie'];
-            $venta->numero = $validatedData['correlativo'];
-            $venta->id_moneda = $validatedData['moneda_id'];
+            $venta->numero = $validatedData['numero'];
+            $venta->id_moneda = $validatedData['id_moneda'];
             $venta->subtotal = 0;
             $venta->igv = 0;
             $venta->total = 0;
@@ -364,15 +364,19 @@ class VentaController extends Controller
             return ($detalle->precio_unitario - $detalle->precio_final) * $detalle->cantidad;
         });
 
-        // Obtener tipo de comprobante
-        $tipoComprobante = DB::table('tipo_comprobantes')
-            ->where('id_tipo_comprobante', $venta->id_tipo_comprobante)
-            ->first();
+        // Obtener tipo de comprobante usando modelo
+        $tipoComprobante = TipoComprobante::find($venta->id_tipo_comprobante);
+        if (!$tipoComprobante) {
+            // Crear un objeto por defecto si no existe
+            $tipoComprobante = (object) ['descripcion' => 'BOLETA DE VENTA'];
+        }
 
-        // Obtener moneda
-        $moneda = DB::table('monedas')
-            ->where('id_moneda', $venta->id_moneda)
-            ->first();
+        // Obtener moneda usando modelo
+        $moneda = Moneda::find($venta->id_moneda);
+        if (!$moneda) {
+            // Crear un objeto por defecto si no existe
+            $moneda = (object) ['nombre' => 'SOLES', 'simbolo' => 'S/.'];
+        }
 
         // Convertir número a letras (función simple)
         $totalEnLetras = $this->numeroALetras($venta->total);
@@ -391,7 +395,7 @@ class VentaController extends Controller
         $pdf->setPaper('A4', 'portrait');
         
         // Nombre del archivo
-        $fileName = strtolower($tipoComprobante->descripcion) . '_' . $venta->serie . '-' . $venta->numero . '.pdf';
+        $fileName = strtolower($tipoComprobante->descripcion ?? 'comprobante') . '_' . $venta->serie . '-' . $venta->numero . '.pdf';
         
         return $pdf->download($fileName);
     }

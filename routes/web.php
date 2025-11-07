@@ -1,19 +1,23 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ProductoController;
-use App\Http\Controllers\MarcaController;
-use App\Http\Controllers\ProveedorController;
-use App\Http\Controllers\CategoriaController;
-use App\Http\Controllers\ClienteController;
-use App\Http\Controllers\MonedaController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\VentaController;
-use App\Http\Controllers\DetalleVentaController;
-use App\Http\Controllers\ComprobanteElectronicoController;
-use App\Http\Controllers\ComprobanteArchivoController;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\Request;
+
+// Controllers
+use App\Http\Controllers\{
+    DashboardController,
+    VentaController,
+    DetalleVentaController,
+    ComprobanteElectronicoController,
+    ComprobanteArchivoController,
+    ProductoController,
+    ClienteController,
+    MarcaController,
+    ProveedorController,
+    CategoriaController,
+    MonedaController
+};
 
 /*
 |--------------------------------------------------------------------------
@@ -26,139 +30,167 @@ use Illuminate\Support\Facades\Hash;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+/*
+|--------------------------------------------------------------------------
+| RUTAS PRINCIPALES
+|--------------------------------------------------------------------------
+*/
 
-// Ruta temporal para login rápido
-Route::get('/quick-login', function () {
-    $user = \App\Models\Usuario::where('usuario', 'admin')->first();
-    if ($user) {
+// Ruta raíz - Redirección inteligente
+Route::get('/', fn() => Auth::check() ? redirect()->route('dashboard') : redirect()->route('login'));
+
+/*
+|--------------------------------------------------------------------------
+| AUTENTICACIÓN
+|--------------------------------------------------------------------------
+*/
+
+// Rutas de autenticación (públicas)
+Route::middleware('guest')->group(function () {
+    // Login
+    Route::get('/login', fn() => view('auth.login'))->name('login');
+    Route::post('/login', function (Request $request) {
+        $credentials = $request->validate([
+            'usuario' => ['required', 'string'],
+            'password' => ['required'],
+        ]);
+
+        if (Auth::attempt($credentials)) {
+            $request->session()->regenerate();
+            return redirect()->intended('dashboard');
+        }
+
+        return back()->withErrors([
+            'usuario' => 'Las credenciales no coinciden con nuestros registros.',
+        ])->onlyInput('usuario');
+    });
+
+    // Registro (si es necesario)
+    Route::get('/register', fn() => view('auth.register'))->name('register');
+    Route::post('/register', function (Request $request) {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user = \App\Models\User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => \Illuminate\Support\Facades\Hash::make($validated['password']),
+        ]);
+
         Auth::login($user);
-        return redirect('/dashboard');
+        return redirect('dashboard');
+    });
+});
+
+// Logout
+Route::post('/logout', function () {
+    Auth::logout();
+    request()->session()->invalidate();
+    request()->session()->regenerateToken();
+    return redirect()->route('login')->with('message', 'Sesión cerrada exitosamente');
+})->name('logout');
+
+// Ruta de desarrollo para login rápido (solo para desarrollo)
+Route::get('/quick-login', function () {
+    if (app()->environment('local')) {
+        $user = \App\Models\Usuario::where('usuario', 'admin')->first();
+        if ($user) {
+            Auth::login($user);
+            return redirect('/dashboard');
+        }
     }
-    return 'Usuario no encontrado';
-});
+    return redirect()->route('login');
+})->name('quick-login');
 
-// Rutas de autenticación
-Route::get('/login', function () {
-    return view('auth.login');
-})->name('login');
+/*
+|--------------------------------------------------------------------------
+| RUTAS PROTEGIDAS (Requieren Autenticación)
+|--------------------------------------------------------------------------
+*/
 
-Route::post('/login', function (\Illuminate\Http\Request $request) {
-    $credentials = $request->validate([
-        'usuario' => ['required', 'string'],
-        'password' => ['required'],
-    ]);
-
-    // Intentar login con Auth::attempt
-    if (Auth::attempt($credentials)) {
-        $request->session()->regenerate();
-        return redirect()->intended('dashboard');
-    }
-
-    return back()->withErrors([
-        'usuario' => 'Las credenciales no coinciden con nuestros registros.',
-    ])->onlyInput('usuario');
-});
-
-Route::get('/register', function () {
-    return view('auth.register');
-})->name('register');
-
-Route::post('/register', function (\Illuminate\Http\Request $request) {
-    $validated = $request->validate([
-        'name' => ['required', 'string', 'max:255'],
-        'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-        'password' => ['required', 'string', 'min:8', 'confirmed'],
-    ]);
-
-    $user = \App\Models\User::create([
-        'name' => $validated['name'],
-        'email' => $validated['email'],
-        'password' => \Illuminate\Support\Facades\Hash::make($validated['password']),
-    ]);
-
-    Auth::login($user);
-
-    return redirect('dashboard');
-});
-
-// Rutas para la gestión de productos
-Route::resource('productos', ProductoController::class);
-
-
-// Rutas para el CRUD de marcas
-Route::resource('marcas', MarcaController::class);
-
-// Rutas para la gestión de proveedores
-Route::resource('proveedores', ProveedorController::class)->parameters([
-    'proveedores' => 'proveedor'
-]);
-
-// Rutas para el CRUD de categorias
-Route::resource('categorias', CategoriaController::class);
-
-// Rutas para el CRUD de productos
-Route::resource('productos', ProductoController::class);
-
-// Rutas para el CRUD de clientes
-Route::resource('clientes', ClienteController::class);
-
-// Rutas para el CRUD de monedas
-Route::resource('monedas', MonedaController::class);
-
-// Rutas protegidas por autenticación
 Route::middleware(['auth'])->group(function () {
-    // Ruta para el dashboard
+    
+    /*
+    |--------------------------------------------------------------------------
+    | DASHBOARD
+    |--------------------------------------------------------------------------
+    */
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
-    // Routes for Gestion de Ventas
+    /*
+    |--------------------------------------------------------------------------
+    | MÓDULO DE VENTAS
+    |--------------------------------------------------------------------------
+    */
+    // CRUD básico de ventas
     Route::resource('ventas', VentaController::class);
-    // Route for confirm canceling sales
-    Route::get('ventas/{venta}/confirm-cancel', [VentaController::class, 'confirmCancel'])->name('ventas.confirm-cancel');
-    // Route for canceling sales
-    Route::patch('ventas/{venta}/cancel', [VentaController::class, 'cancel'])->name('ventas.cancel');
-    // Route for generating PDF
-    Route::get('ventas/{venta}/pdf', [VentaController::class, 'generarPDF'])->name('ventas.pdf');
-
-    // Rutas para el recurso 'detalle_ventas'
+    
+    // Acciones especiales de ventas
+    Route::prefix('ventas')->name('ventas.')->group(function () {
+        Route::get('{venta}/confirm-cancel', [VentaController::class, 'confirmCancel'])->name('confirm-cancel');
+        Route::patch('{venta}/cancel', [VentaController::class, 'cancel'])->name('cancel');
+        Route::get('{venta}/pdf', [VentaController::class, 'generarPDF'])->name('pdf');
+    });
+    
+    // Detalle de ventas (si es necesario como recurso independiente)
     Route::resource('detalle_ventas', DetalleVentaController::class);
-
-    // Rutas para el recurso 'comprobantes_electronicos'
-    Route::resource('comprobantes_electronicos', ComprobanteElectronicoController::class);
-
-    // Rutas para el recurso 'comprobante_archivos'
-    Route::resource('comprobante_archivos', ComprobanteArchivoController::class);
     
-    // Rutas para la gestión de productos
+    /*
+    |--------------------------------------------------------------------------
+    | MÓDULO DE COMPROBANTES
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('comprobantes')->name('comprobantes.')->group(function () {
+        Route::resource('electronicos', ComprobanteElectronicoController::class);
+        Route::resource('archivos', ComprobanteArchivoController::class);
+    });
+    
+    /*
+    |--------------------------------------------------------------------------
+    | MÓDULO DE INVENTARIO
+    |--------------------------------------------------------------------------
+    */
+    // Productos
     Route::resource('productos', ProductoController::class);
-    
-    // Rutas para el CRUD de marcas
     Route::resource('marcas', MarcaController::class);
-
-    // Rutas para la gestión de proveedores
-    Route::resource('proveedores', ProveedorController::class)->parameters([
-        'proveedores' => 'proveedor'
-    ]);
-
-    // Rutas para el CRUD de categorias
     Route::resource('categorias', CategoriaController::class);
-
-    // Rutas para el CRUD de clientes
+    
+    /*
+    |--------------------------------------------------------------------------
+    | MÓDULO DE CONTACTOS
+    |--------------------------------------------------------------------------
+    */
     Route::resource('clientes', ClienteController::class);
-
-    // Rutas para el CRUD de monedas
+    Route::resource('proveedores', ProveedorController::class)->parameters(['proveedores' => 'proveedor']);
+    
+    /*
+    |--------------------------------------------------------------------------
+    | MÓDULO DE CONFIGURACIÓN
+    |--------------------------------------------------------------------------
+    */
     Route::resource('monedas', MonedaController::class);
-
-    // Ruta para buscar clientes
-    Route::get('/api/clientes', [ClienteController::class, 'buscar'])->name('clientes.buscar');
-
-    // Ruta para buscar productos
-    Route::get('/api/productos', [ProductoController::class, 'buscar'])->name('productos.buscar');
-
-    // Ruta para obtener detalles de un producto específico
-    Route::get('/api/productos/{id}', [ProductoController::class, 'getDetails'])->name('productos.getDetails');
+    
+    /*
+    |--------------------------------------------------------------------------
+    | API ENDPOINTS (Para AJAX y funcionalidades dinámicas)
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('api')->name('api.')->group(function () {
+        // Búsquedas de clientes
+        Route::prefix('clientes')->name('clientes.')->group(function () {
+            Route::get('/', [ClienteController::class, 'buscar'])->name('buscar');
+            Route::get('buscar-documento', [ClienteController::class, 'buscarPorDocumento'])->name('buscar-documento');
+        });
+        
+        // Búsquedas de productos
+        Route::prefix('productos')->name('productos.')->group(function () {
+            Route::get('/', [ProductoController::class, 'buscar'])->name('buscar');
+            Route::get('{id}', [ProductoController::class, 'getDetails'])->name('details');
+        });
+    });
 });
 
 // Ruta para cerrar sesión
