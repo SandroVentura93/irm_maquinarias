@@ -31,7 +31,7 @@
                         <select class="form-control" id="tipo_comprobante_id" name="tipo_comprobante_id" required>
                             <option value="">Seleccionar</option>
                             @foreach($tiposComprobante as $tipo)
-                                <option value="{{ $tipo->id_tipo_comprobante }}">{{ $tipo->descripcion }}</option>
+                                <option value="{{ $tipo->id }}">{{ $tipo->descripcion }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -40,8 +40,8 @@
                         <select class="form-control" id="moneda_id" name="moneda_id" required>
                             <option value="">Seleccionar</option>
                             @foreach($monedas as $moneda)
-                                <option value="{{ $moneda->id_moneda }}" {{ $moneda->codigo_iso == 'PEN' ? 'selected' : '' }}>
-                                    {{ $moneda->nombre }}
+                                <option value="{{ $moneda->id }}" {{ $moneda->codigo == 'PEN' ? 'selected' : '' }}>
+                                    {{ $moneda->descripcion }}
                                 </option>
                             @endforeach
                         </select>
@@ -72,7 +72,7 @@
                         <select class="form-control" id="cliente_id" name="cliente_id" required>
                             <option value="">Seleccionar Cliente</option>
                             @foreach($clientes as $cliente)
-                                <option value="{{ $cliente->id_cliente }}">{{ $cliente->nombre }} - {{ $cliente->documento }}</option>
+                                <option value="{{ $cliente->id }}">{{ $cliente->nombre }} - {{ $cliente->documento }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -96,7 +96,7 @@
                         <select class="form-control" id="producto_id">
                             <option value="">Seleccionar Producto</option>
                             @foreach($productos as $producto)
-                                <option value="{{ $producto->id_producto }}" data-precio="{{ $producto->precio_venta }}">
+                                <option value="{{ $producto->id }}" data-precio="{{ $producto->precio_venta }}">
                                     {{ $producto->nombre }} - S/. {{ number_format($producto->precio_venta, 2) }}
                                 </option>
                             @endforeach
@@ -321,13 +321,12 @@ function actualizarCamposOcultos() {
     container.innerHTML = '';
 
     productos.forEach((producto, index) => {
-        const precioFinal = producto.precio_unitario * (1 - producto.descuento / 100);
         container.innerHTML += `
             <input type="hidden" name="productos[${index}][producto_id]" value="${producto.producto_id}">
             <input type="hidden" name="productos[${index}][cantidad]" value="${producto.cantidad}">
             <input type="hidden" name="productos[${index}][precio_unitario]" value="${producto.precio_unitario}">
-            <input type="hidden" name="productos[${index}][descuento_porcentaje]" value="${producto.descuento}">
-            <input type="hidden" name="productos[${index}][precio_final]" value="${precioFinal}">
+            <input type="hidden" name="productos[${index}][descuento]" value="${producto.descuento}">
+            <input type="hidden" name="productos[${index}][subtotal]" value="${producto.subtotal}">
         `;
     });
 }

@@ -18,6 +18,8 @@ class DetalleVenta extends Model
         'id_producto',
         'cantidad',
         'precio_unitario',
+        'descuento_porcentaje',
+        'precio_final',
         'subtotal',
         'igv',
         'total'

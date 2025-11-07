@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
 {
@@ -14,15 +13,30 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
-        // \App\Models\User::factory(10)->create();
-        DB::table('ubigeos')->insert([
-            ['id_ubigeo' => '060101', 'departamento' => 'Cajamarca', 'provincia' => 'Cajamarca', 'distrito' => 'Cajamarca'],
-            ['id_ubigeo' => '060102', 'departamento' => 'Cajamarca', 'provincia' => 'Cajamarca', 'distrito' => 'Baños del Inca'],
-            ['id_ubigeo' => '060103', 'departamento' => 'Cajamarca', 'provincia' => 'Cajamarca', 'distrito' => 'Los Baños'],
-            ['id_ubigeo' => '060104', 'departamento' => 'Cajamarca', 'provincia' => 'Celendín', 'distrito' => 'Celendín'],
-            ['id_ubigeo' => '060105', 'departamento' => 'Cajamarca', 'provincia' => 'Chota', 'distrito' => 'Chota'],
+        // Ejecutar seeders en el orden correcto (por dependencias)
+        $this->call([
+            // Datos básicos (sin dependencias)
+            MonedasSeeder::class,
+            TipoComprobantesSeeder::class,
+            UbigeosSeeder::class,
+            RolesSeeder::class,
+            ParametrosSeeder::class,
+            
+            // Datos de catálogos
+            CategoriasSeeder::class,
+            MarcasSeeder::class,
+            
+            // Datos de negocio (con dependencias)
+            ProveedoresSeeder::class,
+            ClientesSeeder::class,
+            UsuariosSeeder::class,
+            
+            // Productos (depende de categorías, marcas y proveedores)
+            ProductosSeeder::class,
+            
+            // Transacciones (depende de clientes, usuarios y productos)
+            VentasSeeder::class,
+            // ComprasSeeder::class,
         ]);
-        $this->call(UbigeoSeeder::class);
-        $this->call(TipoComprobanteSeeder::class);
     }
 }

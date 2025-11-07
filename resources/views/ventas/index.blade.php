@@ -27,22 +27,35 @@
         <tbody>
             @foreach($ventas as $venta)
                 <tr>
-                    <td>{{ $venta->id }}</td>
-                    <td>{{ $venta->id_cliente }}</td>
-                    <td>{{ $venta->tipo_comprobante }}</td>
-                    <td>{{ $venta->numero_comprobante }}</td>
+                    <td>{{ $venta->id_venta }}</td>
+                    <td>{{ $venta->cliente->razon_social ?: $venta->cliente->nombre }}</td>
+                    <td>{{ $venta->id_tipo_comprobante }}</td>
+                    <td>{{ $venta->serie }}-{{ $venta->numero }}</td>
                     <td>{{ $venta->fecha }}</td>
-                    <td>{{ $venta->total }}</td>
-                    <td>{{ $venta->estado }}</td>
+                    <td>S/ {{ number_format($venta->total, 2) }}</td>
                     <td>
-                        <a href="{{ route('ventas.show', $venta) }}" class="btn btn-info btn-sm">Ver</a>
-                        <a href="{{ route('ventas.edit', $venta) }}" class="btn btn-warning btn-sm">Editar</a>
-                        @if($venta->estado !== 'anulada')
-                            <form action="{{ route('ventas.cancel', $venta) }}" method="POST" style="display:inline;">
-                                @csrf
-                                @method('PATCH')
-                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Estás seguro de anular esta venta?')">Anular</button>
-                            </form>
+                        <span class="badge badge-{{ $venta->xml_estado === 'ANULADO' ? 'danger' : ($venta->xml_estado === 'ACEPTADO' ? 'success' : ($venta->xml_estado === 'RECHAZADO' ? 'warning' : 'info')) }}">
+                            {{ $venta->xml_estado }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{{ route('ventas.show', $venta) }}" class="btn btn-info btn-sm" title="Ver Detalle">
+                            <i class="fas fa-eye"></i> Ver
+                        </a>
+                        @if($venta->xml_estado !== 'ANULADO')
+                        <a href="{{ route('ventas.pdf', $venta) }}" class="btn btn-success btn-sm" title="Imprimir Comprobante" target="_blank">
+                            <i class="fas fa-file-pdf"></i> PDF
+                        </a>
+                        @endif
+                        @if($venta->xml_estado === 'PENDIENTE')
+                        <a href="{{ route('ventas.edit', $venta) }}" class="btn btn-warning btn-sm" title="Editar">
+                            <i class="fas fa-edit"></i> Editar
+                        </a>
+                        @endif
+                        @if(in_array($venta->xml_estado, ['PENDIENTE', 'ENVIADO', 'ACEPTADO']))
+                            <a href="{{ route('ventas.confirm-cancel', $venta) }}" class="btn btn-danger btn-sm" title="Anular Venta">
+                                <i class="fas fa-times"></i> Anular
+                            </a>
                         @endif
                     </td>
                 </tr>

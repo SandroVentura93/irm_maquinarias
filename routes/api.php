@@ -14,6 +14,13 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+use App\Http\Controllers\Api\BusquedaController;
+
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+// Rutas para búsqueda de clientes y productos en ventas
+Route::get('/clientes', [BusquedaController::class, 'clientes']);
+Route::get('/productos', [BusquedaController::class, 'productos']);
+Route::get('/productos/{id}', [BusquedaController::class, 'producto']);

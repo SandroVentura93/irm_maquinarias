@@ -14,21 +14,44 @@
         }
         .sidebar {
             width: 250px;
-            background-color: #343a40;
+            background-color: #2c3e50;
             color: white;
             position: fixed;
             top: 0;
             bottom: 0;
             padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
         }
-        .sidebar a {
-            color: white;
+        .sidebar h4 {
+            color: #ecf0f1;
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #34495e;
+        }
+        .sidebar .nav-link {
+            color: #bdc3c7;
             text-decoration: none;
             display: block;
-            margin: 10px 0;
+            margin: 5px 0;
+            padding: 10px 15px;
+            border-radius: 5px;
+            transition: all 0.3s ease;
         }
-        .sidebar a:hover {
-            text-decoration: underline;
+        .sidebar .nav-link:hover {
+            background-color: #34495e;
+            color: #ecf0f1;
+            text-decoration: none;
+            transform: translateX(5px);
+        }
+        .sidebar .nav-link.active {
+            background-color: #3498db;
+            color: white;
+        }
+        .sidebar .nav-link i {
+            margin-right: 10px;
+            width: 20px;
         }
         .content {
             margin-left: 250px;
@@ -41,13 +64,43 @@
         .menu-item h5 {
             cursor: pointer;
             margin: 0;
-            padding: 10px;
-            background-color: #343a40;
-            color: white;
+            padding: 12px 15px;
+            background-color: #34495e;
+            color: #ecf0f1;
             border-radius: 5px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
         }
         .menu-item h5:hover {
-            background-color: #495057;
+            background-color: #3498db;
+            transform: translateX(3px);
+        }
+        .submenu {
+            display: none;
+            margin-top: 5px;
+            margin-left: 15px;
+        }
+        .submenu a {
+            color: #bdc3c7;
+            text-decoration: none;
+            display: block;
+            padding: 8px 15px;
+            margin: 2px 0;
+            border-radius: 3px;
+            font-size: 13px;
+            transition: all 0.3s ease;
+        }
+        .submenu a:hover {
+            background-color: #34495e;
+            color: #ecf0f1;
+            text-decoration: none;
+            transform: translateX(5px);
+        }
+        .submenu a i {
+            margin-right: 8px;
+            width: 16px;
+        }
         }
         .menu-item .submenu {
             display: none;
@@ -79,8 +132,15 @@
             <a class="navbar-brand" href="{{ route('dashboard') }}">IRM Maquinarias</a>
             <div class="ml-auto d-flex align-items-center">
                 <span class="navbar-text text-white text-uppercase font-weight-bold mr-3">Bienvenido</span>
-                <span class="navbar-text text-white mr-3">{{ Auth::user()->name ?? 'Usuario' }}</span>
-                <a href="{{ route('logout') }}" class="btn btn-outline-light btn-sm">Cerrar Sesión</a>
+                <span class="navbar-text text-white mr-3">{{ Auth::check() ? (Auth::user()->nombre ?: 'Usuario') : 'Invitado' }}</span>
+                @if(Auth::check())
+                <form action="{{ route('logout') }}" method="POST" style="display: inline;">
+                    @csrf
+                    <button type="submit" class="btn btn-outline-light btn-sm">Cerrar Sesión</button>
+                </form>
+                @else
+                <a href="{{ route('login') }}" class="btn btn-outline-light btn-sm">Iniciar Sesión</a>
+                @endif
             </div>
         </div>
     </nav>
@@ -88,63 +148,85 @@
     <h4>IRM Maquinarias</h4>
     <ul class="nav flex-column">
         <li class="nav-item">
-            <a class="nav-link" href="{{ route('dashboard') }}">Dashboard</a>
+            <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" href="{{ route('clientes.index') }}">Gestión de Clientes</a>
+            <a class="nav-link {{ request()->routeIs('ventas.*') ? 'active' : '' }}" href="{{ route('ventas.index') }}">
+                <i class="fas fa-shopping-cart"></i> Ventas
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('clientes.*') ? 'active' : '' }}" href="{{ route('clientes.index') }}">
+                <i class="fas fa-users"></i> Clientes
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('productos.*') ? 'active' : '' }}" href="{{ route('productos.index') }}">
+                <i class="fas fa-boxes"></i> Productos
+            </a>
         </li>
     </ul>
     <div class="menu-item">
         <h5>Gestión de Productos</h5>
         <div class="submenu">
-            <a href="{{ route('marcas.index') }}">Marcas</a>
-            <a href="{{ route('proveedores.index') }}">Proveedores</a>
-            <a href="{{ route('categorias.index') }}">Categorías</a>
-            <a href="{{ route('productos.index') }}">Productos</a>
+            <a href="{{ route('productos.index') }}">
+                <i class="fas fa-boxes"></i> Productos
+            </a>
+            <a href="{{ route('categorias.index') }}">
+                <i class="fas fa-list-alt"></i> Categorías
+            </a>
+            <a href="{{ route('marcas.index') }}">
+                <i class="fas fa-tags"></i> Marcas
+            </a>
+            <a href="{{ route('proveedores.index') }}">
+                <i class="fas fa-truck"></i> Proveedores
+            </a>
         </div>
     </div>
     <div class="menu-item">
-        <h5>Gestión de Clientes</h5>
+        <h5>Administración</h5>
         <div class="submenu">
-            <a href="{{ route('clientes.index') }}">Registro y Búsqueda</a>
-            <a href="{{ route('clientes.index') }}">Historial de Compras</a>
-            <a href="{{ route('clientes.index') }}">Clasificación por Tipo</a>
+            <a href="{{ route('monedas.index') }}">
+                <i class="fas fa-dollar-sign"></i> Monedas
+            </a>
+            <a href="#">
+                <i class="fas fa-users-cog"></i> Usuarios
+            </a>
+            <a href="#">
+                <i class="fas fa-chart-bar"></i> Reportes
+            </a>
         </div>
     </div>
     <div class="menu-item">
         <h5>Gestión de Ventas</h5>
         <div class="submenu">
-            <a href="#">Creación de Boletas o Facturas</a>
-            <a href="#">Cálculo Automático de Precios</a>
-            <a href="#">Selección de Método de Pago</a>
-            <a href="#">Generación de Comprobantes</a>
+            <a href="{{ route('ventas.index') }}">
+                <i class="fas fa-list"></i> Ver Todas las Ventas
+            </a>
+            <a href="{{ route('ventas.create') }}">
+                <i class="fas fa-plus"></i> Nueva Venta
+            </a>
+            <a href="{{ route('clientes.index') }}">
+                <i class="fas fa-users"></i> Gestionar Clientes
+            </a>
         </div>
     </div>
     <div class="menu-item">
-        <h5>Gestión de Usuarios y Permisos</h5>
+        <h5>Reportes</h5>
         <div class="submenu">
-            <a href="#">Roles</a>
-            <a href="#">Registro de Actividades</a>
+            <a href="#">
+                <i class="fas fa-chart-line"></i> Ventas por Período
+            </a>
+            <a href="#">
+                <i class="fas fa-star"></i> Productos Más Vendidos
+            </a>
+            <a href="#">
+                <i class="fas fa-file-excel"></i> Exportar a Excel
+            </a>
         </div>
     </div>
-    <div class="menu-item">
-        <h5>Reportes y Estadísticas</h5>
-        <div class="submenu">
-            <a href="#">Ventas Diarias, Semanales y Mensuales</a>
-            <a href="#">Ranking de Productos</a>
-            <a href="#">Análisis por Vendedor o Cliente</a>
-            <a href="#">Exportación a Excel o PDF</a>
-        </div>
-    </div>
-    <div class="menu-item">
-        <h5>Inventario y Compras</h5>
-        <div class="submenu">
-            <a href="#">Control de Entradas y Salidas</a>
-            <a href="#">Registro de Compras</a>
-            <a href="#">Kardex Valorizado y No Valorizado</a>
-        </div>
-    </div>
-    <a href="{{ route('monedas.index') }}">Monedas</a>
 </div>
 <div class="content">
     @yield('content')

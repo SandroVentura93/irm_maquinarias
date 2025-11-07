@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Venta con Descuento</title>
+    <meta name="csrf-token" content="">
+</head>
+<body>
+    <h1>Simulación de Venta con Descuento</h1>
+    
+    <script>
+        // Obtener el token CSRF
+        fetch('http://127.0.0.1:8000/ventas/create')
+            .then(response => response.text())
+            .then(html => {
+                // Extraer el token CSRF del HTML
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const csrfToken = doc.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                
+                console.log('Token CSRF obtenido:', csrfToken);
+                
+                // Preparar los datos de la venta
+                const formData = new FormData();
+                formData.append('_token', csrfToken);
+                formData.append('fecha', '2024-11-07');
+                formData.append('hora', '11:45:00');
+                formData.append('cliente_id', '1'); // Primer cliente del seeder
+                formData.append('tipo_comprobante_id', '1'); // Boleta
+                formData.append('serie', 'B001');
+                formData.append('correlativo', '00000001');
+                formData.append('moneda_id', '1'); // Soles
+                
+                // Productos con descuento
+                formData.append('productos[0][producto_id]', '1');
+                formData.append('productos[0][cantidad]', '2');
+                formData.append('productos[0][precio_unitario]', '15000.00');
+                formData.append('productos[0][descuento_porcentaje]', '10'); // 10% de descuento
+                formData.append('productos[0][precio_final]', '13500.00'); // 15000 - (15000 * 0.10)
+                
+                formData.append('productos[1][producto_id]', '2');
+                formData.append('productos[1][cantidad]', '1');
+                formData.append('productos[1][precio_unitario]', '8500.00');
+                formData.append('productos[1][descuento_porcentaje]', '5'); // 5% de descuento
+                formData.append('productos[1][precio_final]', '8075.00'); // 8500 - (8500 * 0.05)
+                
+                // Enviar la venta
+                fetch('http://127.0.0.1:8000/ventas', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => {
+                    console.log('Respuesta del servidor:', response.status);
+                    return response.text();
+                })
+                .then(data => {
+                    console.log('Datos de respuesta:', data);
+                    document.body.innerHTML += '<h2>Respuesta:</h2><pre>' + data + '</pre>';
+                    
+                    // Verificar si la venta se guardó
+                    setTimeout(() => {
+                        window.location.href = 'http://127.0.0.1:8000/ventas';
+                    }, 3000);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.body.innerHTML += '<h2>Error:</h2><pre>' + error + '</pre>';
+                });
+            })
+            .catch(error => {
+                console.error('Error obteniendo token CSRF:', error);
+            });
+    </script>
+</body>
+</html>
