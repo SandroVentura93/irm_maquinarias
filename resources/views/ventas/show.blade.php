@@ -6,7 +6,18 @@
 
     <div class="card">
         <div class="card-body">
-            <h5 class="card-title">Venta #{{ $venta->id_venta }}</h5>
+            <h5 class="card-title">
+                Venta #{{ $venta->id_venta }}
+                @if($venta->id_tipo_comprobante == 4)
+                    <span class="badge badge-primary">Cotización</span>
+                @elseif($venta->id_tipo_comprobante == 1)
+                    <span class="badge badge-success">Factura</span>
+                @elseif($venta->id_tipo_comprobante == 2)
+                    <span class="badge badge-info">Boleta</span>
+                @elseif($venta->id_tipo_comprobante == 3)
+                    <span class="badge badge-danger">Nota de Crédito</span>
+                @endif
+            </h5>
             <p class="card-text"><strong>Cliente:</strong> {{ $venta->cliente->razon_social ?: $venta->cliente->nombre }}</p>
             <p class="card-text"><strong>Vendedor:</strong> {{ $venta->vendedor ? $venta->vendedor->nombre : 'Sin vendedor asignado' }}</p>
             <p class="card-text"><strong>Serie:</strong> {{ $venta->serie }}</p>
@@ -44,6 +55,24 @@
             <i class="fas fa-edit"></i> Editar
         </a>
         @endif
+        
+        {{-- Botón especial para convertir cotización --}}
+        @if($venta->id_tipo_comprobante == 4 && $venta->xml_estado === 'PENDIENTE')
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-info dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-exchange-alt"></i> Convertir Cotización
+            </button>
+            <div class="dropdown-menu">
+                <a class="dropdown-item" href="javascript:void(0)" onclick="convertirCotizacion({{ $venta->id_venta }}, 'Factura')">
+                    <i class="fas fa-file-invoice text-success"></i> Convertir a Factura
+                </a>
+                <a class="dropdown-item" href="javascript:void(0)" onclick="convertirCotizacion({{ $venta->id_venta }}, 'Boleta')">
+                    <i class="fas fa-receipt text-info"></i> Convertir a Boleta
+                </a>
+            </div>
+        </div>
+        @endif
+        
         @if(in_array($venta->xml_estado, ['PENDIENTE', 'ENVIADO', 'ACEPTADO']))
         <a href="{{ route('ventas.confirm-cancel', $venta) }}" class="btn btn-danger">
             <i class="fas fa-times"></i> Anular Venta
@@ -51,4 +80,53 @@
         @endif
     </div>
 </div>
+
+<script>
+function convertirCotizacion(idVenta, tipoDestino) {
+    // Confirmar la conversión
+    const mensaje = `¿Está seguro que desea convertir esta cotización a ${tipoDestino}?\n\nEsta acción:\n• Cambiará el tipo de comprobante\n• Generará una nueva serie y número\n• No se puede deshacer`;
+    
+    if (!confirm(mensaje)) {
+        return;
+    }
+    
+    // Mostrar loading
+    const btnDropdown = document.querySelector('.btn-info.dropdown-toggle');
+    const originalText = btnDropdown.innerHTML;
+    btnDropdown.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Convirtiendo...';
+    btnDropdown.disabled = true;
+    
+    // Realizar la conversión
+    fetch(`/ventas/${idVenta}/convertir`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify({
+            tipo_destino: tipoDestino
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`¡Cotización convertida exitosamente!\n\nNuevo comprobante: ${data.nueva_serie}-${data.nuevo_numero}\nTipo: ${tipoDestino}`);
+            // Recargar la página para mostrar los cambios
+            window.location.reload();
+        } else {
+            alert('Error al convertir: ' + (data.error || 'Error desconocido'));
+            // Restaurar botón
+            btnDropdown.innerHTML = originalText;
+            btnDropdown.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error de conexión al convertir la cotización');
+        // Restaurar botón
+        btnDropdown.innerHTML = originalText;
+        btnDropdown.disabled = false;
+    });
+}
+</script>
 @endsection

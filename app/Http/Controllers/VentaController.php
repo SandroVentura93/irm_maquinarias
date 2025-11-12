@@ -172,17 +172,43 @@ class VentaController extends Controller
             $total = round($subtotal + $igv, 2);
 
             // Mapear valores del formulario a IDs de base de datos
-            $id_moneda = $data['moneda'] === 'PEN' ? 1 : 2; // 1=PEN, 2=USD (ajustar según tu BD)
-            $id_tipo_comprobante = $data['tipo_comprobante'] === 'Factura' ? 1 : 
-                                  ($data['tipo_comprobante'] === 'Boleta' ? 2 : 3); // Ajustar según tu BD
+            $id_moneda = $data['moneda'] === 'PEN' ? 1 : 2; // 1=PEN, 2=USD
+            
+            // Mapear tipo de comprobante de manera consistente
+            $tipoComprobanteMap = [
+                'Cotizacion' => 4,
+                'Factura' => 1,
+                'Boleta' => 2,
+                'Nota de Crédito' => 3
+            ];
+            $id_tipo_comprobante = $tipoComprobanteMap[$data['tipo_comprobante']] ?? 1;
 
             // Obtener el último número para esta serie y tipo de comprobante
             $ultimo_numero_venta = Venta::where('serie', $data['serie'])
                 ->where('id_tipo_comprobante', $id_tipo_comprobante)
                 ->max('numero');
             
-            // Si no hay número anterior, empezar desde 1, si hay, sumar 1
-            $nuevo_numero = ($ultimo_numero_venta ? intval($ultimo_numero_venta) : 0) + 1;
+            // Extraer solo el número si tiene formato (ej: "F001-00000123" -> 123)
+            if ($ultimo_numero_venta && is_string($ultimo_numero_venta)) {
+                if (strpos($ultimo_numero_venta, '-') !== false) {
+                    $ultimo_numero_venta = explode('-', $ultimo_numero_venta)[1];
+                }
+                $ultimo_numero_venta = intval($ultimo_numero_venta);
+            } else {
+                $ultimo_numero_venta = intval($ultimo_numero_venta ?: 0);
+            }
+            
+            $nuevo_numero = $ultimo_numero_venta + 1;
+            
+            // Crear formato de número según tipo de comprobante
+            $prefijos = [
+                'Cotizacion' => 'COT-',
+                'Factura' => 'F001-',
+                'Boleta' => 'B001-',
+                'Nota de Crédito' => 'NC01-'
+            ];
+            $prefijo = $prefijos[$data['tipo_comprobante']] ?? '';
+            $numero_formateado = $prefijo . str_pad($nuevo_numero, 8, '0', STR_PAD_LEFT);
 
             $venta = Venta::create([
                 'id_cliente' => $data['id_cliente'],
@@ -190,7 +216,7 @@ class VentaController extends Controller
                 'id_moneda' => $id_moneda,
                 'id_tipo_comprobante' => $id_tipo_comprobante,
                 'serie' => $data['serie'],
-                'numero' => str_pad($nuevo_numero, 8, '0', STR_PAD_LEFT), // Formato 00000001
+                'numero' => $numero_formateado, // Usar formato con prefijo
                 'fecha' => now(),
                 'subtotal' => $subtotal,
                 'igv' => $igv,
@@ -456,14 +482,25 @@ class VentaController extends Controller
             $venta = Venta::with(['cliente', 'detalleVentas.producto', 'comprobanteElectronico', 'vendedor'])
                          ->findOrFail($id);
 
+            // Determinar el tipo de comprobante basado en el ID
+            $tiposComprobante = [
+                1 => 'Factura',
+                2 => 'Boleta',
+                3 => 'Nota de Crédito',
+                4 => 'Cotizacion'
+            ];
+            
+            $tipoComprobante = $tiposComprobante[$venta->id_tipo_comprobante] ?? 'Comprobante';
+            
             // Preparar datos para el PDF
             $data = [
                 'venta' => $venta,
                 'cliente' => $venta->cliente,
                 'detalles' => $venta->detalleVentas,
-                'fecha' => $venta->fecha_venta ?? now(),
+                'fecha' => $venta->fecha ?? now(),
                 'tipoComprobante' => (object) [
-                    'descripcion' => $venta->comprobanteElectronico->tipo_comprobante ?? 'COMPROBANTE DE VENTA'
+                    'descripcion' => strtoupper($tipoComprobante),
+                    'tipo' => $tipoComprobante
                 ],
                 'moneda' => (object) [
                     'simbolo' => 'S/.',
@@ -473,12 +510,31 @@ class VentaController extends Controller
                 'totalEnLetras' => $this->numeroALetras($venta->total ?? 0)
             ];
 
-            // Generar PDF usando el template de comprobantes
-            $pdf = PDF::loadView('comprobantes.pdf', $data);
+            // Seleccionar la vista según el tipo de comprobante
+            $vistaMap = [
+                'Cotizacion' => 'comprobantes.cotizacion',
+                'Factura' => 'comprobantes.factura',
+                'Boleta' => 'comprobantes.boleta',
+                'Nota de Crédito' => 'comprobantes.nota_credito'
+            ];
+            
+            $vista = $vistaMap[$tipoComprobante] ?? 'comprobantes.pdf';
+            
+            // Generar PDF usando la vista específica del tipo de comprobante
+            $pdf = PDF::loadView($vista, $data);
             $pdf->setPaper('A4', 'portrait');
             
-            // Nombre del archivo
-            $fileName = 'comprobante_' . ($venta->serie ?? 'V') . '_' . ($venta->numero ?? str_pad($venta->id, 6, '0', STR_PAD_LEFT)) . '.pdf';
+            // Nombre del archivo con prefijo según tipo
+            $prefijos = [
+                'Cotizacion' => 'COT',
+                'Factura' => 'FAC',
+                'Boleta' => 'BOL',
+                'Nota de Crédito' => 'NC'
+            ];
+            
+            $prefijo = $prefijos[$tipoComprobante] ?? 'COMP';
+            $numero = str_replace(['-', $venta->serie], '', $venta->numero);
+            $fileName = $prefijo . '_' . $venta->serie . '_' . $numero . '.pdf';
             
             return $pdf->download($fileName);
             
@@ -517,6 +573,158 @@ class VentaController extends Controller
     }
 
     // Confirmar cancelación de venta
+    /**
+     * Convertir cotización a factura o boleta
+     */
+    public function convertirCotizacion(Request $request, $id)
+    {
+        try {
+            $venta = Venta::findOrFail($id);
+            
+            // Verificar que sea una cotización y esté pendiente
+            if ($venta->id_tipo_comprobante != 4) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Solo se pueden convertir cotizaciones'
+                ], 400);
+            }
+            
+            if ($venta->xml_estado !== 'PENDIENTE') {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Solo se pueden convertir cotizaciones pendientes'
+                ], 400);
+            }
+            
+            $tipoDestino = $request->input('tipo_destino');
+            
+            if (!in_array($tipoDestino, ['Factura', 'Boleta'])) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Tipo de destino inválido'
+                ], 400);
+            }
+            
+            DB::beginTransaction();
+            
+            // Mapear tipo destino
+            $tipoComprobanteMap = [
+                'Factura' => 1,
+                'Boleta' => 2
+            ];
+            $nuevoTipoId = $tipoComprobanteMap[$tipoDestino];
+            
+            // Configuración de series
+            $seriesConfig = [
+                'Factura' => ['serie' => 'F001', 'prefijo' => 'F001-'],
+                'Boleta' => ['serie' => 'B001', 'prefijo' => 'B001-']
+            ];
+            $nuevaSerie = $seriesConfig[$tipoDestino]['serie'];
+            $prefijo = $seriesConfig[$tipoDestino]['prefijo'];
+            
+            // Obtener el siguiente número para el nuevo tipo
+            $ultimoNumero = Venta::where('serie', $nuevaSerie)
+                ->where('id_tipo_comprobante', $nuevoTipoId)
+                ->max('numero');
+            
+            // Extraer solo el número si tiene formato
+            if ($ultimoNumero && is_string($ultimoNumero)) {
+                if (strpos($ultimoNumero, '-') !== false) {
+                    $ultimoNumero = explode('-', $ultimoNumero)[1];
+                }
+                $ultimoNumero = intval($ultimoNumero);
+            } else {
+                $ultimoNumero = intval($ultimoNumero ?: 0);
+            }
+            
+            $siguienteNumero = $ultimoNumero + 1;
+            $nuevoNumeroFormateado = $prefijo . str_pad($siguienteNumero, 8, '0', STR_PAD_LEFT);
+            
+            // Actualizar la venta
+            $venta->update([
+                'id_tipo_comprobante' => $nuevoTipoId,
+                'serie' => $nuevaSerie,
+                'numero' => $nuevoNumeroFormateado,
+                'xml_estado' => 'PENDIENTE' // Mantener como pendiente para poder procesarla
+            ]);
+            
+            DB::commit();
+            
+            \Log::info("Cotización convertida", [
+                'id_venta' => $id,
+                'tipo_original' => 'Cotización',
+                'tipo_destino' => $tipoDestino,
+                'nueva_serie' => $nuevaSerie,
+                'nuevo_numero' => $nuevoNumeroFormateado
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Cotización convertida exitosamente a {$tipoDestino}",
+                'nueva_serie' => $nuevaSerie,
+                'nuevo_numero' => $nuevoNumeroFormateado,
+                'tipo_destino' => $tipoDestino
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollback();
+            \Log::error("Error al convertir cotización: " . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Error interno del servidor: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtener el siguiente número de comprobante para un tipo y serie específicos
+     */
+    public function siguienteNumero(Request $request)
+    {
+        $tipo = $request->get('tipo');
+        $serie = $request->get('serie');
+        
+        if (!$tipo || !$serie) {
+            return response()->json(['error' => 'Tipo y serie son requeridos'], 400);
+        }
+        
+        // Mapear tipo de comprobante a ID
+        $tipoComprobanteMap = [
+            'Cotizacion' => 4,
+            'Factura' => 1,
+            'Boleta' => 2,
+            'Nota de Crédito' => 3
+        ];
+        
+        $idTipoComprobante = $tipoComprobanteMap[$tipo] ?? 1;
+        
+        // Obtener el último número para esta serie y tipo
+        $ultimoNumero = Venta::where('serie', $serie)
+            ->where('id_tipo_comprobante', $idTipoComprobante)
+            ->max('numero');
+        
+        // Extraer solo el número si tiene formato (ej: "F001-00000123" -> 123)
+        if ($ultimoNumero && is_string($ultimoNumero)) {
+            // Si tiene guión, tomar la parte después del guión
+            if (strpos($ultimoNumero, '-') !== false) {
+                $ultimoNumero = explode('-', $ultimoNumero)[1];
+            }
+            $ultimoNumero = intval($ultimoNumero);
+        } else {
+            $ultimoNumero = intval($ultimoNumero ?: 0);
+        }
+        
+        $siguienteNumero = $ultimoNumero + 1;
+        
+        return response()->json([
+            'tipo' => $tipo,
+            'serie' => $serie,
+            'ultimo_numero' => $ultimoNumero,
+            'siguiente_numero' => $siguienteNumero
+        ]);
+    }
+
     public function confirmCancel($id)
     {
         $venta = Venta::with(['cliente', 'detalleVentas.producto', 'vendedor'])

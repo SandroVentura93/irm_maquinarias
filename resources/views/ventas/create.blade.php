@@ -14,7 +14,9 @@
         </div>
         <div class="col-md-3">
           <label>Tipo Comprobante</label>
-          <select id="tipo_comprobante" class="form-select">
+          <select id="tipo_comprobante" class="form-select" onchange="actualizarSerie()">
+            <option value="">Seleccione tipo</option>
+            <option value="Cotizacion">Cotización</option>
             <option value="Factura">Factura</option>
             <option value="Boleta">Boleta</option>
             <option value="Nota de Crédito">Nota de Crédito</option>
@@ -34,6 +36,14 @@
         <div class="col-md-2">
           <label>Número</label>
           <input id="numero" class="form-control" value="Auto-generado" readonly style="background-color: #f8f9fa;">
+        </div>
+        <div class="col-md-12 mt-3">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="generarXml" value="1">
+            <label class="form-check-label" for="generarXml">
+              <i class="fas fa-file-code text-success"></i> Generar archivo XML (Comprobante Electrónico)
+            </label>
+          </div>
         </div>
       </div>
     </div>
@@ -117,6 +127,57 @@ const IGV = 0.18;
 let detalle = [];
 let productoSeleccionado = null;
 let clienteSeleccionado = null;
+
+// === CONFIGURACIÓN DE SERIES POR TIPO DE COMPROBANTE ===
+const configSeries = {
+  'Cotizacion': { serie: 'COT', prefijo: 'COT-' },
+  'Factura': { serie: 'F001', prefijo: 'F001-' },
+  'Boleta': { serie: 'B001', prefijo: 'B001-' },
+  'Nota de Crédito': { serie: 'NC01', prefijo: 'NC01-' }
+};
+
+// === FUNCIÓN PARA ACTUALIZAR SERIE SEGÚN TIPO DE COMPROBANTE ===
+async function actualizarSerie() {
+  const tipoComprobante = document.getElementById('tipo_comprobante').value;
+  const serieInput = document.getElementById('serie');
+  const numeroInput = document.getElementById('numero');
+  
+  if (!tipoComprobante) {
+    serieInput.value = '';
+    numeroInput.value = 'Seleccione tipo';
+    return;
+  }
+  
+  const config = configSeries[tipoComprobante];
+  if (!config) return;
+  
+  // Actualizar serie
+  serieInput.value = config.serie;
+  
+  try {
+    // Mostrar cargando
+    numeroInput.value = 'Cargando...';
+    
+    // Obtener el siguiente número para esta serie y tipo
+    const response = await fetch(`/api/ventas/siguiente-numero?tipo=${encodeURIComponent(tipoComprobante)}&serie=${encodeURIComponent(config.serie)}`);
+    
+    if (!response.ok) {
+      throw new Error('Error al obtener siguiente número');
+    }
+    
+    const data = await response.json();
+    
+    // Mostrar el siguiente número con formato
+    const numeroFormateado = String(data.siguiente_numero).padStart(8, '0');
+    numeroInput.value = config.prefijo + numeroFormateado;
+    
+    console.log(`Serie actualizada: ${config.serie}, Próximo número: ${numeroFormateado}`);
+    
+  } catch (error) {
+    console.error('Error al obtener siguiente número:', error);
+    numeroInput.value = 'Error al cargar';
+  }
+}
 
 // === BUSCAR CLIENTE (MEJORADO) ===
 document.getElementById('btnBuscarCliente').addEventListener('click', async () => {
@@ -367,6 +428,7 @@ document.getElementById('btnGuardar').addEventListener('click', async ()=>{
     tipo_comprobante: document.getElementById('tipo_comprobante').value,
     moneda: document.getElementById('moneda').value,
     serie: document.getElementById('serie').value,
+    generar_xml: document.getElementById('generarXml').checked,
     // numero se auto-genera en el servidor
     detalle: detalle
   };
@@ -378,7 +440,16 @@ document.getElementById('btnGuardar').addEventListener('click', async ()=>{
   });
   const data = await res.json();
   if(data.ok){
-    alert(`Venta registrada correctamente!\nComprobante: ${data.serie}-${String(data.numero_comprobante).padStart(8, '0')}\nTotal: S/ ${data.total}`);
+    let mensaje = `Venta registrada correctamente!\nComprobante: ${data.serie}-${String(data.numero_comprobante).padStart(8, '0')}\nTotal: S/ ${data.total}`;
+    
+    // Agregar información sobre XML si fue generado
+    if (data.xml_generado) {
+      mensaje += '\n✅ Archivo XML generado exitosamente';
+    } else if (payload.generar_xml) {
+      mensaje += '\n⚠️ Hubo un problema generando el XML';
+    }
+    
+    alert(mensaje);
     location.reload();
   } else {
     alert('Error: '+data.error);

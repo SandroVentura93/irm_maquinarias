@@ -233,6 +233,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('{venta}/confirm-cancel', [VentaController::class, 'confirmCancel'])->name('confirm-cancel');
         Route::patch('{venta}/cancel', [VentaController::class, 'cancel'])->name('cancel');
         Route::get('{venta}/pdf', [VentaController::class, 'generarPDF'])->name('pdf');
+        Route::post('{venta}/convertir', [VentaController::class, 'convertirCotizacion'])->name('convertir');
+        Route::get('{venta}/xml', [VentaController::class, 'generarXML'])->name('xml');
+        Route::get('{venta}/xml-download', [VentaController::class, 'descargarXML'])->name('xml-download');
     });
     
     // Detalle de ventas (si es necesario como recurso independiente)
@@ -297,6 +300,9 @@ Route::get('/api/productos/search', [VentaController::class, 'buscarProducto'])-
 
 // Búsqueda de clientes para formulario de ventas (sin autenticación) 
 Route::get('/api/clientes/search', [VentaController::class, 'buscarCliente'])->name('api.clientes.search');
+
+// Obtener siguiente número de comprobante
+Route::get('/api/ventas/siguiente-numero', [VentaController::class, 'siguienteNumero'])->name('api.ventas.siguiente-numero');
 
 // Ruta para cerrar sesión
 Route::post('/logout', function () {
