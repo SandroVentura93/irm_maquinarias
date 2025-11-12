@@ -37,14 +37,6 @@
           <label>Número</label>
           <input id="numero" class="form-control" value="Auto-generado" readonly style="background-color: #f8f9fa;">
         </div>
-        <div class="col-md-12 mt-3">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="generarXml" value="1">
-            <label class="form-check-label" for="generarXml">
-              <i class="fas fa-file-code text-success"></i> Generar archivo XML (Comprobante Electrónico)
-            </label>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -428,7 +420,6 @@ document.getElementById('btnGuardar').addEventListener('click', async ()=>{
     tipo_comprobante: document.getElementById('tipo_comprobante').value,
     moneda: document.getElementById('moneda').value,
     serie: document.getElementById('serie').value,
-    generar_xml: document.getElementById('generarXml').checked,
     // numero se auto-genera en el servidor
     detalle: detalle
   };
@@ -440,16 +431,7 @@ document.getElementById('btnGuardar').addEventListener('click', async ()=>{
   });
   const data = await res.json();
   if(data.ok){
-    let mensaje = `Venta registrada correctamente!\nComprobante: ${data.serie}-${String(data.numero_comprobante).padStart(8, '0')}\nTotal: S/ ${data.total}`;
-    
-    // Agregar información sobre XML si fue generado
-    if (data.xml_generado) {
-      mensaje += '\n✅ Archivo XML generado exitosamente';
-    } else if (payload.generar_xml) {
-      mensaje += '\n⚠️ Hubo un problema generando el XML';
-    }
-    
-    alert(mensaje);
+    alert(`Venta registrada correctamente!\nComprobante: ${data.serie}-${String(data.numero_comprobante).padStart(8, '0')}\nTotal: S/ ${data.total}`);
     location.reload();
   } else {
     alert('Error: '+data.error);
