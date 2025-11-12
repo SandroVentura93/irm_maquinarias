@@ -365,7 +365,7 @@
         <!-- Footer -->
         <div class="footer">
             @if($venta->vendedor)
-            <p><strong>Vendedor:</strong> {{ $venta->vendedor->name }}</p>
+            <p><strong>Vendedor:</strong> {{ $venta->vendedor->nombre }}</p>
             @endif
             <p>Estado del Comprobante: {{ $venta->xml_estado }}</p>
             <p>Sistema de Gestión IRM Maquinarias - Generado el {{ now()->format('d/m/Y H:i:s') }}</p>

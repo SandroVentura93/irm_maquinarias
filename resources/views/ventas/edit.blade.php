@@ -45,8 +45,8 @@
                         <div class="row mb-4">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="cliente_id">Cliente <span class="text-danger">*</span></label>
-                                    <select class="form-control" id="cliente_id" name="cliente_id" required>
+                                    <label for="id_cliente">Cliente <span class="text-danger">*</span></label>
+                                    <select class="form-control" id="id_cliente" name="id_cliente" required>
                                         <option value="">Seleccione un cliente</option>
                                         @foreach($clientes as $cliente)
                                         <option value="{{ $cliente->id_cliente }}" {{ $venta->id_cliente == $cliente->id_cliente ? 'selected' : '' }}>
@@ -84,7 +84,7 @@
                                         <div class="row">
                                             <div class="col-md-4">
                                                 <label>Producto <span class="text-danger">*</span></label>
-                                                <select class="form-control producto-select" name="productos[{{ $index }}][producto_id]" required>
+                                                <select class="form-control producto-select" name="detalle[{{ $index }}][id_producto]" required>
                                                     <option value="">Seleccionar producto</option>
                                                     @foreach($productos as $producto)
                                                     <option value="{{ $producto->id_producto }}" 
@@ -98,25 +98,25 @@
                                             <div class="col-md-2">
                                                 <label>Cantidad <span class="text-danger">*</span></label>
                                                 <input type="number" class="form-control cantidad-input" 
-                                                       name="productos[{{ $index }}][cantidad]" 
+                                                       name="detalle[{{ $index }}][cantidad]" 
                                                        value="{{ $detalle->cantidad }}" min="1" required>
                                             </div>
                                             <div class="col-md-2">
                                                 <label>Precio Unit.</label>
                                                 <input type="number" class="form-control precio-input" 
-                                                       name="productos[{{ $index }}][precio_unitario]" 
+                                                       name="detalle[{{ $index }}][precio_unitario]" 
                                                        value="{{ $detalle->precio_unitario }}" step="0.01" readonly>
                                             </div>
                                             <div class="col-md-2">
                                                 <label>Desc. %</label>
                                                 <input type="number" class="form-control descuento-input" 
-                                                       name="productos[{{ $index }}][descuento_porcentaje]" 
+                                                       name="detalle[{{ $index }}][descuento_porcentaje]" 
                                                        value="{{ $detalle->descuento_porcentaje }}" min="0" max="100" step="0.1">
                                             </div>
                                             <div class="col-md-2">
                                                 <label>Precio Final</label>
                                                 <input type="number" class="form-control precio-final-input" 
-                                                       name="productos[{{ $index }}][precio_final]" 
+                                                       name="detalle[{{ $index }}][precio_final]" 
                                                        value="{{ $detalle->precio_final }}" step="0.01" readonly>
                                                 <button type="button" class="btn btn-danger btn-sm mt-1 remove-product">
                                                     <i class="fas fa-trash"></i>
@@ -155,6 +155,11 @@
                                                 <td class="text-right"><strong><span id="total-display">S/ 0.00</span></strong></td>
                                             </tr>
                                         </table>
+                                        
+                                        <!-- Campos ocultos para los totales -->
+                                        <input type="hidden" name="subtotal" id="subtotal-input" value="{{ $venta->subtotal }}">
+                                        <input type="hidden" name="igv" id="igv-input" value="{{ $venta->igv }}">
+                                        <input type="hidden" name="total" id="total-input" value="{{ $venta->total }}">
                                     </div>
                                 </div>
                             </div>
@@ -180,6 +185,35 @@
 document.addEventListener('DOMContentLoaded', function() {
     let productoIndex = {{ $venta->detalleVentas->count() }};
     
+    // Manejar envío del formulario
+    document.getElementById('ventaForm').addEventListener('submit', function(e) {
+        // Validar que hay al menos un producto
+        const productosRows = document.querySelectorAll('.producto-row');
+        if (productosRows.length === 0) {
+            e.preventDefault();
+            alert('Debe agregar al menos un producto a la venta');
+            return false;
+        }
+        
+        // Calcular totales antes de enviar
+        calcularTotales();
+        
+        // Validar totales
+        const total = parseFloat(document.getElementById('total-input').value);
+        if (total <= 0) {
+            e.preventDefault();
+            alert('El total de la venta debe ser mayor a cero');
+            return false;
+        }
+        
+        // Mostrar mensaje de carga
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualizando...';
+        
+        return true;
+    });
+    
     // Función para calcular totales
     function calcularTotales() {
         let subtotal = 0;
@@ -193,9 +227,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const igv = subtotal * 0.18;
         const total = subtotal + igv;
         
+        // Actualizar displays
         document.getElementById('subtotal-display').textContent = 'S/ ' + subtotal.toFixed(2);
         document.getElementById('igv-display').textContent = 'S/ ' + igv.toFixed(2);
         document.getElementById('total-display').textContent = 'S/ ' + total.toFixed(2);
+        
+        // Actualizar campos ocultos para el formulario
+        document.getElementById('subtotal-input').value = subtotal.toFixed(2);
+        document.getElementById('igv-input').value = igv.toFixed(2);
+        document.getElementById('total-input').value = total.toFixed(2);
     }
     
     // Función para calcular precio con descuento
@@ -250,25 +290,25 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="row">
                 <div class="col-md-4">
                     <label>Producto <span class="text-danger">*</span></label>
-                    <select class="form-control producto-select" name="productos[${productoIndex}][producto_id]" required>
+                    <select class="form-control producto-select" name="detalle[${productoIndex}][id_producto]" required>
                         ${productosOptions}
                     </select>
                 </div>
                 <div class="col-md-2">
                     <label>Cantidad <span class="text-danger">*</span></label>
-                    <input type="number" class="form-control cantidad-input" name="productos[${productoIndex}][cantidad]" value="1" min="1" required>
+                    <input type="number" class="form-control cantidad-input" name="detalle[${productoIndex}][cantidad]" value="1" min="1" required>
                 </div>
                 <div class="col-md-2">
                     <label>Precio Unit.</label>
-                    <input type="number" class="form-control precio-input" name="productos[${productoIndex}][precio_unitario]" step="0.01" readonly>
+                    <input type="number" class="form-control precio-input" name="detalle[${productoIndex}][precio_unitario]" step="0.01" readonly>
                 </div>
                 <div class="col-md-2">
                     <label>Desc. %</label>
-                    <input type="number" class="form-control descuento-input" name="productos[${productoIndex}][descuento_porcentaje]" value="0" min="0" max="100" step="0.1">
+                    <input type="number" class="form-control descuento-input" name="detalle[${productoIndex}][descuento_porcentaje]" value="0" min="0" max="100" step="0.1">
                 </div>
                 <div class="col-md-2">
                     <label>Precio Final</label>
-                    <input type="number" class="form-control precio-final-input" name="productos[${productoIndex}][precio_final]" step="0.01" readonly>
+                    <input type="number" class="form-control precio-final-input" name="detalle[${productoIndex}][precio_final]" step="0.01" readonly>
                     <button type="button" class="btn btn-danger btn-sm mt-1 remove-product">
                         <i class="fas fa-trash"></i>
                     </button>

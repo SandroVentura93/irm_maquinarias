@@ -26,9 +26,7 @@ class Venta extends Model
         'xml_hash',
         'xml_nombre',
         'xml_estado',
-        'qr_hash',
-        'fecha_anulacion',
-        'motivo_anulacion'
+        'qr_hash'
     ];
 
     public function cliente()
@@ -44,5 +42,10 @@ class Venta extends Model
     public function detalleVentas()
     {
         return $this->hasMany(DetalleVenta::class, 'id_venta');
+    }
+
+    public function comprobanteElectronico()
+    {
+        return $this->hasOne(ComprobanteElectronico::class, 'id_venta');
     }
 }

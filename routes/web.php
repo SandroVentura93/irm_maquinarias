@@ -39,6 +39,100 @@ use App\Http\Controllers\{
 // Ruta raíz - Redirección inteligente
 Route::get('/', fn() => Auth::check() ? redirect()->route('dashboard') : redirect()->route('login'));
 
+// Ruta de prueba para PDF
+Route::get('/test-pdf', function() {
+    try {
+        // Datos de prueba completos para el template de comprobantes
+        $data = [
+            'venta' => (object) [
+                'id' => 1,
+                'serie' => 'V001',
+                'numero' => '000001',
+                'fecha' => now(),
+                'fecha_venta' => now(),
+                'subtotal' => 84.75,
+                'igv' => 15.25,
+                'total' => 100.00,
+                'xml_estado' => 'ACEPTADO',
+                'qr_hash' => null,
+                'cliente' => (object) [
+                    'razon_social' => 'Cliente de Prueba S.A.C.',
+                    'nombre' => 'Cliente de Prueba',
+                    'tipo_documento' => 'RUC',
+                    'numero_documento' => '20123456789',
+                    'direccion' => 'Av. Los Constructores 123',
+                    'telefono' => '987654321'
+                ]
+            ],
+            'cliente' => (object) [
+                'razon_social' => 'Cliente de Prueba S.A.C.',
+                'nombre' => 'Cliente de Prueba',
+                'tipo_documento' => 'RUC',
+                'numero_documento' => '20123456789',
+                'direccion' => 'Av. Los Constructores 123',
+                'telefono' => '987654321'
+            ],
+            'detalles' => collect([
+                (object) [
+                    'producto' => (object) [
+                        'codigo' => 'PROD001',
+                        'descripcion' => 'Producto de Prueba 1'
+                    ],
+                    'cantidad' => 2,
+                    'precio_unitario' => 30.00,
+                    'descuento_porcentaje' => 0,
+                    'precio_final' => 30.00,
+                    'total' => 60.00
+                ],
+                (object) [
+                    'producto' => (object) [
+                        'codigo' => 'PROD002',
+                        'descripcion' => 'Producto de Prueba 2'
+                    ],
+                    'cantidad' => 1,
+                    'precio_unitario' => 40.00,
+                    'descuento_porcentaje' => 0,
+                    'precio_final' => 40.00,
+                    'total' => 40.00
+                ]
+            ]),
+            'fecha' => now(),
+            'tipoComprobante' => (object) ['descripcion' => 'COMPROBANTE DE VENTA'],
+            'moneda' => (object) ['descripcion' => 'Soles'],
+            'descuentoTotal' => 0,
+            'totalEnLetras' => 'CIEN CON 00/100 SOLES'
+        ];
+        
+        $pdf = PDF::loadView('comprobantes.pdf', $data);
+        return $pdf->stream('test-comprobante.pdf');
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+    }
+});
+
+// Ruta de prueba directa para PDF con venta específica
+Route::get('/test-pdf-venta/{id}', function($id) {
+    $controller = new App\Http\Controllers\VentaController();
+    return $controller->generarPDF($id);
+});
+
+// Ruta de prueba para confirm-cancel
+Route::get('/test-confirm-cancel/{id}', function($id) {
+    $controller = new App\Http\Controllers\VentaController();
+    return $controller->confirmCancel($id);
+});
+
+// Ruta de prueba para cancel (POST)
+Route::post('/test-cancel/{id}', function($id) {
+    $controller = new App\Http\Controllers\VentaController();
+    $request = new Illuminate\Http\Request();
+    $request->merge(['motivo' => 'Anulación de prueba']);
+    return $controller->cancel($request, $id);
+});
+
 /*
 |--------------------------------------------------------------------------
 | AUTENTICACIÓN
@@ -128,6 +222,12 @@ Route::middleware(['auth'])->group(function () {
     // CRUD básico de ventas
     Route::resource('ventas', VentaController::class);
     
+    // Ruta específica para crear ventas (formulario personalizado)
+    // Route::get('/ventas/crear', [VentaController::class, 'create'])->name('ventas.create');
+    
+    // Ruta alternativa personalizada para nueva venta
+    Route::get('/venta/create', [VentaController::class, 'create'])->name('venta.create');
+    
     // Acciones especiales de ventas
     Route::prefix('ventas')->name('ventas.')->group(function () {
         Route::get('{venta}/confirm-cancel', [VentaController::class, 'confirmCancel'])->name('confirm-cancel');
@@ -178,20 +278,25 @@ Route::middleware(['auth'])->group(function () {
     | API ENDPOINTS (Para AJAX y funcionalidades dinámicas)
     |--------------------------------------------------------------------------
     */
+    // Simplificar - solo mantener lo esencial
     Route::prefix('api')->name('api.')->group(function () {
-        // Búsquedas de clientes
-        Route::prefix('clientes')->name('clientes.')->group(function () {
-            Route::get('/', [ClienteController::class, 'buscar'])->name('buscar');
-            Route::get('buscar-documento', [ClienteController::class, 'buscarPorDocumento'])->name('buscar-documento');
-        });
-        
-        // Búsquedas de productos
-        Route::prefix('productos')->name('productos.')->group(function () {
-            Route::get('/', [ProductoController::class, 'buscar'])->name('buscar');
-            Route::get('{id}', [ProductoController::class, 'getDetails'])->name('details');
+        // API de ventas
+        Route::prefix('ventas')->name('ventas.')->group(function () {
+            Route::post('guardar', [VentaController::class, 'guardarVenta'])->name('guardar');
         });
     });
 });
+
+/*
+|--------------------------------------------------------------------------
+| RUTAS PÚBLICAS DE API (Para búsquedas AJAX sin autenticación)
+|--------------------------------------------------------------------------
+*/
+// Búsqueda de productos para formulario de ventas (sin autenticación)
+Route::get('/api/productos/search', [VentaController::class, 'buscarProducto'])->name('api.productos.search');
+
+// Búsqueda de clientes para formulario de ventas (sin autenticación) 
+Route::get('/api/clientes/search', [VentaController::class, 'buscarCliente'])->name('api.clientes.search');
 
 // Ruta para cerrar sesión
 Route::post('/logout', function () {

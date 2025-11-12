@@ -8,7 +8,7 @@
         <div class="card-body">
             <h5 class="card-title">Venta #{{ $venta->id_venta }}</h5>
             <p class="card-text"><strong>Cliente:</strong> {{ $venta->cliente->razon_social ?: $venta->cliente->nombre }}</p>
-            <p class="card-text"><strong>Vendedor:</strong> {{ $venta->vendedor->name ?: 'Sin vendedor asignado' }}</p>
+            <p class="card-text"><strong>Vendedor:</strong> {{ $venta->vendedor ? $venta->vendedor->nombre : 'Sin vendedor asignado' }}</p>
             <p class="card-text"><strong>Serie:</strong> {{ $venta->serie }}</p>
             <p class="card-text"><strong>Número:</strong> {{ $venta->numero }}</p>
             <p class="card-text"><strong>Fecha:</strong> {{ $venta->fecha }}</p>

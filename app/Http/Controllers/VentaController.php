@@ -2,422 +2,579 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Venta;
-use App\Models\DetalleVenta;
-use App\Models\Producto;
-use App\Models\Cliente;
-use App\Models\TipoComprobante;
-use App\Models\Moneda;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Cliente;
+use App\Models\Producto;
+use App\Models\Venta;
+use App\Models\DetalleVenta;
+use App\Models\ComprobanteElectronico;
 use PDF;
 
 class VentaController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
+    // Lista de ventas
     public function index()
     {
-        $ventas = Venta::with(['cliente', 'vendedor'])->get();
+        $ventas = Venta::with(['cliente'])->orderBy('created_at', 'desc')->get();
         return view('ventas.index', compact('ventas'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
+    // Vista principal del formulario
     public function create()
     {
-        $clientes = Cliente::all();
-        $productos = Producto::where('activo', 1)->get();
-        $tiposComprobante = TipoComprobante::all();
-        $monedas = Moneda::all();
-        
-        return view('ventas.create', compact('clientes', 'productos', 'tiposComprobante', 'monedas'));
+        return view('ventas.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(Request $request)
+    // Buscar cliente por RUC/DNI (mejorado)
+    public function buscarCliente(Request $r)
     {
-        $validatedData = $request->validate([
-            'fecha' => 'required|date',
-            'id_cliente' => 'required|exists:clientes,id_cliente',
-            'id_tipo_comprobante' => 'required|integer',
-            'serie' => 'required|string',
-            'numero' => 'required|string',
-            'id_moneda' => 'required|integer',
-            'id_vendedor' => 'nullable|integer',
-            'productos' => 'required|array',
-            'productos.*.producto_id' => 'required|exists:productos,id_producto',
-            'productos.*.cantidad' => 'required|integer|min:1',
-            'productos.*.precio_unitario' => 'required|numeric|min:0',
-            'productos.*.descuento_porcentaje' => 'nullable|numeric|min:0|max:100',
-            'productos.*.precio_final' => 'required|numeric|min:0',
-        ]);
+        $doc = $r->query('doc', '');
+        
+        if (empty($doc)) {
+            return response()->json(['found' => false, 'message' => 'Número de documento requerido']);
+        }
 
         try {
-            DB::beginTransaction();
+            $cliente = Cliente::where('numero_documento', $doc)->first();
 
-            // Crear la venta
-            $venta = new Venta();
-            $venta->fecha = $validatedData['fecha'];
-            $venta->id_cliente = $validatedData['id_cliente'];
-            $venta->id_vendedor = $validatedData['id_vendedor'] ?: auth()->user()->id_usuario;
-            $venta->id_tipo_comprobante = $validatedData['id_tipo_comprobante'];
-            $venta->serie = $validatedData['serie'];
-            $venta->numero = $validatedData['numero'];
-            $venta->id_moneda = $validatedData['id_moneda'];
-            $venta->subtotal = 0;
-            $venta->igv = 0;
-            $venta->total = 0;
-            $venta->save();
-
-            $total_final = 0;
-            
-            // Crear los detalles de venta
-            foreach ($validatedData['productos'] as $producto) {
-                $total_linea = $producto['precio_final'] * $producto['cantidad'];
-                $subtotal_linea = $total_linea / 1.18; // Sin IGV
-                $igv_linea = $total_linea - $subtotal_linea; // IGV calculado
-                
-                $detalleVenta = new DetalleVenta();
-                $detalleVenta->id_venta = $venta->id_venta;
-                $detalleVenta->id_producto = $producto['producto_id'];
-                $detalleVenta->cantidad = $producto['cantidad'];
-                $detalleVenta->precio_unitario = $producto['precio_unitario'];
-                $detalleVenta->descuento_porcentaje = isset($producto['descuento_porcentaje']) ? $producto['descuento_porcentaje'] : 0;
-                $detalleVenta->precio_final = $producto['precio_final'];
-                $detalleVenta->subtotal = $subtotal_linea;
-                $detalleVenta->igv = $igv_linea;
-                $detalleVenta->total = $total_linea;
-                $detalleVenta->save();
-
-                // Actualizar stock del producto
-                $productoModel = Producto::find($producto['producto_id']);
-                if ($productoModel) {
-                    $productoModel->stock_actual -= $producto['cantidad'];
-                    $productoModel->save();
-                }
-                
-                $total_final += $total_linea;
+            if ($cliente) {
+                return response()->json([
+                    'found' => true, 
+                    'cliente' => [
+                        'id_cliente' => $cliente->id_cliente,
+                        'numero_documento' => $cliente->numero_documento,
+                        'tipo_documento' => $cliente->tipo_documento ?? 'RUC',
+                        'nombre' => $cliente->nombre,
+                        'razon_social' => $cliente->razon_social,
+                        'direccion' => $cliente->direccion,
+                        'telefono' => $cliente->telefono,
+                        'email' => $cliente->email
+                    ]
+                ]);
             }
 
-            // Actualizar totales de la venta
-            $venta->subtotal = $total_final / 1.18; // Sin IGV
-            $venta->igv = $total_final - $venta->subtotal; // IGV calculado
-            $venta->total = $total_final;
-            $venta->save();
+            return response()->json([
+                'found' => false, 
+                'message' => 'Cliente no encontrado'
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error en búsqueda de cliente: ' . $e->getMessage());
+            return response()->json([
+                'found' => false, 
+                'message' => 'Error en la búsqueda'
+            ], 500);
+        }
+    }
+
+    // Buscar producto (optimizado con todos los campos, sin filtro de activo estricto)
+    public function buscarProducto(Request $r)
+    {
+        $q = $r->query('q', '');
+        
+        // Validar longitud mínima
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        try {
+            // Buscar en múltiples campos sin filtro estricto de activo
+            $productos = Producto::where(function($query) use ($q) {
+                $query->where('codigo', 'like', "%{$q}%")
+                      ->orWhere('numero_parte', 'like', "%{$q}%")
+                      ->orWhere('descripcion', 'like', "%{$q}%")
+                      ->orWhere('modelo', 'like', "%{$q}%");
+            })
+            // Sin filtro de activo por ahora para evitar problemas
+            ->select(
+                'id_producto', 'id_categoria', 'id_marca', 'id_proveedor',
+                'codigo', 'numero_parte', 'descripcion', 'modelo', 
+                'peso', 'ubicacion', 'stock_actual', 'stock_minimo',
+                'precio_compra', 'precio_venta', 'importado', 'activo'
+            )
+            ->limit(15)
+            ->get()
+            ->map(function($producto) {
+                return [
+                    'id_producto' => $producto->id_producto,
+                    'codigo' => $producto->codigo ?? '',
+                    'numero_parte' => $producto->numero_parte ?? '',
+                    'descripcion' => $producto->descripcion ?? 'Sin descripción',
+                    'modelo' => $producto->modelo ?? '',
+                    'peso' => $producto->peso ?? 0,
+                    'ubicacion' => $producto->ubicacion ?? 'Sin ubicación',
+                    'stock_actual' => $producto->stock_actual ?? 0,
+                    'stock_minimo' => $producto->stock_minimo ?? 0,
+                    'precio_compra' => number_format($producto->precio_compra ?? 0, 2, '.', ''),
+                    'precio_venta' => number_format($producto->precio_venta ?? 0, 2, '.', ''),
+                    'importado' => $producto->importado ? 'Sí' : 'No',
+                    'activo' => $producto->activo ? 'Activo' : 'Inactivo',
+                    // Información básica sin relaciones por ahora
+                    'categoria' => 'Sin categoría',
+                    'marca' => 'Sin marca',
+                    'proveedor' => 'Sin proveedor',
+                    // Campos combinados para mejor presentación
+                    'codigo_completo' => ($producto->codigo ?? '') . ($producto->numero_parte ? ' | ' . $producto->numero_parte : ''),
+                    'stock_status' => ($producto->stock_actual ?? 0) <= ($producto->stock_minimo ?? 0) ? 'Bajo' : 'Normal',
+                    'texto_busqueda' => ($producto->codigo ?? '') . ' - ' . ($producto->numero_parte ?? '') . ' - ' . ($producto->descripcion ?? '') . ' - ' . ($producto->modelo ?? '')
+                ];
+            });
+
+            \Log::info("Búsqueda de productos realizada", [
+                'query' => $q, 
+                'encontrados' => $productos->count(),
+                'productos' => $productos->take(3)->toArray()
+            ]);
+
+            return response()->json($productos);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error en búsqueda de productos: ' . $e->getMessage(), [
+                'query' => $q,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([]);
+        }
+    }
+
+    // Registrar venta completa
+    public function guardarVenta(Request $r)
+    {
+        \Log::info('Datos recibidos en guardarVenta:', $r->all());
+        
+        $data = $r->validate([
+            'id_cliente' => 'required|integer',
+            'tipo_comprobante' => 'required|string',
+            'moneda' => 'required|string',
+            'serie' => 'required|string',
+            // 'numero' se auto-genera, no requerido en el request
+            'detalle' => 'required|array|min:1',
+            'detalle.*.id_producto' => 'required|integer',
+            'detalle.*.cantidad' => 'required|numeric|min:0.01',
+            'detalle.*.precio_unitario' => 'required|numeric|min:0',
+            'detalle.*.descuento_porcentaje' => 'nullable|numeric|min:0|max:100',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $igv_rate = 0.18;
+            $subtotal = 0;
+
+            foreach ($data['detalle'] as $d) {
+                $precio_final = $d['precio_unitario'] * (1 - ($d['descuento_porcentaje'] ?? 0) / 100);
+                $subtotal += $precio_final * $d['cantidad'];
+            }
+
+            $igv = round($subtotal * $igv_rate, 2);
+            $total = round($subtotal + $igv, 2);
+
+            // Mapear valores del formulario a IDs de base de datos
+            $id_moneda = $data['moneda'] === 'PEN' ? 1 : 2; // 1=PEN, 2=USD (ajustar según tu BD)
+            $id_tipo_comprobante = $data['tipo_comprobante'] === 'Factura' ? 1 : 
+                                  ($data['tipo_comprobante'] === 'Boleta' ? 2 : 3); // Ajustar según tu BD
+
+            // Obtener el último número para esta serie y tipo de comprobante
+            $ultimo_numero_venta = Venta::where('serie', $data['serie'])
+                ->where('id_tipo_comprobante', $id_tipo_comprobante)
+                ->max('numero');
+            
+            // Si no hay número anterior, empezar desde 1, si hay, sumar 1
+            $nuevo_numero = ($ultimo_numero_venta ? intval($ultimo_numero_venta) : 0) + 1;
+
+            $venta = Venta::create([
+                'id_cliente' => $data['id_cliente'],
+                'id_vendedor' => auth()->user()->id_usuario, // Asignar el vendedor logueado
+                'id_moneda' => $id_moneda,
+                'id_tipo_comprobante' => $id_tipo_comprobante,
+                'serie' => $data['serie'],
+                'numero' => str_pad($nuevo_numero, 8, '0', STR_PAD_LEFT), // Formato 00000001
+                'fecha' => now(),
+                'subtotal' => $subtotal,
+                'igv' => $igv,
+                'total' => $total,
+                'xml_estado' => 'PENDIENTE'
+            ]);
+
+            \Log::info('Venta creada:', ['id_venta' => $venta->id_venta]);
+
+            foreach ($data['detalle'] as $d) {
+                $precio_final = $d['precio_unitario'] * (1 - ($d['descuento_porcentaje'] ?? 0) / 100);
+                $subtotal_linea = $precio_final * $d['cantidad'];
+                $igv_linea = $subtotal_linea * $igv_rate;
+                $total_linea = $subtotal_linea + $igv_linea;
+
+                DetalleVenta::create([
+                    'id_venta' => $venta->id_venta,
+                    'id_producto' => $d['id_producto'],
+                    'cantidad' => $d['cantidad'],
+                    'precio_unitario' => $d['precio_unitario'],
+                    'descuento_porcentaje' => $d['descuento_porcentaje'] ?? 0,
+                    'precio_final' => $precio_final,
+                    'subtotal' => $subtotal_linea,
+                    'igv' => $igv_linea,
+                    'total' => $total_linea,
+                ]);
+
+                Producto::where('id_producto', $d['id_producto'])
+                    ->decrement('stock_actual', $d['cantidad']);
+            }
+
+            // Crear el comprobante electrónico con el mismo número
+            $comp = ComprobanteElectronico::create([
+                'id_venta' => $venta->id_venta,
+                'id_tipo_comprobante' => $id_tipo_comprobante,
+                'serie' => $data['serie'],
+                'numero' => $nuevo_numero, // Usar el número entero, no el string con ceros
+                'fecha_emision' => now(),
+                'monto_subtotal' => $subtotal,
+                'monto_igv' => $igv,
+                'monto_total' => $total,
+                'moneda_id' => $id_moneda,
+                'estado' => 'PENDIENTE',
+            ]);
 
             DB::commit();
 
-            return redirect()->route('ventas.index')->with('success', 'Venta registrada exitosamente.');
-        } catch (\Exception $e) {
-            DB::rollback();
-            return back()->withErrors('Error al registrar la venta: ' . $e->getMessage())->withInput();
+            return response()->json([
+                'ok' => true, 
+                'id_venta' => $venta->id_venta, 
+                'total' => $total,
+                'numero_comprobante' => $nuevo_numero,
+                'serie' => $data['serie']
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['ok' => false, 'error' => $e->getMessage()]);
         }
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  \App\Models\Venta  $venta
-     * @return \Illuminate\Http\Response
-     */
-    public function show(Venta $venta)
+    // Mostrar una venta específica
+    public function show($id)
     {
-        $venta->load(['cliente', 'vendedor']);
+        $venta = Venta::with(['cliente', 'vendedor', 'detalleVentas.producto', 'comprobanteElectronico'])
+                     ->findOrFail($id);
         return view('ventas.show', compact('venta'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  \App\Models\Venta  $venta
-     * @return \Illuminate\Http\Response
-     */
-    public function edit(Venta $venta)
+    // Mostrar formulario de edición
+    public function edit($id)
     {
-        // Solo permitir editar ventas en estado PENDIENTE
-        if ($venta->xml_estado !== 'PENDIENTE') {
-            return view('ventas.edit', compact('venta'));
+        $venta = Venta::with(['cliente', 'vendedor', 'detalleVentas.producto'])->findOrFail($id);
+        
+        // Obtener todos los clientes (sin filtro de activo por si no existe el campo)
+        try {
+            $clientes = Cliente::where('activo', 1)->get();
+        } catch (\Exception $e) {
+            $clientes = Cliente::all();
         }
         
-        $clientes = \App\Models\Cliente::all();
-        $productos = \App\Models\Producto::where('stock', '>', 0)->get();
+        // Obtener todos los productos (sin filtro de activo por si no existe el campo)
+        try {
+            $productos = Producto::where('activo', 1)->get();
+        } catch (\Exception $e) {
+            $productos = Producto::all();
+        }
         
         return view('ventas.edit', compact('venta', 'clientes', 'productos'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Venta  $venta
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, Venta $venta)
+    // Actualizar venta
+    public function update(Request $request, $id)
     {
-        // Solo permitir editar ventas en estado PENDIENTE
-        if ($venta->xml_estado !== 'PENDIENTE') {
-            return redirect()->route('ventas.index')->with('error', 'Solo se pueden editar ventas en estado PENDIENTE.');
-        }
+        \Log::info('Iniciando actualización de venta', ['id' => $id, 'datos' => $request->all()]);
         
-        $validatedData = $request->validate([
-            'fecha' => 'required|date',
-            'hora' => 'required|string',
-            'cliente_id' => 'required|exists:clientes,id_cliente',
-            'serie' => 'required|string|max:10',
-            'correlativo' => 'required|string|max:20',
-            'productos' => 'required|array|min:1',
-            'productos.*.producto_id' => 'required|exists:productos,id_producto',
-            'productos.*.cantidad' => 'required|numeric|min:1',
-            'productos.*.precio_unitario' => 'required|numeric|min:0',
-            'productos.*.descuento_porcentaje' => 'nullable|numeric|min:0|max:100',
-            'productos.*.precio_final' => 'required|numeric|min:0'
-        ]);
+        $venta = Venta::with(['detalleVentas', 'comprobanteElectronico'])->findOrFail($id);
+        
+        // Solo permitir edición si la venta está en estado PENDIENTE
+        if ($venta->xml_estado !== 'PENDIENTE') {
+            \Log::warning('Intento de editar venta no pendiente', ['id' => $id, 'estado' => $venta->xml_estado]);
+            return redirect()->route('ventas.show', $id)
+                ->with('error', 'Solo se pueden editar ventas en estado PENDIENTE');
+        }
 
         try {
-            DB::beginTransaction();
-
-            // Restaurar stock de productos anteriores
-            foreach ($venta->detalleVentas as $detalle) {
-                $producto = Producto::find($detalle->id_producto);
-                if ($producto) {
-                    $producto->stock += $detalle->cantidad;
-                    $producto->save();
-                }
-            }
-
-            // Eliminar detalles anteriores
-            $venta->detalleVentas()->delete();
-
-            // Combinar fecha y hora
-            $fechaCompleta = $validatedData['fecha'] . ' ' . $validatedData['hora'] . ':00';
-
-            // Calcular totales
-            $subtotal = 0;
-            $descuentoTotal = 0;
-            
-            foreach ($validatedData['productos'] as $productoData) {
-                $precioSinDescuento = $productoData['precio_unitario'] * $productoData['cantidad'];
-                $descuentoLinea = $precioSinDescuento * ((isset($productoData['descuento_porcentaje']) ? $productoData['descuento_porcentaje'] : 0) / 100);
-                $subtotal += $precioSinDescuento - $descuentoLinea;
-                $descuentoTotal += $descuentoLinea;
-            }
-            
-            $igv = $subtotal * 0.18;
-            $total = $subtotal + $igv;
-
-            // Actualizar venta
-            $venta->update([
-                'fecha' => $fechaCompleta,
-                'id_cliente' => $validatedData['cliente_id'],
-                'serie' => $validatedData['serie'],
-                'numero' => $validatedData['correlativo'],
-                'subtotal' => $subtotal,
-                'descuento' => $descuentoTotal,
-                'igv' => $igv,
-                'total' => $total,
-                'fecha_actualizacion' => now()
+            $data = $request->validate([
+                'fecha' => 'required|date',
+                'hora' => 'required',
+                'id_cliente' => 'required|exists:clientes,id_cliente',
+                'serie' => 'required|string|max:10',
+                'numero' => 'required|string|max:20',
+                'subtotal' => 'required|numeric|min:0',
+                'igv' => 'required|numeric|min:0',
+                'total' => 'required|numeric|min:0',
+                'detalle' => 'required|array|min:1',
+                'detalle.*.id_producto' => 'required|exists:productos,id_producto',
+                'detalle.*.cantidad' => 'required|numeric|min:0.01',
+                'detalle.*.precio_unitario' => 'required|numeric|min:0',
+                'detalle.*.descuento_porcentaje' => 'nullable|numeric|min:0|max:100'
             ]);
+            
+            \Log::info('Validación exitosa', ['data' => $data]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Error de validación', ['errors' => $e->errors()]);
+            return redirect()->back()
+                ->withErrors($e->errors())
+                ->withInput();
+        }
 
-            // Crear nuevos detalles y actualizar stock
-            foreach ($validatedData['productos'] as $productoData) {
-                // Verificar stock disponible
-                $producto = Producto::find($productoData['producto_id']);
-                if (!$producto || $producto->stock < $productoData['cantidad']) {
-                    throw new \Exception("Stock insuficiente para el producto: " . ($producto ? $producto->descripcion : 'ID ' . $productoData['producto_id']));
-                }
+        DB::beginTransaction();
+        try {
+            // Crear fecha completa
+            $fecha_completa = $data['fecha'] . ' ' . $data['hora'];
+            
+            // Actualizar solo los campos modificados de la venta
+            $campos_modificados = [];
+            
+            if ($venta->fecha != $fecha_completa) {
+                $campos_modificados['fecha'] = $fecha_completa;
+            }
+            
+            if ($venta->id_cliente != $data['id_cliente']) {
+                $campos_modificados['id_cliente'] = $data['id_cliente'];
+            }
+            
+            if ($venta->serie != $data['serie']) {
+                $campos_modificados['serie'] = $data['serie'];
+            }
+            
+            if ($venta->numero != $data['numero']) {
+                $campos_modificados['numero'] = $data['numero'];
+            }
+            
+            if ($venta->subtotal != $data['subtotal']) {
+                $campos_modificados['subtotal'] = $data['subtotal'];
+            }
+            
+            if ($venta->igv != $data['igv']) {
+                $campos_modificados['igv'] = $data['igv'];
+            }
+            
+            if ($venta->total != $data['total']) {
+                $campos_modificados['total'] = $data['total'];
+            }
+            
+            // Solo actualizar si hay cambios
+            if (!empty($campos_modificados)) {
+                $venta->update($campos_modificados);
+                \Log::info('Venta actualizada', ['id_venta' => $venta->id_venta, 'campos' => $campos_modificados]);
+            }
 
-                // Crear detalle
+            // Actualizar detalles de venta
+            // Primero eliminar detalles existentes
+            $venta->detalleVentas()->delete();
+            
+            // Crear nuevos detalles
+            foreach ($data['detalle'] as $detalle) {
+                $precio_final = $detalle['precio_unitario'] * (1 - ($detalle['descuento_porcentaje'] ?? 0) / 100);
+                $subtotal_linea = $precio_final * $detalle['cantidad'];
+                $igv_linea = $subtotal_linea * 0.18;
+                $total_linea = $subtotal_linea + $igv_linea;
+
                 DetalleVenta::create([
                     'id_venta' => $venta->id_venta,
-                    'id_producto' => $productoData['producto_id'],
-                    'cantidad' => $productoData['cantidad'],
-                    'precio_unitario' => $productoData['precio_unitario'],
-                    'descuento_porcentaje' => isset($productoData['descuento_porcentaje']) ? $productoData['descuento_porcentaje'] : 0,
-                    'precio_final' => $productoData['precio_final'],
-                    'total' => $productoData['cantidad'] * $productoData['precio_final']
+                    'id_producto' => $detalle['id_producto'],
+                    'cantidad' => $detalle['cantidad'],
+                    'precio_unitario' => $detalle['precio_unitario'],
+                    'descuento_porcentaje' => $detalle['descuento_porcentaje'] ?? 0,
+                    'precio_final' => $precio_final,
+                    'subtotal' => $subtotal_linea,
+                    'igv' => $igv_linea,
+                    'total' => $total_linea,
                 ]);
-
-                // Reducir stock
-                $producto->stock -= $productoData['cantidad'];
-                $producto->save();
             }
 
-            DB::commit();
-            return redirect()->route('ventas.index')->with('success', 'Venta actualizada exitosamente.');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->withErrors(['error' => 'Error al actualizar la venta: ' . $e->getMessage()])->withInput();
-        }
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  \App\Models\Venta  $venta
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy(Venta $venta)
-    {
-        $venta->delete();
-
-        return redirect()->route('ventas.index')->with('success', 'Venta eliminada exitosamente.');
-    }
-
-    /**
-     * Show confirmation page for canceling a sale.
-     *
-     * @param  \App\Models\Venta  $venta
-     * @return \Illuminate\Http\Response
-     */
-    public function confirmCancel(Venta $venta)
-    {
-        // Validar que la venta puede ser anulada
-        if (!in_array($venta->xml_estado, ['PENDIENTE', 'ENVIADO', 'ACEPTADO'])) {
-            return redirect()->route('ventas.index')->withErrors('Esta venta no puede ser anulada.');
-        }
-
-        $venta->load(['cliente', 'vendedor', 'detalleVentas.producto']);
-        return view('ventas.confirm-cancel', compact('venta'));
-    }
-
-    /**
-     * Cancel the specified sale.
-     *
-     * @param  \App\Models\Venta  $venta
-     * @return \Illuminate\Http\Response
-     */
-    public function cancel(Venta $venta)
-    {
-        try {
-            DB::beginTransaction();
-
-            // Validar que la venta puede ser anulada
-            if ($venta->xml_estado === 'RECHAZADO') {
-                return back()->withErrors('No se puede anular una venta que ya fue rechazada.');
-            }
-
-            if ($venta->xml_estado === 'ANULADO') {
-                return back()->withErrors('Esta venta ya se encuentra anulada.');
-            }
-
-            // Cargar los detalles de la venta
-            $venta->load('detalleVentas.producto');
-
-            // Revertir el stock de cada producto
-            foreach ($venta->detalleVentas as $detalle) {
-                if ($detalle->producto) {
-                    $detalle->producto->stock_actual += $detalle->cantidad;
-                    $detalle->producto->save();
+            // Actualizar comprobante electrónico si existe
+            if ($venta->comprobanteElectronico) {
+                $comp_modificados = [];
+                
+                if ($venta->comprobanteElectronico->serie != $data['serie']) {
+                    $comp_modificados['serie'] = $data['serie'];
+                }
+                
+                if ($venta->comprobanteElectronico->numero != $data['numero']) {
+                    $comp_modificados['numero'] = $data['numero'];
+                }
+                
+                if ($venta->comprobanteElectronico->monto_subtotal != $data['subtotal']) {
+                    $comp_modificados['monto_subtotal'] = $data['subtotal'];
+                }
+                
+                if ($venta->comprobanteElectronico->monto_igv != $data['igv']) {
+                    $comp_modificados['monto_igv'] = $data['igv'];
+                }
+                
+                if ($venta->comprobanteElectronico->monto_total != $data['total']) {
+                    $comp_modificados['monto_total'] = $data['total'];
+                }
+                
+                if (!empty($comp_modificados)) {
+                    $venta->comprobanteElectronico->update($comp_modificados);
                 }
             }
 
-            // Actualizar el estado de la venta
-            $venta->xml_estado = 'ANULADO';
-            $venta->fecha_anulacion = now();
-            $venta->motivo_anulacion = 'Anulación manual por usuario: ' . (auth()->user()->nombre ?: 'Sistema');
-            $venta->save();
-
             DB::commit();
-
-            return redirect()->route('ventas.index')->with('success', 
-                'Venta anulada exitosamente. El stock de los productos ha sido revertido.');
-
+            \Log::info('Venta actualizada exitosamente', ['id_venta' => $venta->id_venta]);
+            return redirect()->route('ventas.show', $venta->id_venta)
+                ->with('success', 'Venta actualizada exitosamente');
+                
         } catch (\Exception $e) {
-            DB::rollback();
-            return back()->withErrors('Error al anular la venta: ' . $e->getMessage());
+            DB::rollBack();
+            \Log::error('Error actualizando venta', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->back()
+                ->with('error', 'Error al actualizar la venta: ' . $e->getMessage())
+                ->withInput();
         }
     }
 
-    /**
-     * Generar PDF del comprobante electrónico
-     *
-     * @param  \App\Models\Venta  $venta
-     * @return \Illuminate\Http\Response
-     */
-    public function generarPDF(Venta $venta)
+    // Eliminar venta
+    public function destroy($id)
     {
-        // Cargar relaciones necesarias
-        $venta->load([
-            'cliente', 
-            'vendedor',
-            'detalleVentas.producto'
-        ]);
-
-        // Obtener detalles de la venta
-        $detalles = $venta->detalleVentas;
-        
-        // Calcular descuento total
-        $descuentoTotal = $detalles->sum(function($detalle) {
-            return ($detalle->precio_unitario - $detalle->precio_final) * $detalle->cantidad;
-        });
-
-        // Obtener tipo de comprobante usando modelo
-        $tipoComprobante = TipoComprobante::find($venta->id_tipo_comprobante);
-        if (!$tipoComprobante) {
-            // Crear un objeto por defecto si no existe
-            $tipoComprobante = (object) ['descripcion' => 'BOLETA DE VENTA'];
-        }
-
-        // Obtener moneda usando modelo
-        $moneda = Moneda::find($venta->id_moneda);
-        if (!$moneda) {
-            // Crear un objeto por defecto si no existe
-            $moneda = (object) ['nombre' => 'SOLES', 'simbolo' => 'S/.'];
-        }
-
-        // Convertir número a letras (función simple)
-        $totalEnLetras = $this->numeroALetras($venta->total);
-
-        // Generar PDF
-        $pdf = PDF::loadView('comprobantes.pdf', compact(
-            'venta',
-            'detalles', 
-            'tipoComprobante',
-            'moneda',
-            'descuentoTotal',
-            'totalEnLetras'
-        ));
-
-        // Configurar el PDF
-        $pdf->setPaper('A4', 'portrait');
-        
-        // Nombre del archivo
-        $fileName = strtolower($tipoComprobante->descripcion ?? 'comprobante') . '_' . $venta->serie . '-' . $venta->numero . '.pdf';
-        
-        return $pdf->download($fileName);
+        $venta = Venta::findOrFail($id);
+        $venta->delete();
+        return redirect()->route('ventas.index')->with('success', 'Venta eliminada exitosamente');
     }
 
-    /**
-     * Convertir número a letras (implementación básica)
-     *
-     * @param float $numero
-     * @return string
-     */
+    // Método store para el formulario tradicional (si es necesario)
+    public function store(Request $request)
+    {
+        return redirect()->route('ventas.create')->with('info', 'Use la interfaz AJAX para registrar ventas');
+    }
+
+    // Generar PDF del comprobante electrónico
+    public function generarPDF($id)
+    {
+        try {
+            // Cargar venta con todas sus relaciones
+            $venta = Venta::with(['cliente', 'detalleVentas.producto', 'comprobanteElectronico', 'vendedor'])
+                         ->findOrFail($id);
+
+            // Preparar datos para el PDF
+            $data = [
+                'venta' => $venta,
+                'cliente' => $venta->cliente,
+                'detalles' => $venta->detalleVentas,
+                'fecha' => $venta->fecha_venta ?? now(),
+                'tipoComprobante' => (object) [
+                    'descripcion' => $venta->comprobanteElectronico->tipo_comprobante ?? 'COMPROBANTE DE VENTA'
+                ],
+                'moneda' => (object) [
+                    'simbolo' => 'S/.',
+                    'descripcion' => 'Soles'
+                ],
+                'descuentoTotal' => $venta->detalleVentas->sum('descuento_monto') ?? 0,
+                'totalEnLetras' => $this->numeroALetras($venta->total ?? 0)
+            ];
+
+            // Generar PDF usando el template de comprobantes
+            $pdf = PDF::loadView('comprobantes.pdf', $data);
+            $pdf->setPaper('A4', 'portrait');
+            
+            // Nombre del archivo
+            $fileName = 'comprobante_' . ($venta->serie ?? 'V') . '_' . ($venta->numero ?? str_pad($venta->id, 6, '0', STR_PAD_LEFT)) . '.pdf';
+            
+            return $pdf->download($fileName);
+            
+        } catch (\Exception $e) {
+            // Retornar error detallado para debug
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ], 500);
+        }
+    }
+
+    // Función auxiliar para convertir números a letras
     private function numeroALetras($numero)
     {
-        $formatter = new \NumberFormatter('es', \NumberFormatter::SPELLOUT);
+        $numero = floatval($numero);
         $enteros = floor($numero);
         $decimales = round(($numero - $enteros) * 100);
         
-        $letras = $formatter->format($enteros);
+        // Implementación básica
+        $unidades = ['', 'UNO', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
+        $decenas = ['', '', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
         
-        if ($decimales > 0) {
-            return strtoupper($letras) . ' CON ' . sprintf('%02d', $decimales) . '/100 SOLES';
+        if ($enteros == 0) {
+            return 'CERO CON ' . sprintf('%02d', $decimales) . '/100 SOLES';
         }
         
-        return strtoupper($letras) . ' CON 00/100 SOLES';
+        if ($enteros <= 9) {
+            return $unidades[$enteros] . ' CON ' . sprintf('%02d', $decimales) . '/100 SOLES';
+        }
+        
+        return strtoupper(number_format($enteros)) . ' CON ' . sprintf('%02d', $decimales) . '/100 SOLES';
+    }
+
+    // Confirmar cancelación de venta
+    public function confirmCancel($id)
+    {
+        $venta = Venta::with(['cliente', 'detalleVentas.producto', 'vendedor'])
+                     ->findOrFail($id);
+        return view('ventas.confirm-cancel', compact('venta'));
+    }
+
+    // Cancelar venta
+    public function cancel(Request $request, $id)
+    {
+        // Log para debug
+        \Log::info('Iniciando cancelación de venta', ['id' => $id, 'request' => $request->all()]);
+        
+        $venta = Venta::findOrFail($id);
+        
+        // Verificar que la venta se pueda cancelar
+        if ($venta->xml_estado === 'ANULADO') {
+            return redirect()->back()
+                           ->with('error', 'La venta ya está anulada');
+        }
+        
+        try {
+            DB::beginTransaction();
+            
+            // Revertir stock de productos
+            foreach ($venta->detalleVentas as $detalle) {
+                $producto = Producto::find($detalle->id_producto);
+                if ($producto) {
+                    $oldStock = $producto->stock_actual;
+                    $producto->stock_actual += $detalle->cantidad;
+                    $producto->save();
+                    \Log::info('Stock actualizado', [
+                        'producto_id' => $producto->id,
+                        'stock_anterior' => $oldStock,
+                        'cantidad_revertida' => $detalle->cantidad,
+                        'stock_nuevo' => $producto->stock_actual
+                    ]);
+                }
+            }
+            
+            // Actualizar estado de la venta
+            $venta->update([
+                'xml_estado' => 'ANULADO',
+                'fecha_anulacion' => now(),
+                'motivo_anulacion' => $request->input('motivo', 'Anulación manual')
+            ]);
+            
+            \Log::info('Venta anulada exitosamente', ['venta_id' => $id]);
+            
+            DB::commit();
+            
+            return redirect()->route('ventas.index')
+                           ->with('success', 'Venta anulada exitosamente. Stock revertido.');
+        } catch (\Exception $e) {
+            DB::rollback();
+            \Log::error('Error al anular venta', ['error' => $e->getMessage(), 'venta_id' => $id]);
+            return redirect()->back()
+                           ->with('error', 'Error al cancelar la venta: ' . $e->getMessage());
+        }
     }
 }
