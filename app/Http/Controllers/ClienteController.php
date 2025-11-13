@@ -50,7 +50,6 @@ class ClienteController extends Controller
         $validatedData = $request->validate([
             'tipo_documento' => 'required|in:DNI,RUC,PASAPORTE',
             'numero_documento' => 'required|max:15',
-            'razon_social' => 'nullable|max:255',
             'nombre' => 'nullable|max:255',
             'direccion' => 'nullable|max:255',
             'id_ubigeo' => 'nullable|size:6',
@@ -59,9 +58,13 @@ class ClienteController extends Controller
             'activo' => 'required|boolean',
         ]);
 
-        Cliente::create($validatedData);
+        $cliente = Cliente::create($validatedData);
 
-        return redirect()->route('clientes.index')->with('success', 'Cliente creado exitosamente.');
+        return response()->json([
+            'success' => true,
+            'message' => 'Cliente creado exitosamente.',
+            'cliente' => $cliente
+        ]);
     }
 
     /**

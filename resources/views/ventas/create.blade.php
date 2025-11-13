@@ -113,6 +113,75 @@
   </form>
 </div>
 
+<!-- Modal para registrar nuevo cliente con todos los campos habilitados -->
+<div class="modal fade" id="modalRegistrarCliente" tabindex="-1" aria-labelledby="modalRegistrarClienteLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalRegistrarClienteLabel">Registrar Nuevo Cliente</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formRegistrarCliente">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="nuevoTipoDocumento" class="form-label">Tipo de Documento</label>
+                <select class="form-select" id="nuevoTipoDocumento" required>
+                  <option value="DNI">DNI</option>
+                  <option value="RUC">RUC</option>
+                  <option value="PASAPORTE">Pasaporte</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="nuevoNumeroDocumento" class="form-label">Número de Documento</label>
+                <input type="text" class="form-control" id="nuevoNumeroDocumento" required>
+              </div>
+              <div class="mb-3">
+                <label for="nuevoNombre" class="form-label">Nombre</label>
+                <input type="text" class="form-control" id="nuevoNombre">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="nuevoDireccion" class="form-label">Dirección</label>
+                <input type="text" class="form-control" id="nuevoDireccion">
+              </div>
+              <div class="mb-3">
+                <label for="nuevoUbigeo" class="form-label">Ubigeo</label>
+                <select class="form-select" id="nuevoUbigeo">
+                  <option value="">Seleccione un Ubigeo</option>
+                  @foreach($ubigeos as $ubigeo)
+                    <option value="{{ $ubigeo->id_ubigeo }}">{{ $ubigeo->descripcion }}</option>
+                  @endforeach
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="nuevoTelefono" class="form-label">Teléfono</label>
+                <input type="text" class="form-control" id="nuevoTelefono">
+              </div>
+              <div class="mb-3">
+                <label for="nuevoCorreo" class="form-label">Correo</label>
+                <input type="email" class="form-control" id="nuevoCorreo">
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="nuevoActivo" checked>
+                <label class="form-check-label" for="nuevoActivo">
+                  Activo
+                </label>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+        <button type="button" class="btn btn-primary" id="btnGuardarCliente">Guardar Cliente</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // === VARIABLES ===
 const IGV = 0.18;
@@ -222,8 +291,8 @@ document.getElementById('btnBuscarCliente').addEventListener('click', async () =
       setTimeout(() => alert.remove(), 3000);
       
     } else {
-      // Cliente no encontrado
-      alert(`Cliente no encontrado. ${data.message || 'Verifique el número de documento.'}`);
+      // Cliente no encontrado, abrir modal
+      mostrarModalRegistrarCliente();
       clienteSeleccionado = null;
       
       // Limpiar campos
@@ -435,6 +504,63 @@ document.getElementById('btnGuardar').addEventListener('click', async ()=>{
     location.reload();
   } else {
     alert('Error: '+data.error);
+  }
+});
+
+// Mostrar modal para registrar cliente si no se encuentra
+function mostrarModalRegistrarCliente() {
+  const modal = new bootstrap.Modal(document.getElementById('modalRegistrarCliente'));
+  modal.show();
+}
+
+// === FUNCIÓN PARA LIMPIAR EL FORMULARIO DE REGISTRO DE CLIENTE ===
+function limpiarFormularioCliente() {
+  document.getElementById('nuevoTipoDocumento').value = 'DNI';
+  document.getElementById('nuevoNumeroDocumento').value = '';
+  document.getElementById('nuevoNombre').value = '';
+  document.getElementById('nuevoDireccion').value = '';
+  document.getElementById('nuevoUbigeo').value = '';
+  document.getElementById('nuevoTelefono').value = '';
+  document.getElementById('nuevoCorreo').value = '';
+  document.getElementById('nuevoActivo').checked = true;
+}
+
+// Guardar nuevo cliente
+const btnGuardarCliente = document.getElementById('btnGuardarCliente');
+btnGuardarCliente.addEventListener('click', async () => {
+  const nuevoCliente = {
+    tipo_documento: document.getElementById('nuevoTipoDocumento').value,
+    numero_documento: document.getElementById('nuevoNumeroDocumento').value.trim(),
+    nombre: document.getElementById('nuevoNombre').value.trim(),
+    direccion: document.getElementById('nuevoDireccion').value.trim(),
+    id_ubigeo: document.getElementById('nuevoUbigeo').value.trim(),
+    telefono: document.getElementById('nuevoTelefono').value.trim(),
+    correo: document.getElementById('nuevoCorreo').value.trim(),
+    activo: true
+  };
+
+  try {
+    const res = await fetch('/api/clientes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+      },
+      body: JSON.stringify(nuevoCliente)
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      alert('Cliente registrado exitosamente');
+      limpiarFormularioCliente();
+      $('#modalRegistrarCliente').modal('hide');
+    } else {
+      alert('Error al registrar cliente: ' + (data.message || 'Error desconocido'));
+    }
+  } catch (error) {
+    console.error('Error al registrar cliente:', error);
+    alert('Error al registrar cliente: ' + error.message);
   }
 });
 

@@ -16,7 +16,6 @@ return new class extends Migration {
             $table->id('id_cliente');
             $table->enum('tipo_documento', ['DNI', 'RUC', 'PASAPORTE']);
             $table->string('numero_documento', 15);
-            $table->string('razon_social', 255)->nullable();
             $table->string('nombre', 255)->nullable();
             $table->string('direccion', 255)->nullable();
             $table->char('id_ubigeo', 6)->nullable();

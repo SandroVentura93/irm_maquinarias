@@ -311,3 +311,6 @@ Route::post('/logout', function () {
     request()->session()->regenerateToken();
     return redirect()->route('login')->with('message', 'Sesión cerrada exitosamente');
 })->name('logout');
+
+// Ruta para registrar un nuevo cliente
+Route::post('/api/clientes', [ClienteController::class, 'store'])->name('api.clientes.store');

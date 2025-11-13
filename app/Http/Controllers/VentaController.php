@@ -24,7 +24,11 @@ class VentaController extends Controller
     // Vista principal del formulario
     public function create()
     {
-        return view('ventas.create');
+        // Retrieve ubigeos data from the database
+        $ubigeos = DB::table('ubigeos')->select('id_ubigeo', DB::raw("CONCAT(departamento, ' - ', provincia, ' - ', distrito) as descripcion"))->get();
+
+        // Pass ubigeos to the view
+        return view('ventas.create', compact('ubigeos'));
     }
 
     // Buscar cliente por RUC/DNI (mejorado)
