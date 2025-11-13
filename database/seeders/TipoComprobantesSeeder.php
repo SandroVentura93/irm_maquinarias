@@ -23,10 +23,14 @@ class TipoComprobantesSeeder extends Seeder
             ['codigo_sunat' => '09', 'descripcion' => 'Guía de Remisión'],
             ['codigo_sunat' => '12', 'descripcion' => 'Ticket de Máquina Registradora'],
             ['codigo_sunat' => '14', 'descripcion' => 'Recibo por Honorarios'],
+            ['codigo_sunat' => 'CT', 'descripcion' => 'Cotización'],
         ];
 
         foreach ($tiposComprobantes as $tipo) {
-            DB::table('tipo_comprobantes')->insert($tipo);
+            DB::table('tipo_comprobantes')->updateOrInsert(
+                ['codigo_sunat' => $tipo['codigo_sunat']], 
+                $tipo
+            );
         }
     }
 }

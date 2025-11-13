@@ -12,82 +12,19 @@ use App\Models\Producto;
 use App\Models\Venta;
 use App\Models\DetalleVenta;
 use App\Models\ComprobanteElectronico;
-use App\Models\TipoComprobante;
 use PDF;
 
 class VentaController extends Controller
 {
-    // Lista de ventas con filtros avanzados
-    public function index(Request $request)
+    // Lista de ventas
+    public function index()
     {
-        $query = Venta::with(['cliente', 'tipoComprobante', 'detalles']);
-        
-        // Búsqueda por texto (cliente, número, serie)
-        if ($request->has('search') && $request->search != '') {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('numero', 'LIKE', "%{$search}%")
-                  ->orWhere('serie', 'LIKE', "%{$search}%")
-                  ->orWhereHas('cliente', function($clienteQuery) use ($search) {
-                      $clienteQuery->where('nombre', 'LIKE', "%{$search}%")
-                                  ->orWhere('razon_social', 'LIKE', "%{$search}%")
-                                  ->orWhere('documento', 'LIKE', "%{$search}%");
-                  });
-            });
-        }
-        
-        // Filtro por tipo de comprobante
-        if ($request->has('tipo_comprobante') && $request->tipo_comprobante != '') {
-            $query->where('id_tipo_comprobante', $request->tipo_comprobante);
-        }
-        
-        // Filtro por estado
-        if ($request->has('estado') && $request->estado != '') {
-            $query->where('xml_estado', $request->estado);
-        }
-        
-        // Filtro por rango de fechas
-        if ($request->has('fecha_desde') && $request->fecha_desde != '') {
-            $query->whereDate('fecha', '>=', $request->fecha_desde);
-        }
-        
-        if ($request->has('fecha_hasta') && $request->fecha_hasta != '') {
-            $query->whereDate('fecha', '<=', $request->fecha_hasta);
-        }
-        
-        // Filtro por rango de montos
-        if ($request->has('monto_desde') && $request->monto_desde != '') {
-            $query->where('total', '>=', $request->monto_desde);
-        }
-        
-        if ($request->has('monto_hasta') && $request->monto_hasta != '') {
-            $query->where('total', '<=', $request->monto_hasta);
-        }
-        
-        // Ordenamiento
-        $sortBy = $request->get('sort_by', 'created_at');
-        $sortOrder = $request->get('sort_order', 'desc');
-        $query->orderBy($sortBy, $sortOrder);
-        
-        $ventas = $query->paginate(20)->appends($request->all());
-        
-        // Obtener datos para filtros
-        $tiposComprobante = TipoComprobante::orderBy('descripcion')->get();
-        $estados = ['PENDIENTE', 'ENVIADO', 'ACEPTADO', 'RECHAZADO', 'ANULADO'];
+        $ventas = Venta::with(['cliente', 'tipoComprobante'])->orderBy('created_at', 'desc')->get();
         
         // Obtener tipo de cambio actual
         $tipoCambio = $this->obtenerTipoCambio();
         
-        // Estadísticas
-        $estadisticas = [
-            'total_ventas' => Venta::count(),
-            'ventas_hoy' => Venta::whereDate('fecha', today())->count(),
-            'ventas_pendientes' => Venta::where('xml_estado', 'PENDIENTE')->count(),
-            'total_facturado' => Venta::where('xml_estado', '!=', 'ANULADO')->sum('total'),
-            'total_facturado_hoy' => Venta::whereDate('fecha', today())->where('xml_estado', '!=', 'ANULADO')->sum('total'),
-        ];
-        
-        return view('ventas.index', compact('ventas', 'tipoCambio', 'tiposComprobante', 'estados', 'estadisticas'));
+        return view('ventas.index', compact('ventas', 'tipoCambio'));
     }
 
     // Vista principal del formulario
@@ -812,7 +749,7 @@ class VentaController extends Controller
             $venta = Venta::findOrFail($id);
             
             // Verificar que sea una cotización y esté pendiente
-            if ($venta->id_tipo_comprobante != 4) {
+            if ($venta->id_tipo_comprobante != 8) {
                 return response()->json([
                     'success' => false,
                     'error' => 'Solo se pueden convertir cotizaciones'
@@ -1181,6 +1118,45 @@ class VentaController extends Controller
                 'success' => false,
                 'error' => 'Error al forzar actualización',
                 'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Crear cotización de prueba temporal (solo para testing)
+     */
+    public function crearCotizacionPrueba()
+    {
+        try {
+            // Buscar una venta existente para convertir temporalmente
+            $venta = Venta::first();
+            
+            if (!$venta) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No hay ventas en la base de datos para convertir'
+                ]);
+            }
+
+            // Convertir temporalmente a cotización
+            $venta->update([
+                'id_tipo_comprobante' => 8, // Tipo Cotización
+                'serie' => 'COT',
+                'numero' => 'COT-' . str_pad($venta->id_venta, 8, '0', STR_PAD_LEFT),
+                'xml_estado' => 'PENDIENTE'
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Venta ID {$venta->id_venta} convertida a cotización de prueba",
+                'venta_id' => $venta->id_venta
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error("Error al crear cotización de prueba: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Error interno del servidor'
             ], 500);
         }
     }

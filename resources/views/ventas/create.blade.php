@@ -1,138 +1,289 @@
 @extends('layouts.dashboard')
 
 @section('content')
-<div class="container mt-3">
-  <h4>Nueva Venta</h4>
-  <form id="formVenta">
-    <!-- Información General -->
-    <div class="card mb-3">
-      <div class="card-header bg-light">Información General</div>
-      <div class="card-body row g-3">
-        <div class="col-md-3">
-          <label>Fecha y Hora</label>
-          <input type="datetime-local" id="fecha" class="form-control" value="{{ now()->format('Y-m-d\TH:i') }}">
+<div class="container-fluid modern-container">
+  <!-- Modern Header -->
+  <div class="page-header mb-4">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center">
+        <div class="page-icon me-3">
+          <i class="fas fa-plus-circle"></i>
         </div>
-        <div class="col-md-3">
-          <label>Tipo Comprobante</label>
-          <select id="tipo_comprobante" class="form-select" onchange="actualizarSerie()">
-            <option value="">Seleccione tipo</option>
-            <option value="Cotizacion">Cotización</option>
-            <option value="Factura">Factura</option>
-            <option value="Boleta">Boleta</option>
-            <option value="Nota de Crédito">Nota de Crédito</option>
-          </select>
-        </div>
-        <div class="col-md-2">
-          <label>Moneda</label>
-          <select id="moneda" class="form-select">
-            <option value="PEN">Sol Peruano</option>
-            <option value="USD">Dólar</option>
-          </select>
-        </div>
-        <div class="col-md-2">
-          <label>Serie</label>
-          <input id="serie" class="form-control" value="B001">
-        </div>
-        <div class="col-md-2">
-          <label>Número</label>
-          <input id="numero" class="form-control" value="Auto-generado" readonly style="background-color: #f8f9fa;">
+        <div>
+          <h2 class="page-title mb-0">Nueva Venta</h2>
+          <p class="page-subtitle mb-0">Crea y gestiona comprobantes electrónicos</p>
         </div>
       </div>
-      <div class="card-footer bg-light">
-        <small class="text-info">
-          <i class="fas fa-exchange-alt"></i> 
-          <strong>Tipo de Cambio Actual:</strong> S/ <span id="tipoCambioDisplay">{{ number_format($tipoCambio, 2) }}</span> por USD
-          <span class="text-muted">| Los precios se muestran en ambas monedas</span>
-          <div class="mt-1">
-            <button type="button" class="btn btn-sm btn-outline-info" onclick="actualizarTipoCambio()" id="btnActualizarTC">
-              <i class="fas fa-sync-alt"></i> Actualizar
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-warning" onclick="forzarActualizarTipoCambio()" id="btnForzarTC">
-              <i class="fas fa-bolt"></i> Forzar
-            </button>
-            <small id="infoTipoCambio" class="text-muted ms-2">
-              <span id="fuenteTC"></span> | Última actualización: <span id="fechaTC">{{ now()->format('d/m/Y H:i:s') }}</span>
-            </small>
+      <div class="header-actions">
+        <button type="button" class="btn btn-outline-secondary btn-modern me-2" onclick="window.history.back()">
+          <i class="fas fa-arrow-left me-2"></i>Regresar
+        </button>
+        <button id="btnGuardar" type="button" class="btn btn-success btn-modern">
+          <i class="fas fa-save me-2"></i>Registrar Venta
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <form id="formVenta">
+    <!-- Información General -->
+    <div class="card modern-card mb-4">
+      <div class="card-header modern-header">
+        <h5 class="card-title mb-0">
+          <i class="fas fa-info-circle me-2 text-primary"></i>
+          Información General
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="modern-label">
+              <i class="fas fa-calendar-alt me-1"></i>
+              Fecha y Hora
+            </label>
+            <input type="datetime-local" id="fecha" class="form-control modern-input" value="{{ now()->format('Y-m-d\TH:i') }}">
           </div>
-        </small>
+          <div class="col-md-3">
+            <label class="modern-label">
+              <i class="fas fa-file-invoice me-1"></i>
+              Tipo Comprobante
+            </label>
+            <select id="tipo_comprobante" class="form-select modern-select" onchange="actualizarSerie()">
+              <option value="">Seleccione tipo</option>
+              <option value="Cotizacion">📝 Cotización</option>
+              <option value="Factura">🧾 Factura</option>
+              <option value="Boleta">🧾 Boleta</option>
+              <option value="Nota de Crédito">📃 Nota de Crédito</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="modern-label">
+              <i class="fas fa-coins me-1"></i>
+              Moneda
+            </label>
+            <select id="moneda" class="form-select modern-select">
+              <option value="PEN">🇵🇪 Sol Peruano</option>
+              <option value="USD">🇺🇸 Dólar</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="modern-label">
+              <i class="fas fa-hashtag me-1"></i>
+              Serie
+            </label>
+            <input id="serie" class="form-control modern-input" value="B001">
+          </div>
+          <div class="col-md-2">
+            <label class="modern-label">
+              <i class="fas fa-sort-numeric-up me-1"></i>
+              Número
+            </label>
+            <input id="numero" class="form-control modern-input auto-number" value="Auto-generado" readonly>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer modern-footer">
+        <div class="tipo-cambio-info">
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="tipo-cambio-display">
+              <i class="fas fa-exchange-alt text-warning me-2"></i>
+              <strong class="text-dark">Tipo de Cambio:</strong> 
+              <span class="tipo-cambio-value">S/ <span id="tipoCambioDisplay">{{ number_format($tipoCambio, 2) }}</span></span>
+              <span class="text-muted ms-1">por USD</span>
+              <small class="text-info ms-3">Los precios se muestran en ambas monedas</small>
+            </div>
+            <div class="tipo-cambio-actions">
+              <button type="button" class="btn btn-outline-info btn-sm modern-btn-sm" onclick="actualizarTipoCambio()" id="btnActualizarTC">
+                <i class="fas fa-sync-alt me-1"></i> Actualizar
+              </button>
+              <button type="button" class="btn btn-outline-warning btn-sm modern-btn-sm ms-1" onclick="forzarActualizarTipoCambio()" id="btnForzarTC">
+              <i class="fas fa-bolt me-1"></i> Forzar
+            </button>
+            </div>
+          </div>
+          <small id="infoTipoCambio" class="text-muted mt-2 d-block">
+            <span id="fuenteTC"></span> • Última actualización: <span id="fechaTC">{{ now()->format('d/m/Y H:i:s') }}</span>
+          </small>
+        </div>
       </div>
     </div>
 
     <!-- Información Cliente -->
-    <div class="card mb-3">
-      <div class="card-header bg-light">Información del Cliente</div>
-      <div class="card-body row g-3">
-        <div class="col-md-3">
-          <label>RUC/DNI Cliente</label>
-          <div class="input-group">
-            <input id="docCliente" class="form-control" placeholder="Ingrese RUC o DNI">
-            <button class="btn btn-primary" type="button" id="btnBuscarCliente">Buscar</button>
+    <div class="card modern-card mb-4">
+      <div class="card-header modern-header">
+        <h5 class="card-title mb-0">
+          <i class="fas fa-user-tie me-2 text-info"></i>
+          Información del Cliente
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="modern-label">
+              <i class="fas fa-id-card me-1"></i>
+              RUC/DNI Cliente
+            </label>
+            <div class="input-group modern-input-group">
+              <input id="docCliente" class="form-control modern-input" placeholder="Ingrese RUC o DNI">
+              <button class="btn btn-primary modern-btn" type="button" id="btnBuscarCliente">
+                <i class="fas fa-search me-1"></i> Buscar
+              </button>
+            </div>
           </div>
-        </div>
-        <div class="col-md-5">
-          <label>Nombre / Razón Social</label>
-          <input id="nombreCliente" class="form-control" readonly>
-        </div>
-        <div class="col-md-4">
-          <label>Dirección</label>
-          <input id="direccionCliente" class="form-control" readonly>
+          <div class="col-md-5">
+            <label class="modern-label">
+              <i class="fas fa-building me-1"></i>
+              Nombre / Razón Social
+            </label>
+            <input id="nombreCliente" class="form-control modern-input readonly-input" readonly>
+          </div>
+          <div class="col-md-4">
+            <label class="modern-label">
+              <i class="fas fa-map-marker-alt me-1"></i>
+              Dirección
+            </label>
+            <input id="direccionCliente" class="form-control modern-input readonly-input" readonly>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Agregar Productos -->
-    <div class="card mb-3">
-      <div class="card-header bg-light">Agregar Productos</div>
-      <div class="card-body row g-3 align-items-end">
-        <div class="col-md-4">
-          <label>Producto</label>
-          <input id="buscaProducto" class="form-control" placeholder="Buscar producto...">
-          <div id="listaProductos" class="border mt-1" style="max-height:200px; overflow:auto; display:none;"></div>
-        </div>
-        <div class="col-md-2">
-          <label>Cantidad</label>
-          <input id="cantidad" class="form-control" type="number" min="0.01" value="1">
-        </div>
-        <div class="col-md-2">
-          <label>Precio Unit.</label>
-          <input id="precio" class="form-control" readonly>
-        </div>
-        <div class="col-md-2">
-          <label>Descuento %</label>
-          <input id="descuento" class="form-control" type="number" min="0" value="0">
-        </div>
-        <div class="col-md-2">
-          <button id="agregar" class="btn btn-success w-100" type="button">Agregar</button>
+    <div class="card modern-card mb-4">
+      <div class="card-header modern-header">
+        <h5 class="card-title mb-0">
+          <i class="fas fa-box-open me-2 text-success"></i>
+          Agregar Productos
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-4">
+            <label class="modern-label">
+              <i class="fas fa-search me-1"></i>
+              Producto
+            </label>
+            <div class="product-search-container">
+              <input id="buscaProducto" class="form-control modern-input product-search" placeholder="🔍 Buscar producto...">
+              <div id="listaProductos" class="product-dropdown" style="display:none;"></div>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <label class="modern-label">
+              <i class="fas fa-sort-numeric-up me-1"></i>
+              Cantidad
+            </label>
+            <input id="cantidad" class="form-control modern-input text-center" type="number" min="0.01" value="1">
+          </div>
+          <div class="col-md-2">
+            <label class="modern-label">
+              <i class="fas fa-tag me-1"></i>
+              Precio Unit.
+            </label>
+            <input id="precio" class="form-control modern-input readonly-input" readonly>
+          </div>
+          <div class="col-md-2">
+            <label class="modern-label">
+              <i class="fas fa-percent me-1"></i>
+              Descuento %
+            </label>
+            <input id="descuento" class="form-control modern-input text-center" type="number" min="0" value="0">
+          </div>
+          <div class="col-md-2">
+            <button id="agregar" class="btn btn-success modern-btn w-100" type="button">
+              <i class="fas fa-plus me-1"></i> Agregar
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Detalle de Venta -->
-    <div class="card mb-3">
-      <div class="card-header bg-light">Detalle de la Venta</div>
+    <div class="card modern-card mb-4">
+      <div class="card-header modern-header">
+        <h5 class="card-title mb-0">
+          <i class="fas fa-list-alt me-2 text-primary"></i>
+          Detalle de la Venta
+        </h5>
+      </div>
       <div class="card-body">
-        <table class="table table-bordered" id="tablaDetalle">
-          <thead>
-            <tr>
-              <th style="width: 40%;">Producto</th>
-              <th style="width: 10%;">Cantidad</th>
-              <th style="width: 25%;">Precio Unitario (PEN/USD)</th>
-              <th style="width: 10%;">Desc%</th>
-              <th style="width: 15%;">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-        <div class="text-end">
-          <p>Subtotal: S/ <span id="subTotal">0.00</span> <small class="text-muted">($<span id="subTotalUSD">0.00</span>)</small></p>
-          <p>IGV (18%): S/ <span id="igv">0.00</span> <small class="text-muted">($<span id="igvUSD">0.00</span>)</small></p>
-          <h5>Total: S/ <span id="total">0.00</span> <small class="text-muted">($<span id="totalUSD">0.00</span>)</small></h5>
+        <div class="table-responsive">
+          <table class="table modern-table" id="tablaDetalle">
+            <thead class="table-header">
+              <tr>
+                <th style="width: 40%;">
+                  <i class="fas fa-box me-1"></i> Producto
+                </th>
+                <th style="width: 10%;" class="text-center">
+                  <i class="fas fa-sort-numeric-up me-1"></i> Cantidad
+                </th>
+                <th style="width: 25%;" class="text-center">
+                  <i class="fas fa-tag me-1"></i> Precio Unitario (PEN/USD)
+                </th>
+                <th style="width: 10%;" class="text-center">
+                  <i class="fas fa-percent me-1"></i> Desc%
+                </th>
+                <th style="width: 15%;" class="text-end">
+                  <i class="fas fa-calculator me-1"></i> Subtotal
+                </th>
+              </tr>
+            </thead>
+            <tbody class="table-body"></tbody>
+          </table>
+          
+          <!-- Empty State -->
+          <div id="emptyTableState" class="empty-table-state text-center py-5">
+            <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">No hay productos agregados</h5>
+            <p class="text-muted mb-0">Busca y agrega productos para continuar con la venta</p>
+          </div>
+        </div>
+        
+        <!-- Summary Section -->
+        <div class="row mt-4">
+          <div class="col-md-6">
+            <div class="summary-info p-3 bg-light rounded">
+              <i class="fas fa-info-circle text-info me-2"></i>
+              <span class="text-muted">Los precios se calculan automáticamente en ambas monedas</span>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="summary-totals p-3 bg-gradient-light rounded">
+              <div class="summary-row">
+                <span class="summary-label">
+                  <i class="fas fa-calculator me-1 text-info"></i> Subtotal:
+                </span>
+                <div class="summary-amounts">
+                  <span class="amount-pen">S/ <span id="subTotal">0.00</span></span>
+                  <small class="amount-usd">$<span id="subTotalUSD">0.00</span></small>
+                </div>
+              </div>
+              
+              <div class="summary-row">
+                <span class="summary-label">
+                  <i class="fas fa-percent me-1 text-warning"></i> IGV (18%):
+                </span>
+                <div class="summary-amounts">
+                  <span class="amount-pen">S/ <span id="igv">0.00</span></span>
+                  <small class="amount-usd">$<span id="igvUSD">0.00</span></small>
+                </div>
+              </div>
+              
+              <hr class="my-2">
+              
+              <div class="summary-row total-row">
+                <span class="summary-label fw-bold">
+                  <i class="fas fa-money-bill-wave me-1 text-success"></i> TOTAL:
+                </span>
+                <div class="summary-amounts">
+                  <span class="amount-pen-total">S/ <span id="total">0.00</span></span>
+                  <small class="amount-usd">$<span id="totalUSD">0.00</span></small>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-
-    <div class="text-end">
-      <button id="btnGuardar" type="button" class="btn btn-primary">Registrar Venta</button>
     </div>
   </form>
 </div>
@@ -772,4 +923,461 @@ document.addEventListener('click', function(e) {
   }
 });
 </script>
+
+<style>
+/* Variables CSS para diseño moderno */
+:root {
+    --primary-color: #667eea;
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --success-color: #28a745;
+    --success-gradient: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    --info-color: #17a2b8;
+    --info-gradient: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    --warning-color: #ffc107;
+    --warning-gradient: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+    --border-radius: 12px;
+    --box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.1);
+    --hover-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.15);
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Container principal */
+.modern-container {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    min-height: 100vh;
+    padding: 2rem 0;
+}
+
+/* Formulario principal - importante para z-index */
+#formVenta {
+    position: relative;
+    z-index: 1;
+}
+
+/* Header moderno */
+.page-header {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    box-shadow: var(--box-shadow);
+    margin-bottom: 2rem;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.page-icon {
+    width: 60px;
+    height: 60px;
+    background: var(--success-gradient);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    color: white;
+    box-shadow: var(--box-shadow);
+}
+
+.page-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #2d3748;
+    margin: 0;
+}
+
+.page-subtitle {
+    font-size: 1rem;
+    color: #718096;
+    margin: 0;
+}
+
+/* Cards modernas */
+.modern-card {
+    border-radius: var(--border-radius);
+    border: none;
+    box-shadow: var(--box-shadow);
+    overflow: visible;
+    background: white;
+    transition: var(--transition);
+    position: relative;
+    z-index: 1;
+}
+
+/* Card específica para productos - z-index menor para que dropdown aparezca encima */
+.modern-card:has(.product-search-container) {
+    z-index: 0;
+}
+
+.modern-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--hover-shadow);
+}
+
+.modern-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 1.5rem;
+}
+
+.modern-footer {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 1.25rem 1.5rem;
+}
+
+/* Card body específico para productos - overflow visible */
+.modern-card .card-body {
+    overflow: visible !important;
+    position: relative;
+    z-index: 1;
+}
+
+/* Labels modernos */
+.modern-label {
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    display: block;
+}
+
+/* Inputs modernos */
+.modern-input, .modern-select {
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    transition: var(--transition);
+    font-size: 0.95rem;
+}
+
+.modern-input:focus, .modern-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    outline: none;
+}
+
+.readonly-input {
+    background-color: #f7fafc !important;
+    color: #4a5568;
+    cursor: not-allowed;
+}
+
+.auto-number {
+    background: linear-gradient(135deg, #f0f4f8 0%, #d6e8f5 100%);
+    color: #4a5568;
+    font-style: italic;
+}
+
+/* Input groups */
+.modern-input-group .modern-input {
+    border-radius: 8px 0 0 8px;
+    border-right: none;
+}
+
+.modern-input-group .modern-btn {
+    border-radius: 0 8px 8px 0;
+    border-left: none;
+}
+
+/* Tipo de cambio */
+.tipo-cambio-info {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border-radius: 8px;
+    padding: 1rem;
+    border: 1px solid #f0d000;
+}
+
+.tipo-cambio-value {
+    font-weight: 700;
+    color: #e67e22;
+    font-size: 1.1rem;
+}
+
+/* Búsqueda de productos */
+.product-search-container {
+    position: relative !important;
+    z-index: 1000 !important;
+}
+
+.product-search {
+    background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+    border-color: var(--info-color);
+    position: relative;
+    z-index: 1001;
+}
+
+.product-dropdown {
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: white !important;
+    border: 2px solid var(--info-color);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 999999 !important;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.35) !important;
+}
+
+.product-dropdown .dropdown-item {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    display: block;
+    width: 100%;
+    background: transparent;
+    border: none;
+    text-align: left;
+}
+
+.product-dropdown .dropdown-item:hover {
+    background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%);
+}
+
+/* Botones modernos */
+.modern-btn, .btn-modern {
+    border-radius: 8px;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    transition: var(--transition);
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.modern-btn:hover, .btn-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--hover-shadow);
+}
+
+.modern-btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    border-radius: 6px;
+}
+
+.btn-success.modern-btn {
+    background: var(--success-gradient);
+    color: white;
+}
+
+.btn-primary.modern-btn {
+    background: var(--primary-gradient);
+    color: white;
+}
+
+/* Tabla moderna */
+.modern-table {
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    position: relative;
+    z-index: 1;
+}
+
+.table-responsive {
+    position: relative;
+    z-index: 1;
+}
+
+.table-header th {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: none;
+    padding: 1rem 0.75rem;
+    font-weight: 600;
+    color: #2d3748;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: relative;
+    z-index: 2;
+}
+
+.table-body td {
+    padding: 0.875rem 0.75rem;
+    border: none;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.table-body tr:hover {
+    background: rgba(102, 126, 234, 0.02);
+}
+
+/* Empty state */
+.empty-table-state {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-radius: 8px;
+    margin: 2rem 1rem;
+    border: 2px dashed #dee2e6;
+}
+
+/* Summary section */
+.summary-totals {
+    background: linear-gradient(135deg, #e8f5e8 0%, #d4f4dd 100%) !important;
+    border: 2px solid #c3e6cb;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.summary-row.total-row {
+    border-top: 2px solid #28a745;
+    padding-top: 1rem;
+    margin-top: 1rem;
+    margin-bottom: 0;
+    font-size: 1.1rem;
+}
+
+.summary-label {
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.summary-amounts {
+    text-align: right;
+}
+
+.amount-pen {
+    font-weight: 600;
+    color: #2d3748;
+    display: block;
+    font-size: 1rem;
+}
+
+.amount-pen-total {
+    font-weight: 700;
+    color: var(--success-color);
+    font-size: 1.2rem;
+    display: block;
+}
+
+.amount-usd {
+    font-size: 0.8rem;
+    color: #718096;
+    display: block;
+}
+
+/* Header actions */
+.header-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+/* Summary info */
+.summary-info {
+    background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%) !important;
+    border: 1px solid #4fc3f7;
+}
+
+/* Animaciones */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modern-card {
+    animation: slideInUp 0.5s ease-out;
+}
+
+.modern-card:nth-child(1) { animation-delay: 0.1s; }
+.modern-card:nth-child(2) { animation-delay: 0.2s; }
+.modern-card:nth-child(3) { animation-delay: 0.3s; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-title {
+        font-size: 1.8rem;
+    }
+    
+    .page-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.4rem;
+    }
+    
+    .header-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+    }
+    
+    .header-actions .btn {
+        width: 100%;
+    }
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.btn-modern:disabled {
+    opacity: 0.6;
+    transform: none !important;
+    cursor: not-allowed;
+}
+
+/* Z-Index fixes para dropdown */
+.modern-container .card,
+.modern-container .card-body,
+.modern-container .row,
+.modern-container .col-md-4 {
+    position: relative;
+    z-index: 1;
+}
+
+/* Evitar que otros elementos interfieran con el dropdown */
+.modern-card:not(:has(.product-search-container)) {
+    z-index: 1;
+}
+
+/* Card de detalle debe tener z-index menor */
+.modern-card:has(.modern-table),
+.modern-card:has(.table-responsive) {
+    z-index: 0 !important;
+}
+
+/* Asegurar que el dropdown siempre esté encima */
+.product-dropdown {
+    position: fixed !important;
+}
+
+/* Ajustar position del dropdown usando JavaScript se necesario */
+#listaProductos.product-dropdown {
+    position: absolute !important;
+    z-index: 9999999 !important;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4) !important;
+    border: 3px solid var(--info-color) !important;
+}
+
+/* Asegurar que la tabla no interfiera */
+.table-responsive,
+.modern-table,
+.table-header,
+.table-body {
+    position: relative;
+    z-index: 1 !important;
+}
+
+/* Container de búsqueda debe tener máxima prioridad */
+.product-search-container {
+    position: relative !important;
+    z-index: 10000 !important;
+}
+</style>
+
 @endsection

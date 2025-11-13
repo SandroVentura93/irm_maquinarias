@@ -238,6 +238,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('{venta}/convertir-boleta', [VentaController::class, 'convertirABoleta'])->name('convertir-boleta');
         Route::get('{venta}/xml', [VentaController::class, 'generarXML'])->name('xml');
         Route::get('{venta}/xml-download', [VentaController::class, 'descargarXML'])->name('xml-download');
+        
+        // Ruta temporal para testing de cotizaciones
+        Route::post('crear-cotizacion-prueba', [VentaController::class, 'crearCotizacionPrueba'])->name('crear-cotizacion-prueba');
         Route::get('tipo-cambio', [VentaController::class, 'obtenerTipoCambioActual'])->name('tipo-cambio');
         Route::post('tipo-cambio/forzar', [VentaController::class, 'actualizarTipoCambioForzado'])->name('tipo-cambio-forzar');
     });
