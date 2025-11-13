@@ -549,14 +549,23 @@ btnGuardarCliente.addEventListener('click', async () => {
       body: JSON.stringify(nuevoCliente)
     });
 
-    const data = await res.json();
+    const result = await res.json();
 
-    if (data.success) {
-      alert('Cliente registrado exitosamente');
-      limpiarFormularioCliente();
+    if (result.success) {
+      alert('Cliente registrado exitosamente.');
+
+      // Llenar los campos correspondientes en la venta
+      document.getElementById('docCliente').value = result.cliente.numero_documento;
+      document.getElementById('nombreCliente').value = result.cliente.nombre;
+      document.getElementById('direccionCliente').value = result.cliente.direccion;
+
+      // Cerrar el modal
       $('#modalRegistrarCliente').modal('hide');
+
+      // Limpiar el formulario del modal
+      limpiarFormularioCliente();
     } else {
-      alert('Error al registrar cliente: ' + (data.message || 'Error desconocido'));
+      alert('Error al registrar cliente: ' + result.message);
     }
   } catch (error) {
     console.error('Error al registrar cliente:', error);
