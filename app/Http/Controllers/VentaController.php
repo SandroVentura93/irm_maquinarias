@@ -17,7 +17,7 @@ class VentaController extends Controller
     // Lista de ventas
     public function index()
     {
-        $ventas = Venta::with(['cliente'])->orderBy('created_at', 'desc')->get();
+        $ventas = Venta::with(['cliente', 'tipoComprobante'])->orderBy('created_at', 'desc')->get();
         return view('ventas.index', compact('ventas'));
     }
 
@@ -787,6 +787,116 @@ class VentaController extends Controller
             \Log::error('Error al anular venta', ['error' => $e->getMessage(), 'venta_id' => $id]);
             return redirect()->back()
                            ->with('error', 'Error al cancelar la venta: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Convertir cotización a factura
+     */
+    public function convertirAFactura($id)
+    {
+        try {
+            $venta = Venta::findOrFail($id);
+            
+            // Verificar que sea una cotización
+            if ($venta->id_tipo_comprobante != 4) {
+                return redirect()->back()->with('error', 'Solo se pueden convertir cotizaciones');
+            }
+            
+            if ($venta->xml_estado === 'ANULADO') {
+                return redirect()->back()->with('error', 'No se puede convertir una cotización anulada');
+            }
+
+            DB::beginTransaction();
+            
+            // Configuración para factura
+            $nuevaSerie = 'F001';
+            $nuevoTipoId = 1; // Factura
+            
+            // Obtener el siguiente número
+            $ultimoNumero = Venta::where('serie', $nuevaSerie)
+                ->where('id_tipo_comprobante', $nuevoTipoId)
+                ->max('numero');
+            
+            if ($ultimoNumero && strpos($ultimoNumero, '-') !== false) {
+                $ultimoNumero = explode('-', $ultimoNumero)[1];
+            }
+            $ultimoNumero = intval($ultimoNumero ?: 0);
+            $siguienteNumero = $ultimoNumero + 1;
+            $nuevoNumeroFormateado = 'F001-' . str_pad($siguienteNumero, 8, '0', STR_PAD_LEFT);
+            
+            // Actualizar la venta
+            $venta->update([
+                'id_tipo_comprobante' => $nuevoTipoId,
+                'serie' => $nuevaSerie,
+                'numero' => $nuevoNumeroFormateado,
+                'xml_estado' => 'PENDIENTE'
+            ]);
+            
+            DB::commit();
+            
+            return redirect()->route('ventas.index')
+                           ->with('success', 'Cotización convertida exitosamente a Factura: ' . $nuevoNumeroFormateado);
+            
+        } catch (\Exception $e) {
+            DB::rollback();
+            \Log::error("Error al convertir cotización a factura: " . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al convertir cotización: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Convertir cotización a boleta
+     */
+    public function convertirABoleta($id)
+    {
+        try {
+            $venta = Venta::findOrFail($id);
+            
+            // Verificar que sea una cotización
+            if ($venta->id_tipo_comprobante != 4) {
+                return redirect()->back()->with('error', 'Solo se pueden convertir cotizaciones');
+            }
+            
+            if ($venta->xml_estado === 'ANULADO') {
+                return redirect()->back()->with('error', 'No se puede convertir una cotización anulada');
+            }
+
+            DB::beginTransaction();
+            
+            // Configuración para boleta
+            $nuevaSerie = 'B001';
+            $nuevoTipoId = 2; // Boleta
+            
+            // Obtener el siguiente número
+            $ultimoNumero = Venta::where('serie', $nuevaSerie)
+                ->where('id_tipo_comprobante', $nuevoTipoId)
+                ->max('numero');
+            
+            if ($ultimoNumero && strpos($ultimoNumero, '-') !== false) {
+                $ultimoNumero = explode('-', $ultimoNumero)[1];
+            }
+            $ultimoNumero = intval($ultimoNumero ?: 0);
+            $siguienteNumero = $ultimoNumero + 1;
+            $nuevoNumeroFormateado = 'B001-' . str_pad($siguienteNumero, 8, '0', STR_PAD_LEFT);
+            
+            // Actualizar la venta
+            $venta->update([
+                'id_tipo_comprobante' => $nuevoTipoId,
+                'serie' => $nuevaSerie,
+                'numero' => $nuevoNumeroFormateado,
+                'xml_estado' => 'PENDIENTE'
+            ]);
+            
+            DB::commit();
+            
+            return redirect()->route('ventas.index')
+                           ->with('success', 'Cotización convertida exitosamente a Boleta: ' . $nuevoNumeroFormateado);
+            
+        } catch (\Exception $e) {
+            DB::rollback();
+            \Log::error("Error al convertir cotización a boleta: " . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al convertir cotización: ' . $e->getMessage());
         }
     }
 }

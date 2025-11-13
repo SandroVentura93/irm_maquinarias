@@ -39,6 +39,11 @@ class Venta extends Model
         return $this->belongsTo(\App\Models\Usuario::class, 'id_vendedor', 'id_usuario');
     }
 
+    public function tipoComprobante()
+    {
+        return $this->belongsTo(TipoComprobante::class, 'id_tipo_comprobante');
+    }
+
     public function detalleVentas()
     {
         return $this->hasMany(DetalleVenta::class, 'id_venta');

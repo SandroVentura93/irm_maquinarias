@@ -234,6 +234,8 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('{venta}/cancel', [VentaController::class, 'cancel'])->name('cancel');
         Route::get('{venta}/pdf', [VentaController::class, 'generarPDF'])->name('pdf');
         Route::post('{venta}/convertir', [VentaController::class, 'convertirCotizacion'])->name('convertir');
+        Route::get('{venta}/convertir-factura', [VentaController::class, 'convertirAFactura'])->name('convertir-factura');
+        Route::get('{venta}/convertir-boleta', [VentaController::class, 'convertirABoleta'])->name('convertir-boleta');
         Route::get('{venta}/xml', [VentaController::class, 'generarXML'])->name('xml');
         Route::get('{venta}/xml-download', [VentaController::class, 'descargarXML'])->name('xml-download');
     });
