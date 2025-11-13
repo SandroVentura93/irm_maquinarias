@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Producto;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 use App\Models\Categoria;
 use App\Models\Marca;
 use App\Models\Proveedor;
@@ -13,10 +15,60 @@ class ProductoController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $productos = Producto::orderBy('descripcion')->paginate(10);
-        return view('productos.index', compact('productos'));
+        $query = Producto::with(['categoria', 'marca', 'proveedor']);
+        
+        // Búsqueda por texto
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('codigo', 'LIKE', "%{$search}%")
+                  ->orWhere('descripcion', 'LIKE', "%{$search}%");
+            });
+        }
+        
+        // Filtro por categoría
+        if ($request->has('categoria_id') && $request->categoria_id != '') {
+            $query->where('categoria_id', $request->categoria_id);
+        }
+        
+        // Filtro por marca
+        if ($request->has('marca_id') && $request->marca_id != '') {
+            $query->where('marca_id', $request->marca_id);
+        }
+        
+        // Filtro por estado de stock
+        if ($request->has('stock_status') && $request->stock_status != '') {
+            if ($request->stock_status == 'bajo') {
+                $query->whereColumn('stock_actual', '<=', 'stock_minimo');
+            } elseif ($request->stock_status == 'normal') {
+                $query->whereColumn('stock_actual', '>', 'stock_minimo');
+            }
+        }
+        
+        // Ordenamiento
+        $sortBy = $request->get('sort_by', 'descripcion');
+        $sortOrder = $request->get('sort_order', 'asc');
+        $query->orderBy($sortBy, $sortOrder);
+        
+        $productos = $query->paginate(15)->appends($request->all());
+        
+        // Obtener datos para filtros
+        $categorias = Categoria::orderBy('descripcion')->get();
+        $marcas = Marca::orderBy('descripcion')->get();
+        
+        // Obtener tipo de cambio actual
+        $tipoCambio = $this->obtenerTipoCambio();
+        
+        // Estadísticas rápidas
+        $estadisticas = [
+            'total_productos' => Producto::count(),
+            'productos_bajo_stock' => Producto::whereColumn('stock_actual', '<=', 'stock_minimo')->count(),
+            'valor_total_inventario' => Producto::sum('precio_venta'),
+        ];
+        
+        return view('productos.index', compact('productos', 'tipoCambio', 'categorias', 'marcas', 'estadisticas'));
     }
 
     /**
@@ -27,8 +79,11 @@ class ProductoController extends Controller
         $categorias = Categoria::all();
         $marcas = Marca::all();
         $proveedores = Proveedor::all();
+        
+        // Obtener tipo de cambio actual
+        $tipoCambio = $this->obtenerTipoCambio();
 
-        return view('productos.create', compact('categorias', 'marcas', 'proveedores'));
+        return view('productos.create', compact('categorias', 'marcas', 'proveedores', 'tipoCambio'));
     }
 
     /**
@@ -66,7 +121,10 @@ class ProductoController extends Controller
      */
     public function show(Producto $producto)
     {
-        return view('productos.show', compact('producto'));
+        // Obtener tipo de cambio actual
+        $tipoCambio = $this->obtenerTipoCambio();
+        
+        return view('productos.show', compact('producto', 'tipoCambio'));
     }
 
     /**
@@ -77,8 +135,11 @@ class ProductoController extends Controller
         $categorias = Categoria::all();
         $marcas = Marca::all();
         $proveedores = Proveedor::all();
+        
+        // Obtener tipo de cambio actual
+        $tipoCambio = $this->obtenerTipoCambio();
 
-        return view('productos.edit', compact('producto', 'categorias', 'marcas', 'proveedores'));
+        return view('productos.edit', compact('producto', 'categorias', 'marcas', 'proveedores', 'tipoCambio'));
     }
 
     /**
@@ -155,5 +216,54 @@ class ProductoController extends Controller
             'descripcion' => $producto->descripcion,
             'precio_venta' => $producto->precio_venta,
         ]);
+    }
+
+    // Método para obtener tipo de cambio actual
+    private function obtenerTipoCambio()
+    {
+        try {
+            // Intentar obtener de caché primero
+            $tipoCambio = Cache::get('tipo_cambio_actual');
+            
+            if ($tipoCambio) {
+                return $tipoCambio;
+            }
+            
+            // Si no hay en caché, obtener de API
+            $tipoCambio = $this->obtenerTipoCambioAPI();
+            
+            if ($tipoCambio) {
+                // Guardar en caché por 1 hora
+                Cache::put('tipo_cambio_actual', $tipoCambio, 3600);
+                return $tipoCambio;
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Error al obtener tipo de cambio de API: ' . $e->getMessage());
+        }
+
+        // Valor por defecto si falla la API
+        return 3.75;
+    }
+
+    // Método para obtener tipo de cambio desde API externa
+    private function obtenerTipoCambioAPI()
+    {
+        try {
+            // Configurar SSL para evitar errores de certificados
+            $response = Http::withOptions([
+                'verify' => false,
+            ])->timeout(10)->get('https://api.exchangerate-api.com/v4/latest/USD');
+            
+            if ($response->successful()) {
+                $data = $response->json();
+                if (isset($data['rates']['PEN'])) {
+                    return round($data['rates']['PEN'], 2);
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::error('Error en API de tipo de cambio: ' . $e->getMessage());
+        }
+
+        return null;
     }
 }

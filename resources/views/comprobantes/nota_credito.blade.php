@@ -290,10 +290,10 @@
             <thead>
                 <tr>
                     <th style="width: 8%;">ITEM</th>
-                    <th style="width: 45%;">DESCRIPCIÓN</th>
-                    <th style="width: 12%;">CANTIDAD</th>
-                    <th style="width: 15%;">VALOR UNIT.</th>
-                    <th style="width: 20%;">VALOR VENTA</th>
+                    <th style="width: 40%;">DESCRIPCIÓN</th>
+                    <th style="width: 10%;">CANTIDAD</th>
+                    <th style="width: 21%;">VALOR UNIT. (PEN/USD)</th>
+                    <th style="width: 21%;">VALOR VENTA (PEN/USD)</th>
                 </tr>
             </thead>
             <tbody>
@@ -311,8 +311,17 @@
                         <br><small style="color: #dc3545;"><strong>CRÉDITO POR ANULACIÓN</strong></small>
                     </td>
                     <td>-{{ number_format($detalle->cantidad, 2) }}</td>
-                    <td>{{ $moneda->simbolo }} -{{ number_format($detalle->precio_unitario, 2) }}</td>
-                    <td>{{ $moneda->simbolo }} -{{ number_format($detalle->cantidad * $detalle->precio_unitario * (1 - ($detalle->descuento_porcentaje ?? 0)/100), 2) }}</td>
+                    <td>
+                        S/ -{{ number_format($detalle->precio_unitario, 2) }}<br>
+                        <small style="color: #666;">$-{{ number_format($detalle->precio_unitario / $tipoCambio, 2) }}</small>
+                    </td>
+                    <td>
+                        @php
+                            $valorVenta = $detalle->cantidad * $detalle->precio_unitario * (1 - ($detalle->descuento_porcentaje ?? 0)/100);
+                        @endphp
+                        S/ -{{ number_format($valorVenta, 2) }}<br>
+                        <small style="color: #666;">$-{{ number_format($valorVenta / $tipoCambio, 2) }}</small>
+                    </td>
                 </tr>
                 @endforeach
             </tbody>
@@ -328,17 +337,29 @@
             <table>
                 <tr>
                     <td class="total-label">SUB TOTAL:</td>
-                    <td>{{ $moneda->simbolo }} -{{ number_format($venta->subtotal, 2) }}</td>
+                    <td>
+                        S/ -{{ number_format($venta->subtotal, 2) }}<br>
+                        <small style="color: #666;">$-{{ number_format($venta->subtotal / $tipoCambio, 2) }}</small>
+                    </td>
                 </tr>
                 <tr>
                     <td class="total-label">IGV (18%):</td>
-                    <td>{{ $moneda->simbolo }} -{{ number_format($venta->igv, 2) }}</td>
+                    <td>
+                        S/ -{{ number_format($venta->igv, 2) }}<br>
+                        <small style="color: #666;">$-{{ number_format($venta->igv / $tipoCambio, 2) }}</small>
+                    </td>
                 </tr>
                 <tr class="total-final">
                     <td>TOTAL NOTA DE CRÉDITO:</td>
-                    <td>{{ $moneda->simbolo }} -{{ number_format($venta->total, 2) }}</td>
+                    <td>
+                        S/ -{{ number_format($venta->total, 2) }}<br>
+                        <small style="color: #666;">$-{{ number_format($venta->total / $tipoCambio, 2) }}</small>
+                    </td>
                 </tr>
             </table>
+            <p style="margin-top: 10px; font-size: 10px; color: #666;">
+                <strong>Tipo de Cambio:</strong> S/ {{ number_format($tipoCambio, 2) }} por USD
+            </p>
         </div>
 
         <!-- Información legal -->

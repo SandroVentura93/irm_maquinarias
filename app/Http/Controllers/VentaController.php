@@ -5,20 +5,89 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 use App\Models\Cliente;
 use App\Models\Producto;
 use App\Models\Venta;
 use App\Models\DetalleVenta;
 use App\Models\ComprobanteElectronico;
+use App\Models\TipoComprobante;
 use PDF;
 
 class VentaController extends Controller
 {
-    // Lista de ventas
-    public function index()
+    // Lista de ventas con filtros avanzados
+    public function index(Request $request)
     {
-        $ventas = Venta::with(['cliente', 'tipoComprobante'])->orderBy('created_at', 'desc')->get();
-        return view('ventas.index', compact('ventas'));
+        $query = Venta::with(['cliente', 'tipoComprobante', 'detalles']);
+        
+        // Búsqueda por texto (cliente, número, serie)
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('numero', 'LIKE', "%{$search}%")
+                  ->orWhere('serie', 'LIKE', "%{$search}%")
+                  ->orWhereHas('cliente', function($clienteQuery) use ($search) {
+                      $clienteQuery->where('nombre', 'LIKE', "%{$search}%")
+                                  ->orWhere('razon_social', 'LIKE', "%{$search}%")
+                                  ->orWhere('documento', 'LIKE', "%{$search}%");
+                  });
+            });
+        }
+        
+        // Filtro por tipo de comprobante
+        if ($request->has('tipo_comprobante') && $request->tipo_comprobante != '') {
+            $query->where('id_tipo_comprobante', $request->tipo_comprobante);
+        }
+        
+        // Filtro por estado
+        if ($request->has('estado') && $request->estado != '') {
+            $query->where('xml_estado', $request->estado);
+        }
+        
+        // Filtro por rango de fechas
+        if ($request->has('fecha_desde') && $request->fecha_desde != '') {
+            $query->whereDate('fecha', '>=', $request->fecha_desde);
+        }
+        
+        if ($request->has('fecha_hasta') && $request->fecha_hasta != '') {
+            $query->whereDate('fecha', '<=', $request->fecha_hasta);
+        }
+        
+        // Filtro por rango de montos
+        if ($request->has('monto_desde') && $request->monto_desde != '') {
+            $query->where('total', '>=', $request->monto_desde);
+        }
+        
+        if ($request->has('monto_hasta') && $request->monto_hasta != '') {
+            $query->where('total', '<=', $request->monto_hasta);
+        }
+        
+        // Ordenamiento
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortOrder = $request->get('sort_order', 'desc');
+        $query->orderBy($sortBy, $sortOrder);
+        
+        $ventas = $query->paginate(20)->appends($request->all());
+        
+        // Obtener datos para filtros
+        $tiposComprobante = TipoComprobante::orderBy('descripcion')->get();
+        $estados = ['PENDIENTE', 'ENVIADO', 'ACEPTADO', 'RECHAZADO', 'ANULADO'];
+        
+        // Obtener tipo de cambio actual
+        $tipoCambio = $this->obtenerTipoCambio();
+        
+        // Estadísticas
+        $estadisticas = [
+            'total_ventas' => Venta::count(),
+            'ventas_hoy' => Venta::whereDate('fecha', today())->count(),
+            'ventas_pendientes' => Venta::where('xml_estado', 'PENDIENTE')->count(),
+            'total_facturado' => Venta::where('xml_estado', '!=', 'ANULADO')->sum('total'),
+            'total_facturado_hoy' => Venta::whereDate('fecha', today())->where('xml_estado', '!=', 'ANULADO')->sum('total'),
+        ];
+        
+        return view('ventas.index', compact('ventas', 'tipoCambio', 'tiposComprobante', 'estados', 'estadisticas'));
     }
 
     // Vista principal del formulario
@@ -26,9 +95,158 @@ class VentaController extends Controller
     {
         // Retrieve ubigeos data from the database
         $ubigeos = DB::table('ubigeos')->select('id_ubigeo', DB::raw("CONCAT(departamento, ' - ', provincia, ' - ', distrito) as descripcion"))->get();
+        
+        // Obtener tipo de cambio actual
+        $tipoCambio = $this->obtenerTipoCambio();
 
-        // Pass ubigeos to the view
-        return view('ventas.create', compact('ubigeos'));
+        // Pass ubigeos and tipo de cambio to the view
+        return view('ventas.create', compact('ubigeos', 'tipoCambio'));
+    }
+
+    // Método para obtener tipo de cambio actual
+    private function obtenerTipoCambio()
+    {
+        try {
+            // Intentar obtener desde cache primero (válido por 1 hora)
+            $tipoCambioCache = \Cache::remember('tipo_cambio_usd_pen', 3600, function () {
+                return $this->obtenerTipoCambioAPI();
+            });
+            
+            if ($tipoCambioCache && $tipoCambioCache > 0) {
+                return $tipoCambioCache;
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Error al obtener tipo de cambio desde cache: ' . $e->getMessage());
+        }
+
+        // Si falla el cache, intentar API directamente
+        try {
+            $tipoCambio = $this->obtenerTipoCambioAPI();
+            if ($tipoCambio) {
+                return $tipoCambio;
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Error al obtener tipo de cambio de API: ' . $e->getMessage());
+        }
+
+        // Valor por defecto actualizado (aproximado para Perú)
+        return 3.73; // Valor aproximado, se actualiza automáticamente con las APIs
+    }
+
+    // Método para obtener tipo de cambio desde múltiples APIs
+    private function obtenerTipoCambioAPI()
+    {
+        // API 1: SUNAT (Perú) - La más confiable para PEN
+        try {
+            $fechaHoy = now()->format('Y-m-d');
+            $response = \Http::timeout(8)
+                ->withOptions(['verify' => false]) // Temporal para desarrollo
+                ->get("https://api.apis.net.pe/v1/tipo-cambio-sunat", [
+                'fecha' => $fechaHoy
+            ]);
+            
+            if ($response->successful()) {
+                $data = $response->json();
+                if (isset($data['compra']) && $data['compra'] > 0) {
+                    $tipoCambio = ($data['compra'] + $data['venta']) / 2; // Promedio
+                    \Log::info("Tipo de cambio SUNAT obtenido: {$tipoCambio}");
+                    
+                    // Guardar info del cache
+                    \Cache::put('tipo_cambio_usd_pen_info', [
+                        'fuente' => 'SUNAT',
+                        'fecha_actualizacion' => now(),
+                        'cache_hit' => false
+                    ], 3600);
+                    
+                    return round($tipoCambio, 2);
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Error en API SUNAT: ' . $e->getMessage());
+        }
+
+        // API 2: API del Banco Central de Reserva del Perú (BCRP)
+        try {
+            $response = \Http::timeout(8)
+                ->withOptions(['verify' => false]) // Temporal para desarrollo
+                ->get('https://estadisticas.bcrp.gob.pe/estadisticas/series/api/PD04638PD/json');
+            
+            if ($response->successful()) {
+                $data = $response->json();
+                if (isset($data['config']['series'][0]['values']) && !empty($data['config']['series'][0]['values'])) {
+                    $ultimoValor = end($data['config']['series'][0]['values']);
+                    if (isset($ultimoValor[1]) && $ultimoValor[1] > 0) {
+                        $tipoCambio = floatval($ultimoValor[1]);
+                        \Log::info("Tipo de cambio BCRP obtenido: {$tipoCambio}");
+                        return round($tipoCambio, 2);
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Error en API BCRP: ' . $e->getMessage());
+        }
+
+        // API 3: ExchangeRate-API (Backup internacional)
+        try {
+            $response = \Http::timeout(8)
+                ->withOptions(['verify' => false]) // Temporal para desarrollo
+                ->get('https://api.exchangerate-api.com/v4/latest/USD');
+            
+            if ($response->successful()) {
+                $data = $response->json();
+                if (isset($data['rates']['PEN']) && $data['rates']['PEN'] > 0) {
+                    $tipoCambio = $data['rates']['PEN'];
+                    \Log::info("Tipo de cambio ExchangeRate-API obtenido: {$tipoCambio}");
+                    return round($tipoCambio, 2);
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Error en API ExchangeRate: ' . $e->getMessage());
+        }
+
+        // API 4: Fixer.io (Backup adicional)
+        try {
+            // Nota: Esta API requiere un API key gratuito, por ahora usaremos el endpoint libre
+            $response = \Http::timeout(8)->get('http://data.fixer.io/api/latest', [
+                'access_key' => env('FIXER_API_KEY', null),
+                'symbols' => 'PEN,USD',
+                'base' => 'USD'
+            ]);
+            
+            if ($response->successful()) {
+                $data = $response->json();
+                if (isset($data['rates']['PEN']) && $data['rates']['PEN'] > 0) {
+                    $tipoCambio = $data['rates']['PEN'];
+                    \Log::info("Tipo de cambio Fixer.io obtenido: {$tipoCambio}");
+                    return round($tipoCambio, 2);
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Error en API Fixer.io: ' . $e->getMessage());
+        }
+
+        // API 5: CurrencyAPI (Backup final)
+        try {
+            $response = \Http::timeout(8)->get('https://api.currencyapi.com/v3/latest', [
+                'apikey' => env('CURRENCY_API_KEY', null),
+                'currencies' => 'PEN',
+                'base_currency' => 'USD'
+            ]);
+            
+            if ($response->successful()) {
+                $data = $response->json();
+                if (isset($data['data']['PEN']['value']) && $data['data']['PEN']['value'] > 0) {
+                    $tipoCambio = $data['data']['PEN']['value'];
+                    \Log::info("Tipo de cambio CurrencyAPI obtenido: {$tipoCambio}");
+                    return round($tipoCambio, 2);
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Error en API CurrencyAPI: ' . $e->getMessage());
+        }
+
+        \Log::error('Todas las APIs de tipo de cambio fallaron');
+        return null;
     }
 
     // Buscar cliente por RUC/DNI (mejorado)
@@ -286,7 +504,11 @@ class VentaController extends Controller
     {
         $venta = Venta::with(['cliente', 'vendedor', 'detalleVentas.producto', 'comprobanteElectronico'])
                      ->findOrFail($id);
-        return view('ventas.show', compact('venta'));
+        
+        // Obtener tipo de cambio actual
+        $tipoCambio = $this->obtenerTipoCambio();
+        
+        return view('ventas.show', compact('venta', 'tipoCambio'));
     }
 
     // Mostrar formulario de edición
@@ -496,6 +718,9 @@ class VentaController extends Controller
             
             $tipoComprobante = $tiposComprobante[$venta->id_tipo_comprobante] ?? 'Comprobante';
             
+            // Obtener tipo de cambio actual
+            $tipoCambio = $this->obtenerTipoCambio();
+            
             // Preparar datos para el PDF
             $data = [
                 'venta' => $venta,
@@ -510,6 +735,7 @@ class VentaController extends Controller
                     'simbolo' => 'S/.',
                     'descripcion' => 'Soles'
                 ],
+                'tipoCambio' => $tipoCambio,
                 'descuentoTotal' => $venta->detalleVentas->sum('descuento_monto') ?? 0,
                 'totalEnLetras' => $this->numeroALetras($venta->total ?? 0)
             ];
@@ -897,6 +1123,65 @@ class VentaController extends Controller
             DB::rollback();
             \Log::error("Error al convertir cotización a boleta: " . $e->getMessage());
             return redirect()->back()->with('error', 'Error al convertir cotización: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Obtener tipo de cambio actual via AJAX con información detallada
+     */
+    public function obtenerTipoCambioActual()
+    {
+        try {
+            $tipoCambio = $this->obtenerTipoCambio();
+            
+            // Obtener información de cache para saber si es reciente
+            $cacheInfo = \Cache::get('tipo_cambio_usd_pen_info', [
+                'fuente' => 'Valor por defecto',
+                'fecha_actualizacion' => now(),
+                'cache_hit' => false
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'tipo_cambio' => $tipoCambio,
+                'fecha_actualizacion' => $cacheInfo['fecha_actualizacion']->format('d/m/Y H:i:s'),
+                'fuente' => $cacheInfo['fuente'] ?? 'API Externa',
+                'cache_hit' => $cacheInfo['cache_hit'] ?? false
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al obtener tipo de cambio',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Forzar actualización del tipo de cambio limpiando cache
+     */
+    public function actualizarTipoCambioForzado()
+    {
+        try {
+            // Limpiar cache
+            \Cache::forget('tipo_cambio_usd_pen');
+            \Cache::forget('tipo_cambio_usd_pen_info');
+            
+            // Obtener nuevo tipo de cambio
+            $tipoCambio = $this->obtenerTipoCambio();
+            
+            return response()->json([
+                'success' => true,
+                'tipo_cambio' => $tipoCambio,
+                'fecha_actualizacion' => now()->format('d/m/Y H:i:s'),
+                'mensaje' => 'Tipo de cambio actualizado forzosamente'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al forzar actualización',
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 }

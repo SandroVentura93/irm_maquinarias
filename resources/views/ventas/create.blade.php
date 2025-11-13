@@ -38,6 +38,24 @@
           <input id="numero" class="form-control" value="Auto-generado" readonly style="background-color: #f8f9fa;">
         </div>
       </div>
+      <div class="card-footer bg-light">
+        <small class="text-info">
+          <i class="fas fa-exchange-alt"></i> 
+          <strong>Tipo de Cambio Actual:</strong> S/ <span id="tipoCambioDisplay">{{ number_format($tipoCambio, 2) }}</span> por USD
+          <span class="text-muted">| Los precios se muestran en ambas monedas</span>
+          <div class="mt-1">
+            <button type="button" class="btn btn-sm btn-outline-info" onclick="actualizarTipoCambio()" id="btnActualizarTC">
+              <i class="fas fa-sync-alt"></i> Actualizar
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-warning" onclick="forzarActualizarTipoCambio()" id="btnForzarTC">
+              <i class="fas fa-bolt"></i> Forzar
+            </button>
+            <small id="infoTipoCambio" class="text-muted ms-2">
+              <span id="fuenteTC"></span> | Última actualización: <span id="fechaTC">{{ now()->format('d/m/Y H:i:s') }}</span>
+            </small>
+          </div>
+        </small>
+      </div>
     </div>
 
     <!-- Información Cliente -->
@@ -95,14 +113,20 @@
       <div class="card-body">
         <table class="table table-bordered" id="tablaDetalle">
           <thead>
-            <tr><th>Producto</th><th>Cantidad</th><th>Precio Unitario</th><th>Desc%</th><th>Subtotal</th></tr>
+            <tr>
+              <th style="width: 40%;">Producto</th>
+              <th style="width: 10%;">Cantidad</th>
+              <th style="width: 25%;">Precio Unitario (PEN/USD)</th>
+              <th style="width: 10%;">Desc%</th>
+              <th style="width: 15%;">Subtotal</th>
+            </tr>
           </thead>
           <tbody></tbody>
         </table>
         <div class="text-end">
-          <p>Subtotal: <span id="subTotal">0.00</span></p>
-          <p>IGV (18%): <span id="igv">0.00</span></p>
-          <h5>Total: <span id="total">0.00</span></h5>
+          <p>Subtotal: S/ <span id="subTotal">0.00</span> <small class="text-muted">($<span id="subTotalUSD">0.00</span>)</small></p>
+          <p>IGV (18%): S/ <span id="igv">0.00</span> <small class="text-muted">($<span id="igvUSD">0.00</span>)</small></p>
+          <h5>Total: S/ <span id="total">0.00</span> <small class="text-muted">($<span id="totalUSD">0.00</span>)</small></h5>
         </div>
       </div>
     </div>
@@ -185,9 +209,168 @@
 <script>
 // === VARIABLES ===
 const IGV = 0.18;
+let TIPO_CAMBIO = {{ $tipoCambio }};
 let detalle = [];
 let productoSeleccionado = null;
 let clienteSeleccionado = null;
+
+// === FUNCIONES DE CONVERSIÓN DE MONEDA ===
+function formatearPrecio(precio, mostrarDolares = true) {
+  const precioSoles = parseFloat(precio);
+  const precioDolares = precioSoles / TIPO_CAMBIO;
+  
+  if (mostrarDolares) {
+    return `S/ ${precioSoles.toFixed(2)} - $${precioDolares.toFixed(2)}`;
+  } else {
+    return `S/ ${precioSoles.toFixed(2)}`;
+  }
+}
+
+function convertirSolesADolares(soles) {
+  return parseFloat(soles) / TIPO_CAMBIO;
+}
+
+function convertirDolaresASoles(dolares) {
+  return parseFloat(dolares) * TIPO_CAMBIO;
+}
+
+// === FUNCIÓN PARA ACTUALIZAR TIPO DE CAMBIO ===
+async function actualizarTipoCambio() {
+  const btn = document.getElementById('btnActualizarTC');
+  const originalText = btn.innerHTML;
+  
+  try {
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualizando...';
+    btn.disabled = true;
+    
+    const response = await fetch('/ventas/tipo-cambio');
+    const data = await response.json();
+    
+    if (data.success) {
+      // Actualizar la variable global
+      TIPO_CAMBIO = data.tipo_cambio;
+      
+      // Actualizar el display
+      document.getElementById('tipoCambioDisplay').textContent = data.tipo_cambio.toFixed(2);
+      document.getElementById('fechaTC').textContent = data.fecha_actualizacion;
+      document.getElementById('fuenteTC').textContent = data.fuente || 'API Externa';
+      
+      // Actualizar los precios mostrados si hay productos en la lista
+      const productosItems = document.querySelectorAll('.prod-item');
+      productosItems.forEach(item => {
+        const precio = parseFloat(item.dataset.precio);
+        const precioContainer = item.querySelector('.fs-6');
+        if (precioContainer) {
+          precioContainer.innerHTML = formatearPrecio(precio);
+        }
+      });
+      
+      // Recalcular totales si hay detalles
+      if (detalle.length > 0) {
+        actualizarTabla();
+      }
+      
+      // Mostrar mensaje de éxito con información adicional
+      const cacheInfo = data.cache_hit ? ' (desde caché)' : ' (recién actualizado)';
+      mostrarAlerta('success', `Tipo de cambio actualizado: S/ ${data.tipo_cambio.toFixed(2)} - Fuente: ${data.fuente}${cacheInfo}`);
+      
+    } else {
+      mostrarAlerta('error', 'Error al actualizar tipo de cambio: ' + (data.message || 'Error desconocido'));
+    }
+    
+  } catch (error) {
+    console.error('Error:', error);
+    mostrarAlerta('error', 'Error de conexión al actualizar tipo de cambio');
+  } finally {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+  }
+}
+
+// === FUNCIÓN PARA FORZAR ACTUALIZACIÓN DEL TIPO DE CAMBIO ===
+async function forzarActualizarTipoCambio() {
+  const btn = document.getElementById('btnForzarTC');
+  const originalText = btn.innerHTML;
+  
+  if (!confirm('¿Estás seguro de forzar la actualización del tipo de cambio? Esto puede tomar unos segundos.')) {
+    return;
+  }
+  
+  try {
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Forzando...';
+    btn.disabled = true;
+    
+    const response = await fetch('/ventas/tipo-cambio/forzar', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // Actualizar la variable global
+      TIPO_CAMBIO = data.tipo_cambio;
+      
+      // Actualizar el display
+      document.getElementById('tipoCambioDisplay').textContent = data.tipo_cambio.toFixed(2);
+      document.getElementById('fechaTC').textContent = data.fecha_actualizacion;
+      document.getElementById('fuenteTC').textContent = 'Recién actualizado';
+      
+      // Actualizar los precios mostrados
+      const productosItems = document.querySelectorAll('.prod-item');
+      productosItems.forEach(item => {
+        const precio = parseFloat(item.dataset.precio);
+        const precioContainer = item.querySelector('.fs-6');
+        if (precioContainer) {
+          precioContainer.innerHTML = formatearPrecio(precio);
+        }
+      });
+      
+      // Recalcular totales
+      if (detalle.length > 0) {
+        actualizarTabla();
+      }
+      
+      mostrarAlerta('success', `Tipo de cambio forzado: S/ ${data.tipo_cambio.toFixed(2)} - ${data.mensaje}`);
+      
+    } else {
+      mostrarAlerta('error', 'Error al forzar actualización: ' + (data.message || 'Error desconocido'));
+    }
+    
+  } catch (error) {
+    console.error('Error:', error);
+    mostrarAlerta('error', 'Error de conexión al forzar actualización del tipo de cambio');
+  } finally {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+  }
+}
+
+// Función auxiliar para mostrar alertas
+function mostrarAlerta(tipo, mensaje) {
+  const alertClass = tipo === 'success' ? 'alert-success' : 'alert-danger';
+  const icon = tipo === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+  
+  const alertHtml = `
+    <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+      <i class="${icon}"></i> ${mensaje}
+      <button type="button" class="close" data-dismiss="alert">
+        <span>&times;</span>
+      </button>
+    </div>`;
+  
+  const container = document.querySelector('.container');
+  container.insertAdjacentHTML('afterbegin', alertHtml);
+  
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    const alert = container.querySelector('.alert');
+    if (alert) alert.remove();
+  }, 5000);
+}
 
 // === CONFIGURACIÓN DE SERIES POR TIPO DE COMPROBANTE ===
 const configSeries = {
@@ -378,7 +561,8 @@ inputProd.addEventListener('input', async () => {
               </small>
             </div>
             <div class="col-4 text-end">
-              <div class="fw-bold text-success fs-5">S/ ${it.precio_venta}</div>
+              <div class="fw-bold text-success fs-6">${formatearPrecio(it.precio_venta)}</div>
+              <small class="text-muted d-block">T.C: S/ ${TIPO_CAMBIO.toFixed(2)}</small>
               <small class="d-block ${it.stock_status === 'Bajo' ? 'text-danger' : 'text-success'}">
                 <i class="fas fa-boxes"></i> Stock: ${it.stock_actual}
                 ${it.stock_status === 'Bajo' ? '<i class="fas fa-exclamation-triangle text-warning"></i>' : ''}
@@ -469,14 +653,22 @@ function renderTabla(){
   detalle.forEach((d,i)=>{
     subtotal+=d.subtotal;
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${d.descripcion}</td><td>${d.cantidad}</td><td>${d.precio_unitario}</td><td>${d.descuento_porcentaje}</td><td>${d.subtotal.toFixed(2)}</td>`;
+    const precioConMonedas = `S/ ${d.precio_unitario} ($${(d.precio_unitario / TIPO_CAMBIO).toFixed(2)})`;
+    tr.innerHTML=`<td>${d.descripcion}</td><td>${d.cantidad}</td><td>${precioConMonedas}</td><td>${d.descuento_porcentaje}%</td><td>S/ ${d.subtotal.toFixed(2)}</td>`;
     tbody.appendChild(tr);
   });
   const igv=subtotal*IGV;
   const total=subtotal+igv;
+  
+  // Actualizar totales en soles
   document.getElementById('subTotal').textContent=subtotal.toFixed(2);
   document.getElementById('igv').textContent=igv.toFixed(2);
   document.getElementById('total').textContent=total.toFixed(2);
+  
+  // Actualizar totales en dólares
+  document.getElementById('subTotalUSD').textContent=(subtotal / TIPO_CAMBIO).toFixed(2);
+  document.getElementById('igvUSD').textContent=(igv / TIPO_CAMBIO).toFixed(2);
+  document.getElementById('totalUSD').textContent=(total / TIPO_CAMBIO).toFixed(2);
 }
 
 // === GUARDAR VENTA ===

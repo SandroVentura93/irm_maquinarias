@@ -247,10 +247,10 @@
             <thead>
                 <tr>
                     <th style="width: 8%;">ITEM</th>
-                    <th style="width: 50%;">DESCRIPCIÓN</th>
-                    <th style="width: 12%;">CANTIDAD</th>
-                    <th style="width: 15%;">PRECIO UNIT.</th>
-                    <th style="width: 15%;">IMPORTE</th>
+                    <th style="width: 45%;">DESCRIPCIÓN</th>
+                    <th style="width: 10%;">CANTIDAD</th>
+                    <th style="width: 18%;">PRECIO UNIT. (PEN/USD)</th>
+                    <th style="width: 19%;">IMPORTE (PEN/USD)</th>
                 </tr>
             </thead>
             <tbody>
@@ -270,8 +270,17 @@
                         @endif
                     </td>
                     <td>{{ number_format($detalle->cantidad, 2) }}</td>
-                    <td>{{ $moneda->simbolo }} {{ number_format($detalle->precio_unitario, 2) }}</td>
-                    <td>{{ $moneda->simbolo }} {{ number_format($detalle->cantidad * $detalle->precio_unitario * (1 - ($detalle->descuento_porcentaje ?? 0)/100), 2) }}</td>
+                    <td>
+                        S/ {{ number_format($detalle->precio_unitario, 2) }}<br>
+                        <small style="color: #666;">${{ number_format($detalle->precio_unitario / $tipoCambio, 2) }}</small>
+                    </td>
+                    <td>
+                        @php
+                            $importe = $detalle->cantidad * $detalle->precio_unitario * (1 - ($detalle->descuento_porcentaje ?? 0)/100);
+                        @endphp
+                        S/ {{ number_format($importe, 2) }}<br>
+                        <small style="color: #666;">${{ number_format($importe / $tipoCambio, 2) }}</small>
+                    </td>
                 </tr>
                 @endforeach
             </tbody>
@@ -296,23 +305,38 @@
             <table>
                 <tr>
                     <td class="total-label">SUB TOTAL:</td>
-                    <td>{{ $moneda->simbolo }} {{ number_format($venta->subtotal, 2) }}</td>
+                    <td>
+                        S/ {{ number_format($venta->subtotal, 2) }}<br>
+                        <small style="color: #666;">${{ number_format($venta->subtotal / $tipoCambio, 2) }}</small>
+                    </td>
                 </tr>
                 <tr>
                     <td class="total-label">IGV (18%):</td>
-                    <td>{{ $moneda->simbolo }} {{ number_format($venta->igv, 2) }}</td>
+                    <td>
+                        S/ {{ number_format($venta->igv, 2) }}<br>
+                        <small style="color: #666;">${{ number_format($venta->igv / $tipoCambio, 2) }}</small>
+                    </td>
                 </tr>
                 @if($descuentoTotal > 0)
                 <tr>
                     <td class="total-label">DESCUENTO:</td>
-                    <td>{{ $moneda->simbolo }} {{ number_format($descuentoTotal, 2) }}</td>
+                    <td>
+                        S/ {{ number_format($descuentoTotal, 2) }}<br>
+                        <small style="color: #666;">${{ number_format($descuentoTotal / $tipoCambio, 2) }}</small>
+                    </td>
                 </tr>
                 @endif
                 <tr class="total-final">
                     <td>TOTAL A PAGAR:</td>
-                    <td>{{ $moneda->simbolo }} {{ number_format($venta->total, 2) }}</td>
+                    <td>
+                        S/ {{ number_format($venta->total, 2) }}<br>
+                        <small style="color: #666;">${{ number_format($venta->total / $tipoCambio, 2) }}</small>
+                    </td>
                 </tr>
             </table>
+            <p style="margin-top: 10px; font-size: 10px; color: #666;">
+                <strong>Tipo de Cambio:</strong> S/ {{ number_format($tipoCambio, 2) }} por USD
+            </p>
         </div>
 
         <!-- Información de pago -->

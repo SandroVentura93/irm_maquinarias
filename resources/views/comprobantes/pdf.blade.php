@@ -297,12 +297,12 @@
                 <tr>
                     <th width="8%">Item</th>
                     <th width="12%">Código</th>
-                    <th width="35%">Descripción</th>
+                    <th width="30%">Descripción</th>
                     <th width="8%">Cant.</th>
-                    <th width="12%">P. Unit.</th>
-                    <th width="8%">Desc. %</th>
-                    <th width="12%">P. Final</th>
-                    <th width="12%">Total</th>
+                    <th width="15%">P. Unit. (PEN/USD)</th>
+                    <th width="7%">Desc. %</th>
+                    <th width="10%">P. Final</th>
+                    <th width="10%">Total</th>
                 </tr>
             </thead>
             <tbody>
@@ -312,10 +312,16 @@
                     <td class="text-center">{{ $detalle->producto->codigo }}</td>
                     <td>{{ $detalle->producto->descripcion }}</td>
                     <td class="text-center">{{ number_format($detalle->cantidad, 0) }}</td>
-                    <td class="text-right">S/ {{ number_format($detalle->precio_unitario, 2) }}</td>
+                    <td class="text-right">
+                        S/ {{ number_format($detalle->precio_unitario, 2) }}<br>
+                        <small>${{ number_format($detalle->precio_unitario / $tipoCambio, 2) }}</small>
+                    </td>
                     <td class="text-center">{{ number_format($detalle->descuento_porcentaje, 1) }}%</td>
                     <td class="text-right">S/ {{ number_format($detalle->precio_final, 2) }}</td>
-                    <td class="text-right">S/ {{ number_format($detalle->total, 2) }}</td>
+                    <td class="text-right">
+                        S/ {{ number_format($detalle->total, 2) }}<br>
+                        <small>${{ number_format($detalle->total / $tipoCambio, 2) }}</small>
+                    </td>
                 </tr>
                 @endforeach
             </tbody>
@@ -342,23 +348,38 @@
                 <table class="totals-table">
                     <tr>
                         <td class="label">Sub Total:</td>
-                        <td class="value">S/ {{ number_format($venta->subtotal, 2) }}</td>
+                        <td class="value">
+                            S/ {{ number_format($venta->subtotal, 2) }}<br>
+                            <small>${{ number_format($venta->subtotal / $tipoCambio, 2) }}</small>
+                        </td>
                     </tr>
                     <tr>
                         <td class="label">IGV (18%):</td>
-                        <td class="value">S/ {{ number_format($venta->igv, 2) }}</td>
+                        <td class="value">
+                            S/ {{ number_format($venta->igv, 2) }}<br>
+                            <small>${{ number_format($venta->igv / $tipoCambio, 2) }}</small>
+                        </td>
                     </tr>
                     @if($descuentoTotal > 0)
                     <tr>
                         <td class="label">Descuento Total:</td>
-                        <td class="value">- S/ {{ number_format($descuentoTotal, 2) }}</td>
+                        <td class="value">
+                            - S/ {{ number_format($descuentoTotal, 2) }}<br>
+                            <small>-${{ number_format($descuentoTotal / $tipoCambio, 2) }}</small>
+                        </td>
                     </tr>
                     @endif
                     <tr class="total-final">
                         <td class="label">TOTAL:</td>
-                        <td class="value">S/ {{ number_format($venta->total, 2) }}</td>
+                        <td class="value">
+                            S/ {{ number_format($venta->total, 2) }}<br>
+                            <small>${{ number_format($venta->total / $tipoCambio, 2) }}</small>
+                        </td>
                     </tr>
                 </table>
+                <p style="margin-top: 10px; font-size: 10px; color: #666;">
+                    <strong>T.C:</strong> S/ {{ number_format($tipoCambio, 2) }} por USD
+                </p>
             </div>
         </div>
 

@@ -49,6 +49,15 @@ class Venta extends Model
         return $this->hasMany(DetalleVenta::class, 'id_venta');
     }
 
+    /**
+     * Alias for detalleVentas to keep backward compatibility with callers
+     * that use the relation name "detalles".
+     */
+    public function detalles()
+    {
+        return $this->hasMany(DetalleVenta::class, 'id_venta');
+    }
+
     public function comprobanteElectronico()
     {
         return $this->hasOne(ComprobanteElectronico::class, 'id_venta');

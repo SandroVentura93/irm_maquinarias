@@ -238,11 +238,11 @@
             <thead>
                 <tr>
                     <th style="width: 8%;">ITEM</th>
-                    <th style="width: 45%;">DESCRIPCIÓN</th>
-                    <th style="width: 10%;">CANT.</th>
-                    <th style="width: 12%;">PRECIO UNIT.</th>
-                    <th style="width: 10%;">DESC. %</th>
-                    <th style="width: 15%;">IMPORTE</th>
+                    <th style="width: 40%;">DESCRIPCIÓN</th>
+                    <th style="width: 8%;">CANT.</th>
+                    <th style="width: 17%;">PRECIO UNIT. (PEN/USD)</th>
+                    <th style="width: 8%;">DESC. %</th>
+                    <th style="width: 19%;">IMPORTE (PEN/USD)</th>
                 </tr>
             </thead>
             <tbody>
@@ -259,9 +259,18 @@
                         @endif
                     </td>
                     <td>{{ number_format($detalle->cantidad, 2) }}</td>
-                    <td>{{ $moneda->simbolo }} {{ number_format($detalle->precio_unitario, 2) }}</td>
+                    <td>
+                        S/ {{ number_format($detalle->precio_unitario, 2) }}<br>
+                        <small style="color: #666;">${{ number_format($detalle->precio_unitario / $tipoCambio, 2) }}</small>
+                    </td>
                     <td>{{ $detalle->descuento_porcentaje ?? 0 }}%</td>
-                    <td>{{ $moneda->simbolo }} {{ number_format($detalle->cantidad * $detalle->precio_unitario * (1 - ($detalle->descuento_porcentaje ?? 0)/100), 2) }}</td>
+                    <td>
+                        @php
+                            $importe = $detalle->cantidad * $detalle->precio_unitario * (1 - ($detalle->descuento_porcentaje ?? 0)/100);
+                        @endphp
+                        S/ {{ number_format($importe, 2) }}<br>
+                        <small style="color: #666;">${{ number_format($importe / $tipoCambio, 2) }}</small>
+                    </td>
                 </tr>
                 @endforeach
             </tbody>
@@ -272,15 +281,24 @@
             <table>
                 <tr>
                     <td class="total-label">SUBTOTAL:</td>
-                    <td>{{ $moneda->simbolo }} {{ number_format($venta->subtotal, 2) }}</td>
+                    <td>
+                        S/ {{ number_format($venta->subtotal, 2) }}<br>
+                        <small style="color: #666;">${{ number_format($venta->subtotal / $tipoCambio, 2) }}</small>
+                    </td>
                 </tr>
                 <tr>
                     <td class="total-label">IGV (18%):</td>
-                    <td>{{ $moneda->simbolo }} {{ number_format($venta->igv, 2) }}</td>
+                    <td>
+                        S/ {{ number_format($venta->igv, 2) }}<br>
+                        <small style="color: #666;">${{ number_format($venta->igv / $tipoCambio, 2) }}</small>
+                    </td>
                 </tr>
                 <tr class="total-final">
                     <td>TOTAL:</td>
-                    <td>{{ $moneda->simbolo }} {{ number_format($venta->total, 2) }}</td>
+                    <td>
+                        S/ {{ number_format($venta->total, 2) }}<br>
+                        <small style="color: #666;">${{ number_format($venta->total / $tipoCambio, 2) }}</small>
+                    </td>
                 </tr>
             </table>
         </div>
@@ -294,6 +312,7 @@
                 <li><strong>Garantía:</strong> 12 meses por defectos de fabricación</li>
                 <li><strong>Validez de Precios:</strong> 30 días calendario</li>
                 <li><strong>Moneda:</strong> {{ $moneda->descripcion }}</li>
+                <li><strong>Tipo de Cambio:</strong> S/ {{ number_format($tipoCambio, 2) }} por USD</li>
                 <li><strong>Incluye:</strong> IGV, instalación básica y capacitación de uso</li>
                 <li><strong>No Incluye:</strong> Flete, seguros, obras civiles</li>
             </ul>
