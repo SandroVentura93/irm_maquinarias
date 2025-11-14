@@ -231,7 +231,7 @@
             <h3>CLIENTE</h3>
             <div style="display: table; width: 100%;">
                 <div style="display: table-cell; width: 50%;">
-                    <p><strong>Razón Social:</strong> {{ $cliente->razon_social ?: $cliente->nombre }}</p>
+                    <p><strong>Nombre:</strong> {{ $cliente->nombre }}</p>
                     <p><strong>RUC:</strong> {{ $cliente->numero_documento }}</p>
                 </div>
                 <div style="display: table-cell; width: 50%;">

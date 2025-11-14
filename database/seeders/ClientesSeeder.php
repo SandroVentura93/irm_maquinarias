@@ -20,8 +20,7 @@ class ClientesSeeder extends Seeder
             [
                 'tipo_documento' => 'RUC',
                 'numero_documento' => '20556677889',
-                'razon_social' => 'Constructora Los Andes S.A.C.',
-                'nombre' => null,
+                'nombre' => 'Constructora Los Andes S.A.C.',
                 'direccion' => 'Av. Los Constructores 450, San Isidro',
                 'telefono' => '014445566',
                 'correo' => 'proyectos@losandes.pe',
@@ -30,8 +29,7 @@ class ClientesSeeder extends Seeder
             [
                 'tipo_documento' => 'RUC',
                 'numero_documento' => '20667788990',
-                'razon_social' => 'Minera del Norte E.I.R.L.',
-                'nombre' => null,
+                'nombre' => 'Minera del Norte E.I.R.L.',
                 'direccion' => 'Jr. Minería 123, Trujillo',
                 'telefono' => '044556677',
                 'correo' => 'ventas@mineranorte.pe',
@@ -40,7 +38,6 @@ class ClientesSeeder extends Seeder
             [
                 'tipo_documento' => 'DNI',
                 'numero_documento' => '12345678',
-                'razon_social' => null,
                 'nombre' => 'Juan Carlos Pérez García',
                 'direccion' => 'Av. Las Flores 789, Miraflores',
                 'telefono' => '987654321',
@@ -50,7 +47,6 @@ class ClientesSeeder extends Seeder
             [
                 'tipo_documento' => 'DNI',
                 'numero_documento' => '87654321',
-                'razon_social' => null,
                 'nombre' => 'María Fernanda López Silva',
                 'direccion' => 'Jr. Los Pinos 456, San Borja',
                 'telefono' => '912345678',
@@ -60,8 +56,7 @@ class ClientesSeeder extends Seeder
             [
                 'tipo_documento' => 'RUC',
                 'numero_documento' => '20778899001',
-                'razon_social' => 'Transportes Rápidos S.R.L.',
-                'nombre' => null,
+                'nombre' => 'Transportes Rápidos S.R.L.',
                 'direccion' => 'Av. Transportistas 321, Ate',
                 'telefono' => '016667788',
                 'correo' => 'administracion@rapidostransportes.pe',
@@ -70,7 +65,6 @@ class ClientesSeeder extends Seeder
             [
                 'tipo_documento' => 'DNI',
                 'numero_documento' => '45678912',
-                'razon_social' => null,
                 'nombre' => 'Roberto Antonio Mamani Quispe',
                 'direccion' => 'Calle Los Artesanos 654, Villa El Salvador',
                 'telefono' => '956789123',

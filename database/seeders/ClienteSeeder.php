@@ -19,7 +19,6 @@ class ClienteSeeder extends Seeder
             ['numero_documento' => '12345678'],
             [
                 'tipo_documento' => 'DNI',
-                'razon_social' => null,
                 'nombre' => 'Juan Perez',
                 'direccion' => 'Av. Siempre Viva 123',
                 'telefono' => '987654321',

@@ -232,7 +232,7 @@
             <h3>CLIENTE</h3>
             <div style="display: table; width: 100%;">
                 <div style="display: table-cell; width: 50%;">
-                    <p><strong>Nombre:</strong> {{ $cliente->nombre ?: $cliente->razon_social }}</p>
+                    <p><strong>Nombre:</strong> {{ $cliente->nombre }}</p>
                     <p><strong>{{ strlen($cliente->numero_documento) == 8 ? 'DNI' : 'RUC' }}:</strong> {{ $cliente->numero_documento }}</p>
                 </div>
                 <div style="display: table-cell; width: 50%;">

@@ -165,7 +165,7 @@
                             <td class="fw-semibold text-primary">#{{ $venta->id_venta }}</td>
                             <td>
                                 <div class="client-info">
-                                    <div class="client-name">{{ $venta->cliente->razon_social ?: $venta->cliente->nombre }}</div>
+                                    <div class="client-name">{{ $venta->cliente->nombre }}</div>
                                     <div class="client-doc text-muted">{{ $venta->cliente->numero_documento }}</div>
                                 </div>
                             </td>

@@ -16,7 +16,6 @@ class Cliente extends Model
     protected $fillable = [
         'tipo_documento',
         'numero_documento',
-        'razon_social',
         'nombre',
         'direccion',
         'id_ubigeo',
@@ -26,9 +25,9 @@ class Cliente extends Model
         'tipo_cliente'
     ];
 
-    public function compras()
+    public function ventas()
     {
-        return $this->hasMany(Compra::class, 'id_cliente');
+        return $this->hasMany(Venta::class, 'id_cliente');
     }
 
     /**
@@ -36,9 +35,7 @@ class Cliente extends Model
      */
     public function getNombreCompletoAttribute()
     {
-        return !is_null($this->nombre) && trim($this->nombre) !== '' 
-            ? $this->nombre 
-            : $this->razon_social;
+        return $this->nombre;
     }
 
     /**

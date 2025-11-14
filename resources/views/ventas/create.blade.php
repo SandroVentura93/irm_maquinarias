@@ -612,13 +612,13 @@ document.getElementById('btnBuscarCliente').addEventListener('click', async () =
       clienteSeleccionado = c;
       
       // Llenar campos con información del cliente
-      document.getElementById('nombreCliente').value = c.razon_social || c.nombre || 'Sin nombre';
+      document.getElementById('nombreCliente').value = c.nombre || 'Sin nombre';
       document.getElementById('direccionCliente').value = c.direccion || 'Sin dirección';
       
       // Mostrar mensaje de éxito
       const alert = document.createElement('div');
       alert.className = 'alert alert-success mt-2';
-      alert.innerHTML = `<i class="fas fa-check"></i> Cliente encontrado: ${c.razon_social || c.nombre}`;
+      alert.innerHTML = `<i class="fas fa-check"></i> Cliente encontrado: ${c.nombre}`;
       document.getElementById('docCliente').parentNode.appendChild(alert);
       
       // Quitar el mensaje después de 3 segundos

@@ -5,14 +5,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>IRM Maquinarias - Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">`
+    
+    <!-- Bootstrap 5 y librerías modernas -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Google Fonts para tipografía moderna -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Animate.css para animaciones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
     <style>
+        * {
+            box-sizing: border-box;
+        }
+        
         body {
             display: flex;
             min-height: 100vh;
             margin: 0;
-            padding-top: 70px; /* Ajuste para que el contenido no quede tapado por la barra de navegación */
+            padding-top: 70px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         .sidebar {
             width: 250px;
@@ -234,18 +261,83 @@
     @yield('content')
 </div>
 
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Scripts modernos -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<!-- Sección personalizada para estilos adicionales -->
+@yield('styles')
+
+<!-- Script personalizado del layout -->
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // Menú colapsible mejorado
         const menuHeaders = document.querySelectorAll('.menu-item h5');
         menuHeaders.forEach(header => {
             header.addEventListener('click', function () {
                 const submenu = this.nextElementSibling;
-                submenu.style.display = submenu.style.display === 'block' ? 'none' : 'block';
+                const isOpen = submenu.style.display === 'block';
+                
+                // Cerrar todos los otros menús
+                document.querySelectorAll('.submenu').forEach(menu => {
+                    menu.style.display = 'none';
+                });
+                
+                // Abrir/cerrar el menú actual
+                submenu.style.display = isOpen ? 'none' : 'block';
+                
+                // Agregar clase de animación
+                if (!isOpen) {
+                    submenu.style.animation = 'slideDown 0.3s ease-out';
+                }
             });
         });
+
+        // Indicador de carga global
+        window.showGlobalLoading = function() {
+            if (!document.getElementById('globalLoading')) {
+                const loading = document.createElement('div');
+                loading.id = 'globalLoading';
+                loading.innerHTML = `
+                    <div style="
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: rgba(0,0,0,0.8);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        z-index: 10000;
+                        backdrop-filter: blur(5px);
+                    ">
+                        <div style="
+                            background: white;
+                            padding: 2rem;
+                            border-radius: 15px;
+                            text-align: center;
+                            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                        ">
+                            <div class="spinner-border text-primary mb-3"></div>
+                            <p style="margin: 0; font-weight: 600;">Cargando...</p>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(loading);
+            }
+        };
+
+        window.hideGlobalLoading = function() {
+            const loading = document.getElementById('globalLoading');
+            if (loading) {
+                loading.remove();
+            }
+        };
     });
 </script>
+
+<!-- Sección personalizada para scripts adicionales -->
+@yield('scripts')
 </body>
 </html>

@@ -17,14 +17,33 @@ class ClienteController extends Controller
     {
         $query = Cliente::query();
 
-        if ($request->has('search')) {
+        // Filtro por búsqueda
+        if ($request->filled('search')) {
             $search = $request->input('search');
-            $query->where('nombre', 'like', "%$search%")
-                  ->orWhere('razon_social', 'like', "%$search%")
-                  ->orWhere('numero_documento', 'like', "%$search%");
+            $query->where(function($q) use ($search) {
+                $q->where('nombre', 'like', "%$search%")
+                  ->orWhere('numero_documento', 'like', "%$search%")
+                  ->orWhere('correo', 'like', "%$search%")
+                  ->orWhere('telefono', 'like', "%$search%");
+            });
         }
 
-        $clientes = $query->get();
+        // Filtro por tipo de documento
+        if ($request->filled('tipo_documento')) {
+            $query->where('tipo_documento', $request->input('tipo_documento'));
+        }
+
+        // Filtro por estado
+        if ($request->filled('activo')) {
+            $query->where('activo', $request->input('activo'));
+        }
+
+        // Ordenar por más recientes
+        $query->orderBy('created_at', 'desc');
+
+        // Paginar los resultados
+        $clientes = $query->paginate(12);
+
         return view('clientes.index', compact('clientes'));
     }
 
@@ -102,8 +121,7 @@ class ClienteController extends Controller
         $validatedData = $request->validate([
             'tipo_documento' => 'required|in:DNI,RUC,PASAPORTE',
             'numero_documento' => 'required|max:15',
-            'razon_social' => 'nullable|max:255',
-            'nombre' => 'nullable|max:255',
+            'nombre' => 'required|max:255',
             'direccion' => 'nullable|max:255',
             'id_ubigeo' => 'nullable|size:6',
             'telefono' => 'nullable|max:20',

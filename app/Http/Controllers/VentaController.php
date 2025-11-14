@@ -206,7 +206,6 @@ class VentaController extends Controller
                         'numero_documento' => $cliente->numero_documento,
                         'tipo_documento' => $cliente->tipo_documento ?? 'RUC',
                         'nombre' => $cliente->nombre,
-                        'razon_social' => $cliente->razon_social,
                         'direccion' => $cliente->direccion,
                         'telefono' => $cliente->telefono,
                         'email' => $cliente->email

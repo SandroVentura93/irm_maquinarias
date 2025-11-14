@@ -18,10 +18,6 @@
             <input type="text" name="numero_documento" id="numero_documento" class="form-control">
         </div>
         <div class="form-group">
-            <label for="razon_social">Razón Social</label>
-            <input type="text" name="razon_social" id="razon_social" class="form-control">
-        </div>
-        <div class="form-group">
             <label for="nombre">Nombre</label>
             <input type="text" name="nombre" id="nombre" class="form-control">
         </div>

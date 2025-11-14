@@ -111,7 +111,7 @@
                                     <i class="fas fa-building me-1 text-info"></i>
                                     Nombre / Razón Social
                                 </label>
-                                <div class="info-value client-name">{{ $venta->cliente->razon_social ?: $venta->cliente->nombre }}</div>
+                                <div class="info-value client-name">{{ $venta->cliente->nombre }}</div>
                             </div>
                         </div>
                         <div class="col-md-4">

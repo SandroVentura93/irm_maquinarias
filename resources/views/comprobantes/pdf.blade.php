@@ -270,7 +270,7 @@
             <div class="client-info">
                 <div class="client-row">
                     <div class="client-label">Razón Social:</div>
-                    <div class="client-value">{{ $venta->cliente->razon_social ?: $venta->cliente->nombre }}</div>
+                    <div class="client-value">{{ $venta->cliente->nombre }}</div>
                 </div>
                 <div class="client-row">
                     <div class="client-label">{{ $venta->cliente->tipo_documento }}:</div>

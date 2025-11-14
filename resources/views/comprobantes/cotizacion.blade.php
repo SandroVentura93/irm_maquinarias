@@ -218,7 +218,7 @@
             <h3>INFORMACIÓN DEL CLIENTE</h3>
             <div style="display: table; width: 100%;">
                 <div style="display: table-cell; width: 50%;">
-                    <p><strong>Cliente:</strong> {{ $cliente->razon_social ?: $cliente->nombre }}</p>
+                    <p><strong>Cliente:</strong> {{ $cliente->nombre }}</p>
                     <p><strong>{{ strlen($cliente->numero_documento) == 8 ? 'DNI' : 'RUC' }}:</strong> {{ $cliente->numero_documento }}</p>
                 </div>
                 <div style="display: table-cell; width: 50%;">

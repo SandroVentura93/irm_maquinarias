@@ -50,7 +50,7 @@
                                         <option value="">Seleccione un cliente</option>
                                         @foreach($clientes as $cliente)
                                         <option value="{{ $cliente->id_cliente }}" {{ $venta->id_cliente == $cliente->id_cliente ? 'selected' : '' }}>
-                                            {{ $cliente->razon_social ?: $cliente->nombre }} ({{ $cliente->numero_documento }})
+                                            {{ $cliente->nombre }} ({{ $cliente->numero_documento }})
                                         </option>
                                         @endforeach
                                     </select>

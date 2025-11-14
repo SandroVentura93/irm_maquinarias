@@ -30,7 +30,7 @@
                         <div class="col-md-6">
                             <p><strong>Número:</strong> {{ $venta->serie }}-{{ $venta->numero }}</p>
                             <p><strong>Fecha:</strong> {{ \Carbon\Carbon::parse($venta->fecha)->format('d/m/Y H:i') }}</p>
-                            <p><strong>Cliente:</strong> {{ $venta->cliente->razon_social ?: $venta->cliente->nombre }}</p>
+                            <p><strong>Cliente:</strong> {{ $venta->cliente->nombre }}</p>
                         </div>
                         <div class="col-md-6">
                             <p><strong>Vendedor:</strong> {{ $venta->vendedor ? $venta->vendedor->nombre : 'Sin asignar' }}</p>
