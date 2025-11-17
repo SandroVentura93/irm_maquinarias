@@ -12,73 +12,76 @@
         }
         
         body {
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            line-height: 1.4;
+            font-family: 'Arial', sans-serif;
+            font-size: 11px;
+            line-height: 1.3;
             color: #333;
+            background: #fff;
         }
         
         .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
+            width: 100%;
+            max-width: 21cm;
+            margin: 0;
+            padding: 15px;
         }
         
         .header {
-            display: table;
             width: 100%;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #17a2b8;
-            padding-bottom: 15px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #2c5282;
+            padding-bottom: 12px;
+            overflow: hidden;
         }
         
         .company-info {
-            display: table-cell;
-            width: 60%;
-            vertical-align: top;
+            float: left;
+            width: 65%;
         }
         
         .company-logo {
-            width: 120px;
-            height: 80px;
-            background: #f8f9fa;
-            border: 2px solid #17a2b8;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 10px;
-            font-size: 10px;
-            color: #17a2b8;
-            font-weight: bold;
+            width: 100px;
+            height: 70px;
+            float: left;
+            margin-right: 15px;
+            margin-bottom: 8px;
+        }
+        
+        .company-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
         
         .company-details h2 {
-            color: #17a2b8;
-            margin-bottom: 5px;
-            font-size: 18px;
+            color: #2c5282;
+            margin-bottom: 4px;
+            font-size: 16px;
+            font-weight: bold;
         }
         
         .document-info {
-            display: table-cell;
-            width: 35%;
-            vertical-align: top;
+            float: right;
+            width: 32%;
             text-align: center;
-            border: 2px solid #17a2b8;
-            padding: 15px;
-            background: #f8f9fa;
+            border: 2px solid #2c5282;
+            padding: 12px;
+            background: #f7fafc;
+            border-radius: 5px;
         }
         
         .document-info h1 {
-            color: #17a2b8;
-            margin-bottom: 10px;
-            font-size: 18px;
+            color: #2c5282;
+            margin-bottom: 8px;
+            font-size: 16px;
+            font-weight: bold;
         }
         
         .document-number {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
-            color: #17a2b8;
-            margin-bottom: 10px;
+            color: #2c5282;
+            margin-bottom: 8px;
         }
         
         .client-info {
@@ -208,23 +211,22 @@
         <!-- Header -->
         <div class="header">
             <div class="company-info">
-                <div class="company-logo">
-                    LOGO IRM
-                </div>
+                @include('comprobantes.partials.logo')
                 <div class="company-details">
-                    <h2>IRM MAQUINARIAS</h2>
-                    <p><strong>RUC:</strong> 20123456789</p>
-                    <p><strong>Dirección:</strong> Av. Industrial 123, Lima - Perú</p>
-                    <p><strong>Teléfono:</strong> (01) 234-5678</p>
-                    <p><strong>Email:</strong> ventas@irmmaquinarias.com</p>
+                    <h2>{{ $empresa['razon_social'] ?? 'IRM MAQUINARIAS SRL' }}</h2>
+                    <p><strong>RUC:</strong> {{ $empresa['ruc'] ?? '20123456789' }}</p>
+                    <p><strong>Dirección:</strong> {{ $empresa['direccion'] ?? 'Av. Industrial 123, Lima - Perú' }}</p>
+                    <p><strong>Teléfono:</strong> {{ $empresa['telefono'] ?? '(01) 234-5678' }}</p>
+                    <p><strong>Email:</strong> {{ $empresa['email'] ?? 'ventas@irmmaquinarias.com' }}</p>
                 </div>
             </div>
             <div class="document-info">
                 <h1>BOLETA DE VENTA</h1>
                 <div class="document-number">{{ $venta->serie }}{{ $venta->numero }}</div>
-                <p><strong>Fecha:</strong> {{ date('d/m/Y', strtotime($fecha)) }}</p>
+                <p><strong>Fecha:</strong> {{ date('d/m/Y', strtotime($venta->fecha)) }}</p>
                 <p><strong>Moneda:</strong> {{ $moneda->descripcion }}</p>
             </div>
+            <div style="clear: both;"></div>
         </div>
 
         <!-- Información del Cliente -->

@@ -226,9 +226,7 @@
         <!-- Header -->
         <div class="header">
             <div class="company-info">
-                <div class="company-logo">
-                    LOGO IRM
-                </div>
+                @include('comprobantes.partials.logo')
                 <div class="company-details">
                     <h2>IRM MAQUINARIAS</h2>
                     <p><strong>RUC:</strong> 20123456789</p>
@@ -240,7 +238,7 @@
             <div class="document-info">
                 <h1>NOTA DE CRÉDITO</h1>
                 <div class="document-number">{{ $venta->serie }}{{ $venta->numero }}</div>
-                <p><strong>Fecha:</strong> {{ date('d/m/Y', strtotime($fecha)) }}</p>
+                <p><strong>Fecha:</strong> {{ date('d/m/Y', strtotime($venta->fecha)) }}</p>
                 <p><strong>Moneda:</strong> {{ $moneda->descripcion }}</p>
             </div>
         </div>
@@ -269,7 +267,7 @@
                     <p><strong>Serie y Número:</strong> F001-00000001</p>
                 </div>
                 <div style="display: table-cell; width: 50%;">
-                    <p><strong>Fecha del Documento:</strong> {{ date('d/m/Y', strtotime($fecha . ' -30 days')) }}</p>
+                    <p><strong>Fecha del Documento:</strong> {{ date('d/m/Y', strtotime($venta->fecha . ' -30 days')) }}</p>
                     <p><strong>Tipo de Nota de Crédito:</strong> Anulación de operación</p>
                 </div>
             </div>

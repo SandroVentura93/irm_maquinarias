@@ -13,6 +13,19 @@ return array(
     */
     'show_warnings' => false,   // Throw an Exception on warnings from dompdf
     'orientation' => 'portrait',
+    
+    /*
+    |--------------------------------------------------------------------------
+    | Configuración optimizada para comprobantes electrónicos
+    |--------------------------------------------------------------------------
+    */
+    'paper' => 'a4',
+    'default_font' => 'Arial',
+    'margin_top' => 10,
+    'margin_bottom' => 10,
+    'margin_left' => 10,
+    'margin_right' => 10,
+    
     'defines' => array(
         /**
          * The location of the DOMPDF font directory
@@ -137,8 +150,7 @@ return array(
         /**
          * The default paper size.
          *
-         * North America standard is "letter"; other countries generally "a4"
-         *
+         * Optimizado para comprobantes electrónicos - A4 es el estándar en Perú
          * @see CPDF_Adapter::PAPER_SIZES for valid sizes ('letter', 'legal', 'A4', etc.)
          */
         "default_paper_size" => "a4",
@@ -146,10 +158,10 @@ return array(
         /**
          * The default font family
          *
-         * Used if no suitable fonts can be found. This must exist in the font folder.
+         * Cambiado a Arial para mejor legibilidad en comprobantes electrónicos
          * @var string
          */
-        "default_font" => "serif",
+        "default_font" => "Arial",
 
         /**
          * Image DPI setting
@@ -213,31 +225,31 @@ return array(
         /**
          * Enable remote file access
          *
-         * If this setting is set to true, DOMPDF will access remote sites for
-         * images and CSS files as required.
-         * This is required for part of test case www/test/image_variants.html through www/examples.php
-         *
-         * Attention!
-         * This can be a security risk, in particular in combination with DOMPDF_ENABLE_PHP and
-         * allowing remote access to dompdf.php or on allowing remote html code to be passed to
-         * $dompdf = new DOMPDF(, $dompdf->load_html(...,
-         * This allows anonymous users to download legally doubtful internet content which on
-         * tracing back appears to being downloaded by your server, or allows malicious php code
-         * in remote html pages to be executed by your server with your account privileges.
-         *
+         * Habilitado para logos y recursos externos en comprobantes
          * @var bool
          */
         "enable_remote" => true,
 
         /**
          * A ratio applied to the fonts height to be more like browsers' line height
+         * Optimizado para comprobantes electrónicos
          */
-        "font_height_ratio" => 1.1,
+        "font_height_ratio" => 1.2,
 
         /**
          * Use the more-than-experimental HTML5 Lib parser
+         * Habilitado para mejor compatibilidad con CSS moderno
          */
-        "enable_html5_parser" => false,
+        "enable_html5_parser" => true,
+        
+        /**
+         * Configuraciones adicionales para comprobantes electrónicos
+         */
+        "compress" => true,
+        "unicode_enabled" => true,
+        "enable_font_subsetting" => true,
+        "pdf_javascript" => false,
+        "auto_detect_line_breaks" => true,
     ),
 
 

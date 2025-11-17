@@ -19,9 +19,14 @@ class VentaController extends Controller
     // Lista de ventas
     public function index()
     {
-        $ventas = Venta::with(['cliente', 'tipoComprobante'])->orderBy('created_at', 'desc')->get();
+        // ⚡ Optimización de consulta con paginación y cache selectivo
+        $ventas = Venta::with(['cliente:id_cliente,nombre,numero_documento', 'tipoComprobante:id_tipo_comprobante,descripcion,codigo_sunat'])
+            ->select('id_venta', 'id_cliente', 'id_tipo_comprobante', 'serie', 'numero', 'fecha', 'total', 'xml_estado', 'created_at')
+            ->orderBy('created_at', 'desc')
+            ->limit(100) // Limitar resultados para mejor performance
+            ->get();
         
-        // Obtener tipo de cambio actual
+        // Obtener tipo de cambio actual (ya tiene cache interno)
         $tipoCambio = $this->obtenerTipoCambio();
         
         return view('ventas.index', compact('ventas', 'tipoCambio'));
@@ -30,14 +35,25 @@ class VentaController extends Controller
     // Vista principal del formulario
     public function create()
     {
-        // Retrieve ubigeos data from the database
-        $ubigeos = DB::table('ubigeos')->select('id_ubigeo', DB::raw("CONCAT(departamento, ' - ', provincia, ' - ', distrito) as descripcion"))->get();
+        // ⚡ Cache optimizado para datos que no cambian frecuentemente
+        $ubigeos = Cache::remember('ubigeos_list', 86400, function() { // 24 horas
+            return DB::table('ubigeos')
+                ->select('id_ubigeo', DB::raw("CONCAT(departamento, ' - ', provincia, ' - ', distrito) as descripcion"))
+                ->orderBy('departamento')
+                ->orderBy('provincia') 
+                ->orderBy('distrito')
+                ->get();
+        });
         
-        // Obtener tipo de cambio actual
+        // ⚡ Cache para tipos de comprobante
+        $tiposComprobante = Cache::remember('tipos_comprobante_active', 3600, function() { // 1 hora
+            return \App\Models\TipoComprobante::orderBy('codigo_sunat')->get();
+        });
+        
+        // Obtener tipo de cambio actual (ya tiene cache interno)
         $tipoCambio = $this->obtenerTipoCambio();
 
-        // Pass ubigeos and tipo de cambio to the view
-        return view('ventas.create', compact('ubigeos', 'tipoCambio'));
+        return view('ventas.create', compact('ubigeos', 'tiposComprobante', 'tipoCambio'));
     }
 
     // Método para obtener tipo de cambio actual
@@ -305,7 +321,7 @@ class VentaController extends Controller
         
         $data = $r->validate([
             'id_cliente' => 'required|integer',
-            'tipo_comprobante' => 'required|string',
+            'tipo_comprobante' => 'required', // Puede ser ID o string para compatibilidad
             'moneda' => 'required|string',
             'serie' => 'required|string',
             // 'numero' se auto-genera, no requerido en el request
@@ -332,14 +348,24 @@ class VentaController extends Controller
             // Mapear valores del formulario a IDs de base de datos
             $id_moneda = $data['moneda'] === 'PEN' ? 1 : 2; // 1=PEN, 2=USD
             
-            // Mapear tipo de comprobante de manera consistente
-            $tipoComprobanteMap = [
-                'Cotizacion' => 4,
-                'Factura' => 1,
-                'Boleta' => 2,
-                'Nota de Crédito' => 3
-            ];
-            $id_tipo_comprobante = $tipoComprobanteMap[$data['tipo_comprobante']] ?? 1;
+            // Determinar ID del tipo de comprobante
+            if (is_numeric($data['tipo_comprobante'])) {
+                // Si ya es un ID, usarlo directamente
+                $id_tipo_comprobante = (int) $data['tipo_comprobante'];
+            } else {
+                // Si es un string, mapear (compatibilidad hacia atrás)
+                $tipoComprobanteMap = [
+                    'Cotización' => 8,
+                    'Factura' => 1,
+                    'Boleta de Venta' => 2,
+                    'Nota de Crédito' => 3,
+                    'Nota de Débito' => 4,
+                    'Guía de Remisión' => 5,
+                    'Ticket de Máquina Registradora' => 6,
+                    'Recibo por Honorarios' => 7
+                ];
+                $id_tipo_comprobante = $tipoComprobanteMap[$data['tipo_comprobante']] ?? 1;
+            }
 
             // Obtener el último número para esta serie y tipo de comprobante
             $ultimo_numero_venta = Venta::where('serie', $data['serie'])
@@ -848,22 +874,36 @@ class VentaController extends Controller
      */
     public function siguienteNumero(Request $request)
     {
-        $tipo = $request->get('tipo');
+        $tipoId = $request->get('tipo_id');
+        $tipo = $request->get('tipo'); // Para compatibilidad hacia atrás
         $serie = $request->get('serie');
         
-        if (!$tipo || !$serie) {
-            return response()->json(['error' => 'Tipo y serie son requeridos'], 400);
+        if (!$serie) {
+            return response()->json(['error' => 'Serie es requerida'], 400);
         }
         
-        // Mapear tipo de comprobante a ID
-        $tipoComprobanteMap = [
-            'Cotizacion' => 4,
-            'Factura' => 1,
-            'Boleta' => 2,
-            'Nota de Crédito' => 3
-        ];
+        // Determinar el ID del tipo de comprobante
+        $idTipoComprobante = null;
         
-        $idTipoComprobante = $tipoComprobanteMap[$tipo] ?? 1;
+        if ($tipoId) {
+            // Si viene el tipo_id directamente, usarlo
+            $idTipoComprobante = $tipoId;
+        } elseif ($tipo) {
+            // Mapear tipo de comprobante por descripción (compatibilidad hacia atrás)
+            $tipoComprobanteMap = [
+                'Cotización' => 8, // Ajustar según tu BD
+                'Factura' => 1,
+                'Boleta de Venta' => 2,
+                'Nota de Crédito' => 3,
+                'Nota de Débito' => 4,
+                'Guía de Remisión' => 5,
+                'Ticket de Máquina Registradora' => 6,
+                'Recibo por Honorarios' => 7
+            ];
+            $idTipoComprobante = $tipoComprobanteMap[$tipo] ?? 1;
+        } else {
+            return response()->json(['error' => 'Tipo de comprobante es requerido'], 400);
+        }
         
         // Obtener el último número para esta serie y tipo
         $ultimoNumero = Venta::where('serie', $serie)
@@ -895,6 +935,18 @@ class VentaController extends Controller
     {
         $venta = Venta::with(['cliente', 'detalleVentas.producto', 'vendedor'])
                      ->findOrFail($id);
+        
+        // Debug logging para verificar datos
+        \Log::info('Datos de venta para cancelación', [
+            'venta_id' => $id,
+            'detalles_count' => $venta->detalleVentas->count(),
+            'primer_detalle' => $venta->detalleVentas->first() ? [
+                'cantidad' => $venta->detalleVentas->first()->cantidad,
+                'producto_id' => $venta->detalleVentas->first()->producto ? $venta->detalleVentas->first()->producto->id_producto : null,
+                'stock_actual' => $venta->detalleVentas->first()->producto ? $venta->detalleVentas->first()->producto->stock_actual : null
+            ] : null
+        ]);
+        
         return view('ventas.confirm-cancel', compact('venta'));
     }
 
@@ -960,8 +1012,8 @@ class VentaController extends Controller
         try {
             $venta = Venta::findOrFail($id);
             
-            // Verificar que sea una cotización
-            if ($venta->id_tipo_comprobante != 4) {
+            // Verificar que sea una cotización (ID 8 según seeder)
+            if ($venta->id_tipo_comprobante != 8) {
                 return redirect()->back()->with('error', 'Solo se pueden convertir cotizaciones');
             }
             
@@ -1015,8 +1067,8 @@ class VentaController extends Controller
         try {
             $venta = Venta::findOrFail($id);
             
-            // Verificar que sea una cotización
-            if ($venta->id_tipo_comprobante != 4) {
+            // Verificar que sea una cotización (ID 8 según seeder)
+            if ($venta->id_tipo_comprobante != 8) {
                 return redirect()->back()->with('error', 'Solo se pueden convertir cotizaciones');
             }
             

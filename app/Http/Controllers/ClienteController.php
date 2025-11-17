@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Cliente;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use DB;
 
 class ClienteController extends Controller
@@ -197,5 +198,91 @@ class ClienteController extends Controller
             'encontrado' => false,
             'mensaje' => 'Cliente no encontrado en la base de datos'
         ]);
+    }
+
+    /**
+     * ⚡ Búsqueda optimizada para AJAX (formulario de ventas)
+     */
+    public function searchPublic(Request $request)
+    {
+        $query = $request->get('q', '');
+        
+        if (strlen($query) < 3) {
+            return response()->json([]);
+        }
+        
+        // ⚡ Cache para búsquedas frecuentes
+        $cacheKey = "cliente_search_" . md5($query);
+        
+        $clientes = Cache::remember($cacheKey, 600, function() use ($query) { // 10 minutos
+            return Cliente::select('id_cliente', 'numero_documento', 'nombre', 'apellidos', 'direccion', 'telefono', 'correo', 'tipo_documento')
+                ->where(function($q) use ($query) {
+                    $q->where('numero_documento', 'LIKE', "%{$query}%")
+                      ->orWhere('nombre', 'LIKE', "%{$query}%")
+                      ->orWhere('apellidos', 'LIKE', "%{$query}%")
+                      ->orWhere('correo', 'LIKE', "%{$query}%");
+                })
+                ->orderBy('nombre')
+                ->limit(10)
+                ->get()
+                ->map(function($cliente) {
+                    return [
+                        'id_cliente' => $cliente->id_cliente,
+                        'documento' => $cliente->numero_documento,
+                        'nombres' => $cliente->nombre,
+                        'apellidos' => $cliente->apellidos ?? '',
+                        'nombre_completo' => trim($cliente->nombre . ' ' . ($cliente->apellidos ?? '')),
+                        'direccion' => $cliente->direccion ?? '',
+                        'telefono' => $cliente->telefono ?? '',
+                        'correo' => $cliente->correo ?? '',
+                        'tipo_documento' => $cliente->tipo_documento
+                    ];
+                });
+        });
+        
+        return response()->json($clientes);
+    }
+
+    /**
+     * ⚡ Crear cliente público desde formulario de ventas
+     */
+    public function storePublic(Request $request)
+    {
+        try {
+            $validatedData = $request->validate([
+                'tipo_documento' => 'required|in:DNI,RUC,CE,PP',
+                'numero_documento' => 'required|string|max:20|unique:clientes,numero_documento',
+                'nombre' => 'required|string|max:100',
+                'apellidos' => 'nullable|string|max:100',
+                'direccion' => 'nullable|string|max:200',
+                'telefono' => 'nullable|string|max:20',
+                'correo' => 'nullable|email|max:100'
+            ]);
+
+            $cliente = Cliente::create($validatedData);
+
+            // ⚡ Limpiar cache relacionado
+            Cache::forget('cliente_search_*');
+
+            return response()->json([
+                'ok' => true,
+                'cliente' => [
+                    'id_cliente' => $cliente->id_cliente,
+                    'documento' => $cliente->numero_documento,
+                    'nombres' => $cliente->nombre,
+                    'apellidos' => $cliente->apellidos ?? '',
+                    'nombre_completo' => trim($cliente->nombre . ' ' . ($cliente->apellidos ?? '')),
+                    'direccion' => $cliente->direccion ?? '',
+                    'telefono' => $cliente->telefono ?? '',
+                    'correo' => $cliente->correo ?? '',
+                    'tipo_documento' => $cliente->tipo_documento
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'ok' => false,
+                'error' => $e->getMessage()
+            ], 422);
+        }
     }
 }

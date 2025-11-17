@@ -29,6 +29,13 @@ class Venta extends Model
         'qr_hash'
     ];
 
+    protected $casts = [
+        'fecha' => 'datetime',
+        'subtotal' => 'decimal:2',
+        'igv' => 'decimal:2',
+        'total' => 'decimal:2'
+    ];
+
     public function cliente()
     {
         return $this->belongsTo(Cliente::class, 'id_cliente');
@@ -61,5 +68,16 @@ class Venta extends Model
     public function comprobanteElectronico()
     {
         return $this->hasOne(ComprobanteElectronico::class, 'id_venta');
+    }
+
+    /**
+     * Accessor para obtener serie_numero concatenando serie y numero
+     */
+    public function getSerieNumeroAttribute()
+    {
+        if (!empty($this->serie) && !empty($this->numero)) {
+            return $this->serie . '-' . $this->numero;
+        }
+        return '';
     }
 }

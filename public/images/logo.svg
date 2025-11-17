@@ -1,0 +1,28 @@
+<!-- Placeholder SVG Logo for IRM MAQUINARIAS -->
+<svg width="120" height="80" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2c5aa0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1e3d6f;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="120" height="80" fill="url(#logoGradient)" rx="8" ry="8"/>
+  
+  <!-- Border -->
+  <rect x="2" y="2" width="116" height="76" fill="none" stroke="#ffffff" stroke-width="1" rx="6" ry="6"/>
+  
+  <!-- IRM Text -->
+  <text x="60" y="35" font-family="Arial, sans-serif" font-size="24" font-weight="bold" 
+        text-anchor="middle" fill="#ffffff">IRM</text>
+  
+  <!-- Subtitle -->
+  <text x="60" y="55" font-family="Arial, sans-serif" font-size="8" 
+        text-anchor="middle" fill="#e8f4f8">MAQUINARIAS</text>
+  
+  <!-- Decorative elements -->
+  <circle cx="20" cy="20" r="3" fill="#ffffff" opacity="0.3"/>
+  <circle cx="100" cy="60" r="2" fill="#ffffff" opacity="0.3"/>
+  <rect x="15" y="65" width="90" height="1" fill="#ffffff" opacity="0.2"/>
+</svg>

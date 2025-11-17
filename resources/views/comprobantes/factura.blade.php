@@ -41,15 +41,16 @@
         .company-logo {
             width: 120px;
             height: 80px;
-            background: #f8f9fa;
-            border: 2px solid #28a745;
             display: flex;
             align-items: center;
             justify-content: center;
             margin-bottom: 10px;
-            font-size: 10px;
-            color: #28a745;
-            font-weight: bold;
+        }
+        
+        .company-logo img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
         }
         
         .company-details h2 {
@@ -207,21 +208,19 @@
         <!-- Header -->
         <div class="header">
             <div class="company-info">
-                <div class="company-logo">
-                    LOGO IRM
-                </div>
+                @include('comprobantes.partials.logo')
                 <div class="company-details">
-                    <h2>IRM MAQUINARIAS</h2>
-                    <p><strong>RUC:</strong> 20123456789</p>
-                    <p><strong>Dirección:</strong> Av. Industrial 123, Lima - Perú</p>
-                    <p><strong>Teléfono:</strong> (01) 234-5678</p>
-                    <p><strong>Email:</strong> ventas@irmmaquinarias.com</p>
+                    <h2>{{ $empresa['razon_social'] ?? 'IRM MAQUINARIAS SRL' }}</h2>
+                    <p><strong>RUC:</strong> {{ $empresa['ruc'] ?? '20123456789' }}</p>
+                    <p><strong>Dirección:</strong> {{ $empresa['direccion'] ?? 'Av. Industrial 123, Lima - Perú' }}</p>
+                    <p><strong>Teléfono:</strong> {{ $empresa['telefono'] ?? '(01) 234-5678' }}</p>
+                    <p><strong>Email:</strong> {{ $empresa['email'] ?? 'ventas@irmmaquinarias.com' }}</p>
                 </div>
             </div>
             <div class="document-info">
                 <h1>FACTURA</h1>
                 <div class="document-number">{{ $venta->serie }}{{ $venta->numero }}</div>
-                <p><strong>Fecha:</strong> {{ date('d/m/Y', strtotime($fecha)) }}</p>
+                <p><strong>Fecha:</strong> {{ date('d/m/Y', strtotime($venta->fecha)) }}</p>
                 <p><strong>Moneda:</strong> {{ $moneda->descripcion }}</p>
             </div>
         </div>

@@ -266,4 +266,43 @@ class ProductoController extends Controller
 
         return null;
     }
+
+    /**
+     * ⚡ Búsqueda optimizada para AJAX (formulario de ventas)
+     */
+    public function searchPublic(Request $request)
+    {
+        $query = $request->get('q', '');
+        
+        if (strlen($query) < 2) {
+            return response()->json([]);
+        }
+        
+        // ⚡ Cache para búsquedas frecuentes
+        $cacheKey = "producto_search_" . md5($query);
+        
+        $productos = Cache::remember($cacheKey, 300, function() use ($query) { // 5 minutos
+            return Producto::select('id_producto', 'codigo', 'nombre', 'descripcion', 'precio', 'stock_actual')
+                ->where(function($q) use ($query) {
+                    $q->where('codigo', 'LIKE', "%{$query}%")
+                      ->orWhere('nombre', 'LIKE', "%{$query}%")
+                      ->orWhere('descripcion', 'LIKE', "%{$query}%");
+                })
+                ->where('stock_actual', '>', 0) // Solo productos con stock
+                ->orderBy('nombre')
+                ->limit(10)
+                ->get()
+                ->map(function($producto) {
+                    return [
+                        'id' => $producto->id_producto,
+                        'codigo' => $producto->codigo,
+                        'desc' => $producto->nombre . ' - ' . $producto->descripcion,
+                        'precio' => floatval($producto->precio),
+                        'stock' => intval($producto->stock_actual)
+                    ];
+                });
+        });
+        
+        return response()->json($productos);
+    }
 }

@@ -43,41 +43,77 @@
                         </div>
                     </div>
 
-                    <h5>Productos que serán revertidos al stock</h5>
+                    <h5><i class="fas fa-boxes me-2 text-warning"></i>Productos que serán revertidos al stock</h5>
                     <div class="table-responsive">
-                        <table class="table table-sm table-bordered">
-                            <thead class="thead-light">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
                                 <tr>
-                                    <th>Código</th>
-                                    <th>Producto</th>
-                                    <th>Cantidad Vendida</th>
-                                    <th>Stock Actual</th>
-                                    <th>Stock Después</th>
-                                    <th>Precio</th>
+                                    <th><i class="fas fa-barcode me-1"></i>Código</th>
+                                    <th><i class="fas fa-box me-1"></i>Producto</th>
+                                    <th class="text-center"><i class="fas fa-arrow-up me-1"></i>Cantidad Vendida</th>
+                                    <th class="text-center"><i class="fas fa-warehouse me-1"></i>Stock Actual</th>
+                                    <th class="text-center"><i class="fas fa-plus-circle me-1"></i>Stock Después</th>
+                                    <th class="text-end"><i class="fas fa-dollar-sign me-1"></i>Precio</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @php $totalReversion = 0; @endphp
+                                @if($venta->detalleVentas->isEmpty())
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-4">
+                                            <i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>
+                                            No se encontraron productos en esta venta
+                                        </td>
+                                    </tr>
+                                @endif
                                 @foreach($venta->detalleVentas as $detalle)
-                                <tr>
-                                    <td>{{ $detalle->producto->codigo }}</td>
-                                    <td>{{ $detalle->producto->descripcion }}</td>
-                                    <td class="text-center">
-                                        <span class="badge badge-warning">{{ $detalle->cantidad }}</span>
+                                <tr class="align-middle">
+                                    <td>
+                                        <strong class="text-primary">{{ $detalle->producto ? $detalle->producto->codigo : 'N/A' }}</strong>
                                     </td>
-                                    <td class="text-center">{{ $detalle->producto->stock_actual }}</td>
-                                    <td class="text-center">
-                                        <span class="badge badge-success">{{ $detalle->producto->stock_actual + $detalle->cantidad }}</span>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-cog text-secondary me-2"></i>
+                                            <span>{{ $detalle->producto ? $detalle->producto->descripcion : 'Producto no encontrado' }}</span>
+                                        </div>
                                     </td>
-                                    <td class="text-right">S/ {{ number_format($detalle->total, 2) }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-warning text-dark fs-6">
+                                            <i class="fas fa-minus-circle me-1"></i>{{ abs($detalle->cantidad) }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        @if($detalle->producto)
+                                            <span class="fw-bold text-info">{{ number_format($detalle->producto->stock_actual, 0) }}</span>
+                                        @else
+                                            <span class="text-muted">N/A</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center">
+                                        @if($detalle->producto)
+                                            <span class="badge bg-success fs-6">
+                                                <i class="fas fa-plus-circle me-1"></i>{{ number_format($detalle->producto->stock_actual + abs($detalle->cantidad), 0) }}
+                                            </span>
+                                        @else
+                                            <span class="text-muted">N/A</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-end">
+                                        <strong class="text-success">S/ {{ number_format($detalle->total, 2) }}</strong>
+                                    </td>
                                 </tr>
                                 @php $totalReversion += $detalle->total; @endphp
                                 @endforeach
                             </tbody>
-                            <tfoot class="thead-light">
+                            <tfoot class="table-secondary">
                                 <tr>
-                                    <th colspan="5" class="text-right">Total a Revertir:</th>
-                                    <th class="text-right">S/ {{ number_format($totalReversion, 2) }}</th>
+                                    <th colspan="5" class="text-end">
+                                        <i class="fas fa-calculator me-2 text-success"></i>
+                                        <strong>Total a Revertir:</strong>
+                                    </th>
+                                    <th class="text-end">
+                                        <strong class="fs-5 text-success">S/ {{ number_format($totalReversion, 2) }}</strong>
+                                    </th>
                                 </tr>
                             </tfoot>
                         </table>

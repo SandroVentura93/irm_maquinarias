@@ -236,9 +236,7 @@
         <!-- Header -->
         <div class="header">
             <div class="company-info">
-                <div class="company-logo">
-                    LOGO IRM
-                </div>
+                @include('comprobantes.partials.logo')
                 <div class="company-name">
                     IRM MAQUINARIAS S.A.C.
                 </div>

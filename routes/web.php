@@ -16,7 +16,8 @@ use App\Http\Controllers\{
     MarcaController,
     ProveedorController,
     CategoriaController,
-    MonedaController
+    MonedaController,
+    PdfController
 };
 
 /*
@@ -39,6 +40,123 @@ use App\Http\Controllers\{
 // Ruta raíz - Redirección inteligente
 Route::get('/', fn() => Auth::check() ? redirect()->route('dashboard') : redirect()->route('login'));
 
+// Ruta de test para configuración PDF
+Route::get('/test-pdf-config', function () {
+    echo "<h2>🔍 TEST DE CONFIGURACIÓN PDF</h2>";
+    
+    $controller = new \App\Http\Controllers\PdfController();
+    $reflection = new ReflectionClass($controller);
+    $method = $reflection->getMethod('getConfiguracionTipoComprobante');
+    $method->setAccessible(true);
+    
+    // Simular diferentes tipos de comprobante según el seeder
+    $tiposAProbar = [
+        (object) ['codigo_sunat' => '01', 'descripcion' => 'Factura'],
+        (object) ['codigo_sunat' => '03', 'descripcion' => 'Boleta de Venta'],
+        (object) ['codigo_sunat' => '07', 'descripcion' => 'Nota de Crédito'],
+        (object) ['codigo_sunat' => '08', 'descripcion' => 'Nota de Débito'],
+        (object) ['codigo_sunat' => '09', 'descripcion' => 'Guía de Remisión'],
+        (object) ['codigo_sunat' => '12', 'descripcion' => 'Ticket de Máquina Registradora'],
+        (object) ['codigo_sunat' => '14', 'descripcion' => 'Recibo por Honorarios'],
+        (object) ['codigo_sunat' => 'CT', 'descripcion' => 'Cotización'],
+    ];
+    
+    echo "<table border='1' style='border-collapse: collapse; width: 100%;'>";
+    echo "<tr><th>Código SUNAT</th><th>Descripción</th><th>Template</th><th>Estado</th></tr>";
+    
+    foreach ($tiposAProbar as $tipo) {
+        $config = $method->invoke($controller, $tipo);
+        $estado = $config ? "✅ OK" : "❌ ERROR";
+        $template = $config ? $config['template'] : 'N/A';
+        
+        echo "<tr>";
+        echo "<td>{$tipo->codigo_sunat}</td>";
+        echo "<td>{$tipo->descripcion}</td>";
+        echo "<td>{$template}</td>";
+        echo "<td>{$estado}</td>";
+        echo "</tr>";
+    }
+    echo "</table>";
+    
+    echo "<h3>🎯 RESULTADO:</h3>";
+    echo "<p>Si todos muestran ✅ OK, la configuración está correcta.</p>";
+});
+
+// Ruta visual para ver el mapeo actual de la base de datos
+Route::get('/debug-mapeo-bd', function () {
+    $controller = new \App\Http\Controllers\PdfController();
+    $mapeo = $controller->debugTiposComprobante();
+    $datos = $mapeo->getData();
+    
+    echo "<h2>🗄️ MAPEO ACTUAL DE BASE DE DATOS</h2>";
+    echo "<p><strong>Tabla:</strong> tipo_comprobantes</p>";
+    echo "<p><strong>Primary Key:</strong> id_tipo_comprobante</p>";
+    
+    echo "<table border='1' style='border-collapse: collapse; width: 100%; margin: 20px 0;'>";
+    echo "<tr style='background: #f0f0f0;'>";
+    echo "<th>ID (BD)</th><th>Código SUNAT</th><th>Descripción (BD)</th><th>Template PDF</th><th>Título PDF</th><th>Estado</th>";
+    echo "</tr>";
+    
+    foreach ($datos as $tipo) {
+        $estado = ($tipo->template !== 'NO DEFINIDO') ? "✅ CONFIGURADO" : "❌ FALTA CONFIG";
+        $colorFila = ($tipo->template !== 'NO DEFINIDO') ? "" : "style='background: #ffe6e6;'";
+        
+        echo "<tr {$colorFila}>";
+        echo "<td><strong>{$tipo->id_bd}</strong></td>";
+        echo "<td>{$tipo->codigo_sunat}</td>";
+        echo "<td>{$tipo->descripcion_bd}</td>";
+        echo "<td>{$tipo->template}</td>";
+        echo "<td>{$tipo->titulo_pdf}</td>";
+        echo "<td>{$estado}</td>";
+        echo "</tr>";
+    }
+    echo "</table>";
+    
+    echo "<h3>🎯 ANÁLISIS:</h3>";
+    echo "<p>• ✅ Verde = Tipo configurado correctamente en PdfController</p>";
+    echo "<p>• ❌ Rojo = Falta configuración en PdfController</p>";
+    echo "<p>• El sistema ahora usa los IDs exactos de la base de datos</p>";
+});
+
+// Ruta de debug para verificar tipos de comprobante
+Route::get('/debug-comprobantes', function () {
+    try {
+        // Obtener todos los tipos de comprobante de la base de datos
+        $tiposDB = DB::table('tipo_comprobantes')->get();
+        
+        echo "<h2>Tipos de Comprobante en Base de Datos:</h2>";
+        echo "<table border='1' style='border-collapse: collapse; width: 100%;'>";
+        echo "<tr><th>ID</th><th>Código SUNAT</th><th>Descripción</th></tr>";
+        
+        foreach ($tiposDB as $tipo) {
+            echo "<tr>";
+            echo "<td>{$tipo->id}</td>";
+            echo "<td>{$tipo->codigo_sunat}</td>";
+            echo "<td>{$tipo->descripcion}</td>";
+            echo "</tr>";
+        }
+        echo "</table>";
+        
+        // Verificar la venta #26 específicamente
+        echo "<h2>Venta #26 - Análisis:</h2>";
+        $venta = \App\Models\Venta::with('tipoComprobante')->find(26);
+        
+        if ($venta) {
+            echo "<p><strong>ID Venta:</strong> {$venta->id_venta}</p>";
+            echo "<p><strong>ID Tipo Comprobante:</strong> {$venta->id_tipo_comprobante}</p>";
+            echo "<p><strong>Tipo Comprobante Descripción:</strong> " . ($venta->tipoComprobante->descripcion ?? 'N/A') . "</p>";
+            echo "<p><strong>Código SUNAT:</strong> " . ($venta->tipoComprobante->codigo_sunat ?? 'N/A') . "</p>";
+        } else {
+            echo "<p style='color: red;'>❌ Venta #26 no encontrada</p>";
+        }
+        
+        return null;
+        
+    } catch (Exception $e) {
+        echo "<p style='color: red;'>Error: " . $e->getMessage() . "</p>";
+    }
+});
+
 // Ruta de prueba para PDF
 Route::get('/test-pdf', function() {
     try {
@@ -49,7 +167,6 @@ Route::get('/test-pdf', function() {
                 'serie' => 'V001',
                 'numero' => '000001',
                 'fecha' => now(),
-                'fecha_venta' => now(),
                 'subtotal' => 84.75,
                 'igv' => 15.25,
                 'total' => 100.00,
@@ -243,6 +360,30 @@ Route::middleware(['auth'])->group(function () {
         Route::post('crear-cotizacion-prueba', [VentaController::class, 'crearCotizacionPrueba'])->name('crear-cotizacion-prueba');
         Route::get('tipo-cambio', [VentaController::class, 'obtenerTipoCambioActual'])->name('tipo-cambio');
         Route::post('tipo-cambio/forzar', [VentaController::class, 'actualizarTipoCambioForzado'])->name('tipo-cambio-forzar');
+    });
+    
+    /*
+    |--------------------------------------------------------------------------
+    | GENERACIÓN DE PDFs PARA TODOS LOS COMPROBANTES
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('pdf')->name('pdf.')->group(function () {
+        // Generar y descargar PDF de cualquier comprobante
+        Route::get('comprobante/{venta}/download', [PdfController::class, 'generatePdf'])->name('download');
+        
+        // Ver PDF en el navegador sin descargar
+        Route::get('comprobante/{venta}/view', [PdfController::class, 'viewPdf'])->name('view');
+        
+        // Generar código QR para comprobante electrónico
+        Route::get('comprobante/{venta}/qr', [PdfController::class, 'generarQR'])->name('qr');
+        
+        // Funciones avanzadas de PDF
+        Route::post('lote/generar', [PdfController::class, 'generarLotePdfs'])->name('lote.generar');
+        Route::post('comprobante/{venta}/enviar-email', [PdfController::class, 'enviarPorEmail'])->name('enviar-email');
+        Route::get('estadisticas', [PdfController::class, 'estadisticasPdf'])->name('estadisticas');
+        
+        // Debug: Ver mapeo de tipos de comprobante
+        Route::get('debug/tipos-comprobante', [PdfController::class, 'debugTiposComprobante'])->name('debug.tipos');
     });
     
     // Detalle de ventas (si es necesario como recurso independiente)

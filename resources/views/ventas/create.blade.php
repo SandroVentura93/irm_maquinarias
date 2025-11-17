@@ -48,12 +48,16 @@
               <i class="fas fa-file-invoice me-1"></i>
               Tipo Comprobante
             </label>
-            <select id="tipo_comprobante" class="form-select modern-select" onchange="actualizarSerie()">
+            <select id="tipo_comprobante" class="form-select modern-select" onchange="actualizarSerie(); validarCambioTipoComprobante();">
               <option value="">Seleccione tipo</option>
-              <option value="Cotizacion">📝 Cotización</option>
+              <option value="Cotización">📝 Cotización</option>
               <option value="Factura">🧾 Factura</option>
-              <option value="Boleta">🧾 Boleta</option>
+              <option value="Boleta de Venta">🧾 Boleta de Venta</option>
               <option value="Nota de Crédito">📃 Nota de Crédito</option>
+              <option value="Nota de Débito">📋 Nota de Débito</option>
+              <option value="Guía de Remisión">📦 Guía de Remisión</option>
+              <option value="Ticket de Máquina Registradora">🎫 Ticket de Máquina Registradora</option>
+              <option value="Recibo por Honorarios">💼 Recibo por Honorarios</option>
             </select>
           </div>
           <div class="col-md-2">
@@ -524,12 +528,89 @@ function mostrarAlerta(tipo, mensaje) {
 }
 
 // === CONFIGURACIÓN DE SERIES POR TIPO DE COMPROBANTE ===
+// Configuración completa de todos los tipos de comprobantes registrados en la base de datos
+// Cada tipo tiene su serie y prefijo correspondiente según SUNAT
 const configSeries = {
-  'Cotizacion': { serie: 'COT', prefijo: 'COT-' },
-  'Factura': { serie: 'F001', prefijo: 'F001-' },
-  'Boleta': { serie: 'B001', prefijo: 'B001-' },
-  'Nota de Crédito': { serie: 'NC01', prefijo: 'NC01-' }
+  // Documentos principales de venta
+  'Cotización': { 
+    serie: 'COT', 
+    prefijo: 'COT-', 
+    codigo_sunat: 'CT',
+    descripcion: 'Documento pre-venta sin valor tributario'
+  },
+  'Factura': { 
+    serie: 'F001', 
+    prefijo: 'F001-', 
+    codigo_sunat: '01',
+    descripcion: 'Comprobante de pago para empresas con RUC'
+  },
+  'Boleta de Venta': { 
+    serie: 'B001', 
+    prefijo: 'B001-', 
+    codigo_sunat: '03',
+    descripcion: 'Comprobante de pago para personas naturales'
+  },
+  
+  // Documentos de ajuste
+  'Nota de Crédito': { 
+    serie: 'NC01', 
+    prefijo: 'NC01-', 
+    codigo_sunat: '07',
+    descripcion: 'Documento para anular o reducir el valor de un comprobante'
+  },
+  'Nota de Débito': { 
+    serie: 'ND01', 
+    prefijo: 'ND01-', 
+    codigo_sunat: '08',
+    descripcion: 'Documento para aumentar el valor de un comprobante'
+  },
+  
+  // Documentos auxiliares
+  'Guía de Remisión': { 
+    serie: 'T001', 
+    prefijo: 'T001-', 
+    codigo_sunat: '09',
+    descripcion: 'Documento para sustentar el traslado de bienes'
+  },
+  'Ticket de Máquina Registradora': { 
+    serie: 'TK01', 
+    prefijo: 'TK01-', 
+    codigo_sunat: '12',
+    descripcion: 'Comprobante emitido por máquina registradora'
+  },
+  'Recibo por Honorarios': { 
+    serie: 'H001', 
+    prefijo: 'H001-', 
+    codigo_sunat: '14',
+    descripcion: 'Comprobante por servicios profesionales independientes'
+  }
 };
+
+// === NO HAY SUGERENCIAS AUTOMÁTICAS - SOLO LO QUE EL USUARIO ELIJE ===
+
+// === FUNCIÓN ELIMINADA - NO MÁS MENSAJES DE SUGERENCIAS ===
+
+// === SIN VALIDACIONES NI SUGERENCIAS - SOLO LO QUE EL USUARIO ELIJE ===
+function validarCambioTipoComprobante() {
+  // No hacer nada - el usuario decide qué tipo usar
+  actualizarSerie(); // Solo actualizar la serie
+}
+
+// === VALIDACIÓN MÍNIMA - SOLO ERRORES CRÍTICOS ===
+function validarCompatibilidadComprobanteCliente() {
+  const tipoComprobante = document.getElementById('tipo_comprobante').value;
+  
+  if (!clienteSeleccionado) {
+    return { valido: false, mensaje: 'Debe seleccionar un cliente' };
+  }
+  
+  // Solo validar que tenga tipo de comprobante seleccionado
+  if (!tipoComprobante) {
+    return { valido: false, mensaje: 'Debe seleccionar un tipo de comprobante' };
+  }
+  
+  return { valido: true, mensaje: '' };
+}
 
 // === FUNCIÓN PARA ACTUALIZAR SERIE SEGÚN TIPO DE COMPROBANTE ===
 async function actualizarSerie() {
@@ -614,6 +695,8 @@ document.getElementById('btnBuscarCliente').addEventListener('click', async () =
       // Llenar campos con información del cliente
       document.getElementById('nombreCliente').value = c.nombre || 'Sin nombre';
       document.getElementById('direccionCliente').value = c.direccion || 'Sin dirección';
+      
+      // === NO HAY SUGERENCIAS AUTOMÁTICAS ===
       
       // Mostrar mensaje de éxito
       const alert = document.createElement('div');
@@ -826,6 +909,20 @@ function renderTabla(){
 document.getElementById('btnGuardar').addEventListener('click', async ()=>{
   if(!clienteSeleccionado) return alert('Debe buscar y seleccionar un cliente');
   if(detalle.length === 0) return alert('Debe agregar al menos un producto');
+  
+  // === VALIDACIÓN DE COMPATIBILIDAD FACTURA/BOLETA ===
+  const validacion = validarCompatibilidadComprobanteCliente();
+  
+  if (!validacion.valido) {
+    alert(validacion.mensaje);
+    return;
+  }
+  
+  // Si hay advertencia pero es válido, preguntar al usuario
+  if (validacion.advertencia) {
+    const confirmar = confirm(validacion.mensaje + '\n\n¿Desea continuar?');
+    if (!confirmar) return;
+  }
   
   const payload = {
     id_cliente: clienteSeleccionado.id_cliente,
