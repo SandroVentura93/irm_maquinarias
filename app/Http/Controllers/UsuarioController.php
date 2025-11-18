@@ -39,6 +39,7 @@ class UsuarioController extends Controller
             'contrasena' => Hash::make($request->contrasena),
             'correo' => $request->correo,
             'telefono' => $request->telefono,
+            'activo' => $request->has('activo') ? 1 : 0,
         ]);
 
         return redirect()->route('usuarios.index')->with('success', 'Usuario creado exitosamente.');
@@ -60,7 +61,9 @@ class UsuarioController extends Controller
             'telefono' => 'nullable|string|max:20',
         ]);
 
-        $usuario->update($request->except('contrasena'));
+        $data = $request->except('contrasena');
+        $data['activo'] = $request->has('activo') ? 1 : 0;
+        $usuario->update($data);
 
         if ($request->filled('contrasena')) {
             $usuario->update(['contrasena' => Hash::make($request->contrasena)]);
