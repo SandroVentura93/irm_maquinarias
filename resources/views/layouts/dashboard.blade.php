@@ -220,11 +220,8 @@
             <a href="{{ route('monedas.index') }}">
                 <i class="fas fa-dollar-sign"></i> Monedas
             </a>
-            <a href="#">
+            <a href="{{ route('usuarios.index') }}">
                 <i class="fas fa-users-cog"></i> Usuarios
-            </a>
-            <a href="#">
-                <i class="fas fa-chart-bar"></i> Reportes
             </a>
         </div>
     </div>

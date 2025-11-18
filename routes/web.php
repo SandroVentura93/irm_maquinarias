@@ -17,7 +17,9 @@ use App\Http\Controllers\{
     ProveedorController,
     CategoriaController,
     MonedaController,
-    PdfController
+    PdfController,
+    RolController,
+    UsuarioController
 };
 
 /*
@@ -436,29 +438,12 @@ Route::middleware(['auth'])->group(function () {
             Route::post('guardar', [VentaController::class, 'guardarVenta'])->name('guardar');
         });
     });
+    
+    /*
+    |--------------------------------------------------------------------------
+    | ROL Y USUARIO
+    |--------------------------------------------------------------------------
+    */
+    Route::resource('roles', RolController::class);
+    Route::resource('usuarios', UsuarioController::class);
 });
-
-/*
-|--------------------------------------------------------------------------
-| RUTAS PÚBLICAS DE API (Para búsquedas AJAX sin autenticación)
-|--------------------------------------------------------------------------
-*/
-// Búsqueda de productos para formulario de ventas (sin autenticación)
-Route::get('/api/productos/search', [VentaController::class, 'buscarProducto'])->name('api.productos.search');
-
-// Búsqueda de clientes para formulario de ventas (sin autenticación) 
-Route::get('/api/clientes/search', [VentaController::class, 'buscarCliente'])->name('api.clientes.search');
-
-// Obtener siguiente número de comprobante
-Route::get('/api/ventas/siguiente-numero', [VentaController::class, 'siguienteNumero'])->name('api.ventas.siguiente-numero');
-
-// Ruta para cerrar sesión
-Route::post('/logout', function () {
-    Auth::logout();
-    request()->session()->invalidate();
-    request()->session()->regenerateToken();
-    return redirect()->route('login')->with('message', 'Sesión cerrada exitosamente');
-})->name('logout');
-
-// Ruta para registrar un nuevo cliente
-Route::post('/api/clientes', [ClienteController::class, 'store'])->name('api.clientes.store');
