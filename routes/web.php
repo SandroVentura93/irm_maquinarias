@@ -466,8 +466,5 @@ Route::middleware(['auth'])->group(function () {
         // Reportes por periodo usando procedimientos almacenados
         Route::get('periodos', [ReportePeriodoController::class, 'index'])->name('periodos');
         Route::get('periodos/export', [ReportePeriodoController::class, 'export'])->name('reportes.periodos.export');
-        
-        // Reporte index
-        Route::get('reportes', [ReporteController::class, 'index'])->name('reportes.index');
     });
 });
