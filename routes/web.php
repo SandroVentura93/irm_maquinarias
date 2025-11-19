@@ -19,9 +19,7 @@ use App\Http\Controllers\{
     MonedaController,
     PdfController,
     RolController,
-    UsuarioController,
-    ReporteController,
-    ReportePeriodoController
+    UsuarioController
 };
 
 /*
@@ -234,16 +232,16 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('reportes')->name('reportes.')->group(function () {
-        // Reportes básicos
-        Route::get('ventas', [ReporteController::class, 'ventas'])->name('ventas');
-        Route::get('productos-vendidos', [ReporteController::class, 'productosVendidos'])->name('productos-vendidos');
-        
-        // Exportaciones a Excel
-        Route::get('exportar-ventas', [ReporteController::class, 'exportarVentas'])->name('exportar.ventas');
-        Route::get('exportar-productos', [ReporteController::class, 'exportarProductos'])->name('exportar.productos');
-        
         // Reportes por periodo usando procedimientos almacenados
-        Route::get('periodos', [ReportePeriodoController::class, 'index'])->name('periodos');
-        Route::get('periodos/export', [ReportePeriodoController::class, 'export'])->name('reportes.periodos.export');
+        // Eliminado: Route::get('periodos', [ReportePeriodoController::class, 'index'])->name('periodos');
+        // Eliminado: Route::get('periodos/export', [ReportePeriodoController::class, 'export'])->name('reportes.periodos.export');
     });
+    
+    /*
+    |--------------------------------------------------------------------------
+    | MÓDULO DE COMPRAS
+    |--------------------------------------------------------------------------
+    */
+        Route::resource('compras', \App\Http\Controllers\CompraController::class);
+        Route::resource('detalle_compras', \App\Http\Controllers\DetalleCompraController::class);
 });

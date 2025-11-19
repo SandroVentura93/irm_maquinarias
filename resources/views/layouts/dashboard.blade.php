@@ -182,6 +182,11 @@
             </a>
         </li>
         <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('compras.*') ? 'active' : '' }}" href="{{ route('compras.index') }}">
+                <i class="fas fa-file-invoice-dollar"></i> Compras
+            </a>
+        </li>
+        <li class="nav-item">
             <a class="nav-link {{ request()->routeIs('ventas.*') ? 'active' : '' }}" href="{{ route('ventas.index') }}">
                 <i class="fas fa-shopping-cart"></i> Ventas
             </a>

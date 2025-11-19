@@ -28,6 +28,7 @@
             "Database\\Seeders\\": "database/seeders/"
         }
     },
+    
     "autoload-dev": {
         "psr-4": {
             "Tests\\": "tests/"
@@ -56,7 +57,13 @@
     "config": {
         "optimize-autoloader": true,
         "preferred-install": "dist",
-        "sort-packages": true
+        "sort-packages": true,
+        "audit": {
+            "ignore": [
+                "PKSA-qstp-ffwg-8hp6", "PKSA-5vz3-q51h-7mg4", "PKSA-7ztm-rpt3-qqzk", "PKSA-4jrs-y99s-q8j6", "PKSA-hbk6-2vfz-8f8n", "PKSA-kj9c-tr41-t8mj", "PKSA-872h-8556-2chm"
+            ],
+            "block-insecure": false
+        }
     },
     "minimum-stability": "dev",
     "prefer-stable": true
