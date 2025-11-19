@@ -281,28 +281,43 @@ class ProductoController extends Controller
         // ⚡ Cache para búsquedas frecuentes
         $cacheKey = "producto_search_" . md5($query);
         
-        $productos = Cache::remember($cacheKey, 300, function() use ($query) { // 5 minutos
-            return Producto::select('id_producto', 'codigo', 'nombre', 'descripcion', 'precio', 'stock_actual')
+        $productos = Cache::remember($cacheKey, 300, function() use ($query) {
+            return Producto::with(['categoria', 'marca', 'proveedor'])
+                ->select(
+                    'id_producto', 'codigo', 'numero_parte', 'descripcion', 'modelo', 'precio_venta', 'precio_compra',
+                    'stock_actual', 'stock_minimo', 'ubicacion', 'peso', 'importado', 'activo', 'id_categoria', 'id_marca', 'id_proveedor'
+                )
                 ->where(function($q) use ($query) {
                     $q->where('codigo', 'LIKE', "%{$query}%")
-                      ->orWhere('nombre', 'LIKE', "%{$query}%")
-                      ->orWhere('descripcion', 'LIKE', "%{$query}%");
+                      ->orWhere('numero_parte', 'LIKE', "%{$query}%")
+                      ->orWhere('descripcion', 'LIKE', "%{$query}%")
+                      ->orWhere('modelo', 'LIKE', "%{$query}%");
                 })
-                ->where('stock_actual', '>', 0) // Solo productos con stock
-                ->orderBy('nombre')
-                ->limit(10)
+                ->orderBy('descripcion')
+                ->limit(15)
                 ->get()
                 ->map(function($producto) {
                     return [
-                        'id' => $producto->id_producto,
-                        'codigo' => $producto->codigo,
-                        'desc' => $producto->nombre . ' - ' . $producto->descripcion,
-                        'precio' => floatval($producto->precio),
-                        'stock' => intval($producto->stock_actual)
+                        'id_producto' => $producto->id_producto,
+                        'codigo' => $producto->codigo ?? '',
+                        'numero_parte' => $producto->numero_parte ?? '',
+                        'descripcion' => $producto->descripcion ?? '',
+                        'modelo' => $producto->modelo ?? '',
+                        'precio_venta' => number_format($producto->precio_venta ?? 0, 2, '.', ''),
+                        'precio_compra' => number_format($producto->precio_compra ?? 0, 2, '.', ''),
+                        'stock_actual' => intval($producto->stock_actual ?? 0),
+                        'stock_minimo' => intval($producto->stock_minimo ?? 0),
+                        'ubicacion' => $producto->ubicacion ?? 'Sin ubicación',
+                        'peso' => $producto->peso ?? 0,
+                        'importado' => $producto->importado ? 'Sí' : 'No',
+                        'activo' => $producto->activo ? 'Activo' : 'Inactivo',
+                        'categoria' => $producto->categoria ? $producto->categoria->descripcion : 'Sin categoría',
+                        'marca' => $producto->marca ? $producto->marca->descripcion : 'Sin marca',
+                        'proveedor' => $producto->proveedor ? ($producto->proveedor->nombre ?? $producto->proveedor->razon_social ?? $producto->proveedor->descripcion) : 'Sin proveedor',
+                        'stock_status' => ($producto->stock_actual ?? 0) <= ($producto->stock_minimo ?? 0) ? 'Bajo' : 'Normal',
                     ];
                 });
         });
-        
         return response()->json($productos);
     }
 }

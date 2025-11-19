@@ -19,7 +19,9 @@ use App\Http\Controllers\{
     MonedaController,
     PdfController,
     RolController,
-    UsuarioController
+    UsuarioController,
+    ReporteController,
+    ReportePeriodoController
 };
 
 /*
@@ -446,4 +448,26 @@ Route::middleware(['auth'])->group(function () {
     */
     Route::resource('roles', RolController::class);
     Route::resource('usuarios', UsuarioController::class);
+    
+    /*
+    |--------------------------------------------------------------------------
+    | REPORTES Y EXPORTACIONES
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('reportes')->name('reportes.')->group(function () {
+        // Reportes básicos
+        Route::get('ventas', [ReporteController::class, 'ventas'])->name('ventas');
+        Route::get('productos-vendidos', [ReporteController::class, 'productosVendidos'])->name('productos-vendidos');
+        
+        // Exportaciones a Excel
+        Route::get('exportar-ventas', [ReporteController::class, 'exportarVentas'])->name('exportar.ventas');
+        Route::get('exportar-productos', [ReporteController::class, 'exportarProductos'])->name('exportar.productos');
+        
+        // Reportes por periodo usando procedimientos almacenados
+        Route::get('periodos', [ReportePeriodoController::class, 'index'])->name('periodos');
+        Route::get('periodos/export', [ReportePeriodoController::class, 'export'])->name('reportes.periodos.export');
+        
+        // Reporte index
+        Route::get('reportes', [ReporteController::class, 'index'])->name('reportes.index');
+    });
 });

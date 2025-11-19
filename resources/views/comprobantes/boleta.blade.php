@@ -19,32 +19,59 @@
             background: #fff;
         }
         
-        .container {
             width: 100%;
             max-width: 21cm;
             margin: 0;
             padding: 15px;
         }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 24px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 12px rgba(44,82,130,0.08);
+        }
         
-        .header {
             width: 100%;
             margin-bottom: 15px;
             border-bottom: 2px solid #2c5282;
             padding-bottom: 12px;
             overflow: hidden;
         }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #2c5282;
+            padding-bottom: 16px;
+        }
         
-        .company-info {
             float: left;
             width: 65%;
         }
+        .company-info {
+            flex: 1 1 60%;
+            display: flex;
+            align-items: flex-start;
+        }
         
-        .company-logo {
             width: 100px;
             height: 70px;
             float: left;
             margin-right: 15px;
             margin-bottom: 8px;
+        }
+        .company-logo {
+            width: 110px;
+            height: 80px;
+            margin-right: 18px;
+            margin-bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .company-logo img {
@@ -60,7 +87,6 @@
             font-weight: bold;
         }
         
-        .document-info {
             float: right;
             width: 32%;
             text-align: center;
@@ -68,6 +94,15 @@
             padding: 12px;
             background: #f7fafc;
             border-radius: 5px;
+        }
+        .document-info {
+            flex: 1 1 35%;
+            text-align: center;
+            border: 2px solid #2c5282;
+            padding: 18px 12px;
+            background: #f7fafc;
+            border-radius: 8px;
+            margin-left: 24px;
         }
         
         .document-info h1 {
@@ -97,13 +132,20 @@
             font-size: 14px;
         }
         
-        .details-table {
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
         }
+        .details-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 24px 0;
+            box-shadow: 0 1px 6px rgba(44,82,130,0.06);
+            border-radius: 8px;
+            overflow: hidden;
+        }
         
-        .details-table th {
             background: #17a2b8;
             color: white;
             padding: 10px 8px;
@@ -111,53 +153,101 @@
             font-size: 11px;
             border: 1px solid #138496;
         }
+        .details-table th {
+            background: #17a2b8;
+            color: white;
+            padding: 12px 8px;
+            text-align: center;
+            font-size: 12px;
+            border: none;
+        }
         
-        .details-table td {
             padding: 8px;
             border: 1px solid #dee2e6;
             text-align: center;
             font-size: 11px;
         }
+        .details-table td {
+            padding: 10px 8px;
+            border: none;
+            text-align: center;
+            font-size: 12px;
+        }
         
+            background-color: #f8f9fa;
+        }
         .details-table tr:nth-child(even) {
             background-color: #f8f9fa;
         }
         
-        .totals {
             margin-top: 20px;
             text-align: right;
         }
+        .totals {
+            margin-top: 28px;
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
         
-        .totals table {
             margin-left: auto;
             border-collapse: collapse;
             min-width: 300px;
         }
+        .totals table {
+            margin-left: auto;
+            border-collapse: separate;
+            border-spacing: 0;
+            min-width: 340px;
+            box-shadow: 0 1px 6px rgba(44,82,130,0.06);
+            border-radius: 8px;
+            overflow: hidden;
+        }
         
-        .totals td {
             padding: 8px 15px;
             border: 1px solid #dee2e6;
         }
+        .totals td {
+            padding: 12px 18px;
+            border: none;
+        }
         
-        .totals .total-label {
             background: #f8f9fa;
             font-weight: bold;
             text-align: right;
         }
+        .totals .total-label {
+            background: #f8f9fa;
+            font-weight: bold;
+            text-align: right;
+            font-size: 13px;
+        }
         
-        .totals .total-final {
             background: #17a2b8;
             color: white;
             font-weight: bold;
             font-size: 14px;
         }
+        .totals .total-final {
+            background: #17a2b8;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+        }
         
-        .payment-info {
             margin-top: 30px;
             background: #d1ecf1;
             border: 1px solid #bee5eb;
             padding: 15px;
             border-radius: 5px;
+        }
+        .payment-info {
+            margin-top: 32px;
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            padding: 18px;
+            border-radius: 8px;
         }
         
         .payment-info h4 {
@@ -172,13 +262,20 @@
             margin-bottom: 5px;
         }
         
-        .footer {
             margin-top: 30px;
             text-align: center;
             font-size: 10px;
             color: #6c757d;
             border-top: 1px solid #dee2e6;
             padding-top: 15px;
+        }
+        .footer {
+            margin-top: 36px;
+            text-align: center;
+            font-size: 11px;
+            color: #6c757d;
+            border-top: 1px solid #dee2e6;
+            padding-top: 18px;
         }
         
         .amount-words {

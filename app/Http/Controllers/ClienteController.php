@@ -205,42 +205,29 @@ class ClienteController extends Controller
      */
     public function searchPublic(Request $request)
     {
-        $query = $request->get('q', '');
-        
+        $query = $request->get('doc', $request->get('q', ''));
         if (strlen($query) < 3) {
-            return response()->json([]);
+            return response()->json(['found' => false]);
         }
-        
-        // ⚡ Cache para búsquedas frecuentes
-        $cacheKey = "cliente_search_" . md5($query);
-        
-        $clientes = Cache::remember($cacheKey, 600, function() use ($query) { // 10 minutos
-            return Cliente::select('id_cliente', 'numero_documento', 'nombre', 'apellidos', 'direccion', 'telefono', 'correo', 'tipo_documento')
-                ->where(function($q) use ($query) {
-                    $q->where('numero_documento', 'LIKE', "%{$query}%")
-                      ->orWhere('nombre', 'LIKE', "%{$query}%")
-                      ->orWhere('apellidos', 'LIKE', "%{$query}%")
-                      ->orWhere('correo', 'LIKE', "%{$query}%");
-                })
-                ->orderBy('nombre')
-                ->limit(10)
-                ->get()
-                ->map(function($cliente) {
-                    return [
-                        'id_cliente' => $cliente->id_cliente,
-                        'documento' => $cliente->numero_documento,
-                        'nombres' => $cliente->nombre,
-                        'apellidos' => $cliente->apellidos ?? '',
-                        'nombre_completo' => trim($cliente->nombre . ' ' . ($cliente->apellidos ?? '')),
-                        'direccion' => $cliente->direccion ?? '',
-                        'telefono' => $cliente->telefono ?? '',
-                        'correo' => $cliente->correo ?? '',
-                        'tipo_documento' => $cliente->tipo_documento
-                    ];
-                });
-        });
-        
-        return response()->json($clientes);
+        $cliente = Cliente::where('numero_documento', $query)
+            ->orWhere('nombre', 'LIKE', "%{$query}%")
+            ->first();
+        if ($cliente) {
+            return response()->json([
+                'found' => true,
+                'cliente' => [
+                    'id_cliente' => $cliente->id_cliente,
+                    'numero_documento' => $cliente->numero_documento,
+                    'tipo_documento' => $cliente->tipo_documento ?? 'RUC',
+                    'nombre' => $cliente->nombre,
+                    'direccion' => $cliente->direccion,
+                    'telefono' => $cliente->telefono,
+                    'email' => $cliente->correo
+                ]
+            ]);
+        } else {
+            return response()->json(['found' => false]);
+        }
     }
 
     /**
@@ -265,7 +252,7 @@ class ClienteController extends Controller
             Cache::forget('cliente_search_*');
 
             return response()->json([
-                'ok' => true,
+                'success' => true,
                 'cliente' => [
                     'id_cliente' => $cliente->id_cliente,
                     'documento' => $cliente->numero_documento,
@@ -280,8 +267,8 @@ class ClienteController extends Controller
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'ok' => false,
-                'error' => $e->getMessage()
+                'success' => false,
+                'message' => 'No se pudo registrar el cliente. ' . $e->getMessage()
             ], 422);
         }
     }

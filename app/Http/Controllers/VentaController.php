@@ -16,6 +16,39 @@ use PDF;
 
 class VentaController extends Controller
 {
+    // API: Obtener el siguiente número de comprobante
+    public function getSiguienteNumero(Request $request)
+    {
+        // Si no hay ventas, el número debe iniciar en 1
+        $tipo = $request->input('tipo');
+        $serie = $request->input('serie', 'F001'); // Serie por defecto
+        $tipoComprobanteMap = [
+            'Cotización' => 8,
+            'Factura' => 1,
+            'Boleta de Venta' => 2,
+            'Nota de Crédito' => 3,
+            'Nota de Débito' => 4,
+            'Guía de Remisión' => 5,
+            'Ticket de Máquina Registradora' => 6,
+            'Recibo por Honorarios' => 7
+        ];
+        $idTipoComprobante = $tipoComprobanteMap[$tipo] ?? 1;
+        $ultimo = \App\Models\Venta::where('serie', $serie)
+            ->where('id_tipo_comprobante', $idTipoComprobante)
+            ->max('numero');
+        // Extraer solo el número si tiene formato (ej: "COT-00000001" -> 1)
+        if ($ultimo && is_string($ultimo)) {
+            if (strpos($ultimo, '-') !== false) {
+                $ultimo = explode('-', $ultimo)[1];
+            }
+            $ultimo = intval($ultimo);
+        } else {
+            $ultimo = intval($ultimo ?: 0);
+        }
+        $siguiente = $ultimo + 1;
+        return response()->json(['siguiente_numero' => $siguiente]);
+    }
+        
     // Lista de ventas
     public function index()
     {
@@ -89,117 +122,7 @@ class VentaController extends Controller
     // Método para obtener tipo de cambio desde múltiples APIs
     private function obtenerTipoCambioAPI()
     {
-        // API 1: SUNAT (Perú) - La más confiable para PEN
-        try {
-            $fechaHoy = now()->format('Y-m-d');
-            $response = \Http::timeout(8)
-                ->withOptions(['verify' => false]) // Temporal para desarrollo
-                ->get("https://api.apis.net.pe/v1/tipo-cambio-sunat", [
-                'fecha' => $fechaHoy
-            ]);
-            
-            if ($response->successful()) {
-                $data = $response->json();
-                if (isset($data['compra']) && $data['compra'] > 0) {
-                    $tipoCambio = ($data['compra'] + $data['venta']) / 2; // Promedio
-                    \Log::info("Tipo de cambio SUNAT obtenido: {$tipoCambio}");
-                    
-                    // Guardar info del cache
-                    \Cache::put('tipo_cambio_usd_pen_info', [
-                        'fuente' => 'SUNAT',
-                        'fecha_actualizacion' => now(),
-                        'cache_hit' => false
-                    ], 3600);
-                    
-                    return round($tipoCambio, 2);
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Error en API SUNAT: ' . $e->getMessage());
-        }
-
-        // API 2: API del Banco Central de Reserva del Perú (BCRP)
-        try {
-            $response = \Http::timeout(8)
-                ->withOptions(['verify' => false]) // Temporal para desarrollo
-                ->get('https://estadisticas.bcrp.gob.pe/estadisticas/series/api/PD04638PD/json');
-            
-            if ($response->successful()) {
-                $data = $response->json();
-                if (isset($data['config']['series'][0]['values']) && !empty($data['config']['series'][0]['values'])) {
-                    $ultimoValor = end($data['config']['series'][0]['values']);
-                    if (isset($ultimoValor[1]) && $ultimoValor[1] > 0) {
-                        $tipoCambio = floatval($ultimoValor[1]);
-                        \Log::info("Tipo de cambio BCRP obtenido: {$tipoCambio}");
-                        return round($tipoCambio, 2);
-                    }
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Error en API BCRP: ' . $e->getMessage());
-        }
-
-        // API 3: ExchangeRate-API (Backup internacional)
-        try {
-            $response = \Http::timeout(8)
-                ->withOptions(['verify' => false]) // Temporal para desarrollo
-                ->get('https://api.exchangerate-api.com/v4/latest/USD');
-            
-            if ($response->successful()) {
-                $data = $response->json();
-                if (isset($data['rates']['PEN']) && $data['rates']['PEN'] > 0) {
-                    $tipoCambio = $data['rates']['PEN'];
-                    \Log::info("Tipo de cambio ExchangeRate-API obtenido: {$tipoCambio}");
-                    return round($tipoCambio, 2);
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Error en API ExchangeRate: ' . $e->getMessage());
-        }
-
-        // API 4: Fixer.io (Backup adicional)
-        try {
-            // Nota: Esta API requiere un API key gratuito, por ahora usaremos el endpoint libre
-            $response = \Http::timeout(8)->get('http://data.fixer.io/api/latest', [
-                'access_key' => env('FIXER_API_KEY', null),
-                'symbols' => 'PEN,USD',
-                'base' => 'USD'
-            ]);
-            
-            if ($response->successful()) {
-                $data = $response->json();
-                if (isset($data['rates']['PEN']) && $data['rates']['PEN'] > 0) {
-                    $tipoCambio = $data['rates']['PEN'];
-                    \Log::info("Tipo de cambio Fixer.io obtenido: {$tipoCambio}");
-                    return round($tipoCambio, 2);
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Error en API Fixer.io: ' . $e->getMessage());
-        }
-
-        // API 5: CurrencyAPI (Backup final)
-        try {
-            $response = \Http::timeout(8)->get('https://api.currencyapi.com/v3/latest', [
-                'apikey' => env('CURRENCY_API_KEY', null),
-                'currencies' => 'PEN',
-                'base_currency' => 'USD'
-            ]);
-            
-            if ($response->successful()) {
-                $data = $response->json();
-                if (isset($data['data']['PEN']['value']) && $data['data']['PEN']['value'] > 0) {
-                    $tipoCambio = $data['data']['PEN']['value'];
-                    \Log::info("Tipo de cambio CurrencyAPI obtenido: {$tipoCambio}");
-                    return round($tipoCambio, 2);
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Error en API CurrencyAPI: ' . $e->getMessage());
-        }
-
-        \Log::error('Todas las APIs de tipo de cambio fallaron');
-        return null;
+        // Método vacío temporalmente
     }
 
     // Buscar cliente por RUC/DNI (mejorado)

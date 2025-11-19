@@ -773,36 +773,44 @@ inputProd.addEventListener('input', async () => {
               data-id='${it.id_producto}' 
               data-codigo='${it.codigo || ''}'
               data-numero-parte='${it.numero_parte || ''}'
-              data-desc='${it.descripcion}' 
-              data-precio='${it.precio_venta}'
+              data-desc='${it.descripcion || ''}' 
+              data-precio='${it.precio_venta || it.precio_compra || 0}'
               data-stock='${it.stock_actual || 0}'
               data-modelo='${it.modelo || ''}'
               data-ubicacion='${it.ubicacion || ''}'
+              data-peso='${it.peso || 0}'
+              data-minimo='${it.stock_minimo || 0}'
+              data-importado='${it.importado || ''}'
+              data-activo='${it.activo || ''}'
               style="cursor: pointer; transition: background-color 0.2s;">
-          
           <div class="row">
             <div class="col-8">
               <div class="fw-bold text-primary">
                 ${it.codigo || 'SIN CÓDIGO'} 
                 ${it.numero_parte ? '<span class="text-muted">| ' + it.numero_parte + '</span>' : ''}
               </div>
-              <div class="text-dark">${it.descripcion}</div>
+              <div class="text-dark">${it.descripcion || ''}</div>
               ${it.modelo ? '<small class="text-muted">Modelo: ' + it.modelo + '</small><br>' : ''}
               <small class="text-info">
-                <i class="fas fa-tags"></i> ${it.categoria} | 
-                <i class="fas fa-copyright"></i> ${it.marca} |
-                <i class="fas fa-truck"></i> ${it.proveedor}
+                <i class="fas fa-tags"></i> ${it.categoria || 'Sin categoría'} | 
+                <i class="fas fa-copyright"></i> ${it.marca || 'Sin marca'} |
+                <i class="fas fa-truck"></i> ${it.proveedor || 'Sin proveedor'}
               </small>
+              <br>
+              <small class="text-secondary">Peso: ${it.peso || 0} kg</small>
             </div>
             <div class="col-4 text-end">
-              <div class="fw-bold text-success fs-6">${formatearPrecio(it.precio_venta)}</div>
+              <div class="fw-bold text-success fs-6">${formatearPrecio(it.precio_venta || it.precio_compra || 0)}</div>
               <small class="text-muted d-block">T.C: S/ ${TIPO_CAMBIO.toFixed(2)}</small>
               <small class="d-block ${it.stock_status === 'Bajo' ? 'text-danger' : 'text-success'}">
-                <i class="fas fa-boxes"></i> Stock: ${it.stock_actual}
+                <i class="fas fa-boxes"></i> Stock: ${it.stock_actual || 0}
                 ${it.stock_status === 'Bajo' ? '<i class="fas fa-exclamation-triangle text-warning"></i>' : ''}
               </small>
+              <small class="text-muted">Mínimo: ${it.stock_minimo || 0}</small>
               ${it.ubicacion !== 'Sin ubicación' ? '<small class="text-muted"><i class="fas fa-map-marker-alt"></i> ' + it.ubicacion + '</small>' : ''}
               ${it.importado === 'Sí' ? '<br><span class="badge badge-info">Importado</span>' : ''}
+              <br>
+              <small class="text-muted">Estado: ${it.activo || ''}</small>
             </div>
           </div>
         </div>`
@@ -992,24 +1000,24 @@ btnGuardarCliente.addEventListener('click', async () => {
     const result = await res.json();
 
     if (result.success) {
-      alert('Cliente registrado exitosamente.');
+      alert('Cliente guardado satisfactoriamente.');
 
       // Llenar los campos correspondientes en la venta
-      document.getElementById('docCliente').value = result.cliente.numero_documento;
-      document.getElementById('nombreCliente').value = result.cliente.nombre;
-      document.getElementById('direccionCliente').value = result.cliente.direccion;
-
-      // Cerrar el modal
-      $('#modalRegistrarCliente').modal('hide');
+      document.getElementById('docCliente').value = result.cliente.documento || '';
+      document.getElementById('nombreCliente').value = result.cliente.nombres || result.cliente.nombre || '';
+      document.getElementById('direccionCliente').value = result.cliente.direccion || '';
 
       // Limpiar el formulario del modal
       limpiarFormularioCliente();
+      // Cerrar el modal correctamente (Bootstrap 5)
+      const modal = bootstrap.Modal.getInstance(document.getElementById('modalRegistrarCliente'));
+      if (modal) modal.hide();
     } else {
-      alert('Error al registrar cliente: ' + result.message);
+      alert('Error al registrar cliente: ' + (result.message || 'Error desconocido'));
     }
   } catch (error) {
     console.error('Error al registrar cliente:', error);
-    alert('Error al registrar cliente: ' + error.message);
+    alert('Error al registrar cliente: Ocurrió un error inesperado.');
   }
 });
 
