@@ -19,7 +19,8 @@ use App\Http\Controllers\{
     MonedaController,
     PdfController,
     RolController,
-    UsuarioController
+    UsuarioController,
+    ReportesController
 };
 
 /*
@@ -232,10 +233,44 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('reportes')->name('reportes.')->group(function () {
-        // Reportes por periodo usando procedimientos almacenados
-        // Eliminado: Route::get('periodos', [ReportePeriodoController::class, 'index'])->name('periodos');
-        // Eliminado: Route::get('periodos/export', [ReportePeriodoController::class, 'export'])->name('reportes.periodos.export');
+    // Reporte Anual
+    Route::get('/anual', [ReportesController::class, 'anual'])->name('anual');
+    Route::get('/anual/pdf', [ReportesController::class, 'exportarAnualPdf'])->name('anual.pdf');
+    Route::get('/anual/excel', [ReportesController::class, 'exportarAnualExcel'])->name('anual.excel');
+        
+    // Reporte Diario
+    Route::get('/diario', [ReportesController::class, 'diario'])->name('diario');
+    // Exportar reporte diario
+    Route::get('/diario/pdf', [ReportesController::class, 'exportarPdf'])->name('diario.pdf');
+    Route::get('/diario/excel', [ReportesController::class, 'exportarExcel'])->name('diario.excel');
+
+    // Reporte Semestral
+    Route::get('/semestral', [ReportesController::class, 'semestral'])->name('semestral');
+    Route::get('/semestral/pdf', [ReportesController::class, 'exportarSemestralPdf'])->name('semestral.pdf');
+    Route::get('/semestral/excel', [ReportesController::class, 'exportarSemestralExcel'])->name('semestral.excel');
     });
+    
+    // Reporte Semanal fuera del grupo 'reportes'
+    Route::get('/semanal', [ReportesController::class, 'semanal'])->name('semanal');
+    Route::get('/semanal/pdf', [ReportesController::class, 'exportarSemanalPdf'])->name('semanal.pdf');
+    Route::get('/semanal/excel', [ReportesController::class, 'exportarSemanalExcel'])->name('semanal.excel');
+    
+    // Ruta para compatibilidad /reportes/semanal
+    Route::get('/reportes/semanal', function() {
+        return redirect('/semanal');
+    });
+    
+    // Reporte Mensual
+    Route::get('/mensual', [ReportesController::class, 'mensual'])->name('mensual');
+    // Exportar reporte mensual
+    Route::get('/mensual/pdf', [ReportesController::class, 'exportarMensualPdf'])->name('mensual.pdf');
+    Route::get('/mensual/excel', [ReportesController::class, 'exportarMensualExcel'])->name('mensual.excel');
+
+    // Reporte Trimestral
+    Route::get('/trimestral', [ReportesController::class, 'trimestral'])->name('trimestral');
+    // Exportar reporte trimestral
+    Route::get('/trimestral/pdf', [ReportesController::class, 'exportarTrimestralPdf'])->name('trimestral.pdf');
+    Route::get('/trimestral/excel', [ReportesController::class, 'exportarTrimestralExcel'])->name('trimestral.excel');
     
     /*
     |--------------------------------------------------------------------------

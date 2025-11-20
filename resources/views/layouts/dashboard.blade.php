@@ -1,3 +1,8 @@
+<li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('reportes.*') ? 'active' : '' }}" href="{{ route('reportes.diario') }}">
+                <i class="fas fa-chart-bar"></i> Reportes
+            </a>
+        </li>
 <!doctype html>
 <html lang="es">
 <head>
@@ -247,14 +252,23 @@
     <div class="menu-item">
         <h5>Reportes</h5>
         <div class="submenu">
-            <a href="#">
-                <i class="fas fa-chart-line"></i> Ventas por Período
+            <a href="{{ route('reportes.diario') }}">
+                <i class="fas fa-chart-line"></i> Reporte Diario
             </a>
-            <a href="#">
-                <i class="fas fa-star"></i> Productos Más Vendidos
+            <a href="{{ route('semanal') }}">
+                <i class="fas fa-chart-line"></i> Reporte Semanal
             </a>
-            <a href="#">
-                <i class="fas fa-file-excel"></i> Exportar a Excel
+            <a href="{{ route('mensual') }}">
+                <i class="fas fa-chart-line"></i> Reporte Mensual
+            </a>
+            <a href="{{ route('trimestral') }}">
+                <i class="fas fa-chart-line"></i> Reporte Trimestral
+            </a>
+            <a href="{{ route('reportes.semestral') }}">
+                <i class="fas fa-chart-line"></i> Reporte Semestral
+            </a>
+            <a href="{{ route('reportes.anual') }}">
+                <i class="fas fa-chart-line"></i> Reporte Anual
             </a>
         </div>
     </div>
