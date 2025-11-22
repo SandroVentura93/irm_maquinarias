@@ -1,8 +1,3 @@
-<li class="nav-item">
-            <a class="nav-link {{ request()->routeIs('reportes.*') ? 'active' : '' }}" href="{{ route('reportes.diario') }}">
-                <i class="fas fa-chart-bar"></i> Reportes
-            </a>
-        </li>
 <!doctype html>
 <html lang="es">
 <head>

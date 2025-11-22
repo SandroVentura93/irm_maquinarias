@@ -280,3 +280,7 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('compras', \App\Http\Controllers\CompraController::class);
         Route::resource('detalle_compras', \App\Http\Controllers\DetalleCompraController::class);
 });
+
+Route::get('/', function () {
+    return redirect()->route('dashboard');
+});
