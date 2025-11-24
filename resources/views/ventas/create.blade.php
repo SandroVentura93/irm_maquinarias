@@ -53,11 +53,7 @@
               <option value="Cotización">📝 Cotización</option>
               <option value="Factura">🧾 Factura</option>
               <option value="Boleta de Venta">🧾 Boleta de Venta</option>
-              <option value="Nota de Crédito">📃 Nota de Crédito</option>
-              <option value="Nota de Débito">📋 Nota de Débito</option>
-              <option value="Guía de Remisión">📦 Guía de Remisión</option>
               <option value="Ticket de Máquina Registradora">🎫 Ticket de Máquina Registradora</option>
-              <option value="Recibo por Honorarios">💼 Recibo por Honorarios</option>
             </select>
           </div>
           <div class="col-md-2">

@@ -387,6 +387,9 @@
             <p><strong>Vendedor:</strong> {{ $venta->vendedor->nombre }}</p>
             @endif
             <p>Estado del Comprobante: {{ $venta->xml_estado }}</p>
+            @if(strtoupper($venta->xml_estado) === 'PENDIENTE')
+                <p style="color: #d9534f; font-weight: bold;">Saldo pendiente: S/ {{ number_format($venta->saldo, 2) }}</p>
+            @endif
             <p>Sistema de Gestión IRM Maquinarias - Generado el {{ now()->format('d/m/Y H:i:s') }}</p>
         </div>
     </div>

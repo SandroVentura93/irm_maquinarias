@@ -153,8 +153,22 @@
         </div>
     </div>
 
-    <!-- Alertas de Stock Bajo -->
-    @if($productos_stock_bajo->count() > 0 || $productos_sin_stock > 0)
+    <!-- Alertas de Stock Bajo (calculadas en Blade) -->
+    @php
+        // Asegurar que $productos sea una colección
+        if (!isset($productos) || !is_iterable($productos)) {
+            $productos = collect();
+        } else {
+            $productos = collect($productos);
+        }
+        $productos_stock_bajo = $productos->filter(function($producto) {
+            return isset($producto->stock_minimo) && isset($producto->stock_actual) && $producto->stock_actual < $producto->stock_minimo && $producto->stock_actual > 0;
+        });
+        $productos_sin_stock = $productos->filter(function($producto) {
+            return isset($producto->stock_actual) && $producto->stock_actual <= 0;
+        });
+    @endphp
+    @if($productos_stock_bajo->count() > 0 || $productos_sin_stock->count() > 0)
     <div class="row mb-4">
         <div class="col-12">
             <div class="alert-banner">
@@ -165,9 +179,9 @@
                     <div class="alert-content">
                         <h5 class="alert-title">⚠️ Alertas de Inventario</h5>
                         <p class="alert-description">
-                            Tienes {{ $productos_stock_bajo->count() }} productos con stock bajo 
-                            @if($productos_sin_stock > 0)
-                                y {{ $productos_sin_stock }} productos sin stock
+                            Tienes {{ $productos_stock_bajo->count() }} productos con stock bajo
+                            @if($productos_sin_stock->count() > 0)
+                                y {{ $productos_sin_stock->count() }} productos sin stock
                             @endif
                         </p>
                     </div>
@@ -178,11 +192,10 @@
                         </a>
                     </div>
                 </div>
-                
                 @if($productos_stock_bajo->count() > 0)
                 <div class="alert-products">
                     <div class="alert-products-header">
-                        <h6><i class="fas fa-boxes me-2"></i>Productos con Stock Bajo (menos de 10 unidades)</h6>
+                        <h6><i class="fas fa-boxes me-2"></i>Productos con Stock Bajo (menor al mínimo)</h6>
                     </div>
                     <div class="alert-products-grid">
                         @foreach($productos_stock_bajo as $producto)

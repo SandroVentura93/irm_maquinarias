@@ -55,7 +55,7 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
 
     'asset_url' => env('ASSET_URL', null),
-
+           'PDF' => Barryvdh\DomPDF\Facade::class,
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

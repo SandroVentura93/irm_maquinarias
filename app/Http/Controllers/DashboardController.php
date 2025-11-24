@@ -13,7 +13,9 @@ class DashboardController extends Controller
             $clientes = \App\Models\Cliente::count();
             $productos = \App\Models\Producto::count();
             $monedas = \App\Models\Moneda::count();
-            $alertas = \App\Models\Producto::where('stock_actual', '<', 10)->count();
+            $alertas = \App\Models\Producto::whereColumn('stock_actual', '<', 'stock_minimo')
+                                             ->where('stock_actual', '>', 0)
+                                             ->count();
             
             // Estadísticas de ventas
             $ventas_hoy = \App\Models\Venta::whereDate('fecha', today())->count();
@@ -24,15 +26,15 @@ class DashboardController extends Controller
             
             // Estadísticas financieras
             $ingresos_hoy = \App\Models\Venta::whereDate('fecha', today())
-                                           ->where('xml_estado', '!=', 'ANULADO')
+                                           ->where('xml_estado', 'ACEPTADO')
                                            ->sum('total') ?? 0;
             
             $ingresos_mes = \App\Models\Venta::whereMonth('fecha', now()->month)
                                            ->whereYear('fecha', now()->year)
-                                           ->where('xml_estado', '!=', 'ANULADO')
+                                           ->where('xml_estado', 'ACEPTADO')
                                            ->sum('total') ?? 0;
             
-            $ingresos_total = \App\Models\Venta::where('xml_estado', '!=', 'ANULADO')
+            $ingresos_total = \App\Models\Venta::where('xml_estado', 'ACEPTADO')
                                              ->sum('total') ?? 0;
             
             // Estadísticas por tipo de comprobante
@@ -57,13 +59,12 @@ class DashboardController extends Controller
                                            ->limit(5)
                                            ->get();
             
-            // Productos con stock bajo (menos de 10 unidades)
-            $productos_stock_bajo = \App\Models\Producto::where('stock_actual', '<', 10)
-                                                      ->where('stock_actual', '>', 0)
-                                                      ->orderBy('stock_actual', 'asc')
-                                                      ->limit(10)
-                                                      ->get();
-            
+            // Productos con stock bajo (menor al mínimo)
+            $productos_stock_bajo = \App\Models\Producto::whereColumn('stock_actual', '<', 'stock_minimo')
+                                                                  ->where('stock_actual', '>', 0)
+                                                                  ->orderBy('stock_actual', 'asc')
+                                                                  ->limit(10)
+                                                                  ->get();
             // Productos sin stock
             $productos_sin_stock = \App\Models\Producto::where('stock_actual', '<=', 0)->count();
             
@@ -78,9 +79,9 @@ class DashboardController extends Controller
                 $fecha = now()->subDays($i);
                 $ventas_semana[] = [
                     'fecha' => $fecha->format('d/m'),
-                    'ventas' => \App\Models\Venta::whereDate('fecha', $fecha)->count(),
+                    'ventas' => \App\Models\Venta::whereDate('fecha', $fecha)->where('xml_estado', 'ACEPTADO')->count(),
                     'ingresos' => \App\Models\Venta::whereDate('fecha', $fecha)
-                                                 ->where('xml_estado', '!=', 'ANULADO')
+                                                 ->where('xml_estado', 'ACEPTADO')
                                                  ->sum('total') ?? 0
                 ];
             }
@@ -93,10 +94,11 @@ class DashboardController extends Controller
                     'mes' => $mes->format('M Y'),
                     'ventas' => \App\Models\Venta::whereMonth('fecha', $mes->month)
                                                ->whereYear('fecha', $mes->year)
+                                               ->where('xml_estado', 'ACEPTADO')
                                                ->count(),
                     'ingresos' => \App\Models\Venta::whereMonth('fecha', $mes->month)
                                                  ->whereYear('fecha', $mes->year)
-                                                 ->where('xml_estado', '!=', 'ANULADO')
+                                                 ->where('xml_estado', 'ACEPTADO')
                                                  ->sum('total') ?? 0
                 ];
             }

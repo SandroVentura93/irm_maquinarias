@@ -1,6 +1,9 @@
 <?php
 
+
 namespace App\Http\Controllers;
+
+use App\Models\ComprobanteElectronico;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -8,45 +11,44 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Cliente;
-use App\Models\Producto;
 use App\Models\Venta;
+use App\Models\PagoVenta;
 use App\Models\DetalleVenta;
-use App\Models\ComprobanteElectronico;
+use App\Models\Producto;
 use PDF;
+// ...existing use statements...
 
 class VentaController extends Controller
 {
-    // API: Obtener el siguiente número de comprobante
-    public function getSiguienteNumero(Request $request)
+    /**
+     * Registrar pago parcial o total de una venta
+     */
+    public function registrarPago(Request $request)
     {
-        // Si no hay ventas, el número debe iniciar en 1
-        $tipo = $request->input('tipo');
-        $serie = $request->input('serie', 'F001'); // Serie por defecto
-        $tipoComprobanteMap = [
-            'Cotización' => 8,
-            'Factura' => 1,
-            'Boleta de Venta' => 2,
-            'Nota de Crédito' => 3,
-            'Nota de Débito' => 4,
-            'Guía de Remisión' => 5,
-            'Ticket de Máquina Registradora' => 6,
-            'Recibo por Honorarios' => 7
-        ];
-        $idTipoComprobante = $tipoComprobanteMap[$tipo] ?? 1;
-        $ultimo = \App\Models\Venta::where('serie', $serie)
-            ->where('id_tipo_comprobante', $idTipoComprobante)
-            ->max('numero');
-        // Extraer solo el número si tiene formato (ej: "COT-00000001" -> 1)
-        if ($ultimo && is_string($ultimo)) {
-            if (strpos($ultimo, '-') !== false) {
-                $ultimo = explode('-', $ultimo)[1];
-            }
-            $ultimo = intval($ultimo);
-        } else {
-            $ultimo = intval($ultimo ?: 0);
-        }
-        $siguiente = $ultimo + 1;
-        return response()->json(['siguiente_numero' => $siguiente]);
+        $request->validate([
+            'id_venta' => 'required|exists:ventas,id_venta',
+            'monto' => 'required|numeric|min:0.01',
+            'metodo' => 'required|string|max:50',
+        ]);
+
+        $venta = \App\Models\Venta::findOrFail($request->id_venta);
+
+        // Crear el pago
+        $pago = new \App\Models\PagoVenta();
+        $pago->id_venta = $venta->id_venta;
+        $pago->monto = $request->monto;
+        $pago->metodo = $request->metodo;
+        $pago->fecha = now();
+        $pago->save();
+
+        // Actualizar saldo y estado de la venta
+        $totalPagado = \App\Models\PagoVenta::where('id_venta', $venta->id_venta)->sum('monto');
+        $saldo = $venta->total - $totalPagado;
+        $venta->saldo = $saldo > 0 ? $saldo : 0;
+        $venta->xml_estado = $saldo <= 0 ? 'ACEPTADO' : 'PENDIENTE';
+        $venta->save();
+
+        return redirect()->route('ventas.index')->with('success', 'Pago registrado correctamente.');
     }
         
     // Lista de ventas
@@ -54,7 +56,7 @@ class VentaController extends Controller
     {
         // ⚡ Optimización de consulta con paginación y cache selectivo
         $ventas = Venta::with(['cliente:id_cliente,nombre,numero_documento', 'tipoComprobante:id_tipo_comprobante,descripcion,codigo_sunat'])
-            ->select('id_venta', 'id_cliente', 'id_tipo_comprobante', 'serie', 'numero', 'fecha', 'total', 'xml_estado', 'created_at')
+            ->select('id_venta', 'id_cliente', 'id_tipo_comprobante', 'serie', 'numero', 'fecha', 'total', 'saldo', 'xml_estado', 'created_at')
             ->orderBy('created_at', 'desc')
             ->limit(100) // Limitar resultados para mejor performance
             ->get();
@@ -123,40 +125,18 @@ class VentaController extends Controller
     private function obtenerTipoCambioAPI()
     {
         // Método vacío temporalmente
+        return null;
     }
 
     // Buscar cliente por RUC/DNI (mejorado)
     public function buscarCliente(Request $r)
     {
-        $doc = $r->query('doc', '');
-        
-        if (empty($doc)) {
-            return response()->json(['found' => false, 'message' => 'Número de documento requerido']);
-        }
-
         try {
-            $cliente = Cliente::where('numero_documento', $doc)->first();
-
-            if ($cliente) {
-                return response()->json([
-                    'found' => true, 
-                    'cliente' => [
-                        'id_cliente' => $cliente->id_cliente,
-                        'numero_documento' => $cliente->numero_documento,
-                        'tipo_documento' => $cliente->tipo_documento ?? 'RUC',
-                        'nombre' => $cliente->nombre,
-                        'direccion' => $cliente->direccion,
-                        'telefono' => $cliente->telefono,
-                        'email' => $cliente->email
-                    ]
-                ]);
-            }
-
+            // Aquí va la lógica real de búsqueda de cliente, por ahora solo placeholder
             return response()->json([
-                'found' => false, 
-                'message' => 'Cliente no encontrado'
-            ]);
-            
+                'found' => false,
+                'message' => 'Funcionalidad no implementada'
+            ], 200);
         } catch (\Exception $e) {
             \Log::error('Error en búsqueda de cliente: ' . $e->getMessage());
             return response()->json([
@@ -214,7 +194,7 @@ class VentaController extends Controller
                     'proveedor' => 'Sin proveedor',
                     // Campos combinados para mejor presentación
                     'codigo_completo' => ($producto->codigo ?? '') . ($producto->numero_parte ? ' | ' . $producto->numero_parte : ''),
-                    'stock_status' => ($producto->stock_actual ?? 0) <= ($producto->stock_minimo ?? 0) ? 'Bajo' : 'Normal',
+                    'stock_status' => ($producto->stock_actual ?? 0) < ($producto->stock_minimo ?? 0) ? 'Bajo' : 'Normal',
                     'texto_busqueda' => ($producto->codigo ?? '') . ' - ' . ($producto->numero_parte ?? '') . ' - ' . ($producto->descripcion ?? '') . ' - ' . ($producto->modelo ?? '')
                 ];
             });
@@ -328,10 +308,28 @@ class VentaController extends Controller
                 'subtotal' => $subtotal,
                 'igv' => $igv,
                 'total' => $total,
+                'saldo' => $total,
                 'xml_estado' => 'PENDIENTE'
             ]);
 
             \Log::info('Venta creada:', ['id_venta' => $venta->id_venta]);
+
+            // Buscar tipo de comprobante real en la base de datos (por codigo_sunat o descripcion)
+            $tipoComprobanteDB = \App\Models\TipoComprobante::where(function($q) use ($data, $id_tipo_comprobante) {
+                $q->where('id_tipo_comprobante', $id_tipo_comprobante)
+                  ->orWhere('codigo_sunat', $data['tipo_comprobante'])
+                  ->orWhereRaw('LOWER(descripcion) = ?', [strtolower($data['tipo_comprobante'])]);
+            })->first();
+
+            // Definir comprobantes que SÍ descuentan stock
+            // Solo descuentan stock los comprobantes con codigo_sunat '01', '03', '12' (Factura, Boleta, Ticket)
+            $descuentaStock = false;
+            if ($tipoComprobanteDB) {
+                $codigo = strtoupper($tipoComprobanteDB->codigo_sunat ?? '');
+                if (in_array($codigo, ['01', '03', '12'])) {
+                    $descuentaStock = true;
+                }
+            }
 
             foreach ($data['detalle'] as $d) {
                 $precio_final = $d['precio_unitario'] * (1 - ($d['descuento_porcentaje'] ?? 0) / 100);
@@ -351,8 +349,22 @@ class VentaController extends Controller
                     'total' => $total_linea,
                 ]);
 
-                Producto::where('id_producto', $d['id_producto'])
-                    ->decrement('stock_actual', $d['cantidad']);
+                \Log::info('[DEBUG STOCK] tipo_comprobante:', [
+                    'id_tipo_comprobante' => $id_tipo_comprobante,
+                    'tipo_comprobante_request' => $data['tipo_comprobante'],
+                    'tipoComprobanteDB' => $tipoComprobanteDB,
+                    'descuentaStock' => $descuentaStock
+                ]);
+                if ($descuentaStock) {
+                    \Log::info('[DEBUG STOCK] Descontando stock', [
+                        'id_producto' => $d['id_producto'],
+                        'cantidad' => $d['cantidad']
+                    ]);
+                    Producto::where('id_producto', $d['id_producto'])
+                        ->decrement('stock_actual', $d['cantidad']);
+                } else {
+                    \Log::info('[DEBUG STOCK] NO se descuenta stock porque no es comprobante de venta');
+                }
             }
 
             // Crear el comprobante electrónico con el mismo número
@@ -371,12 +383,26 @@ class VentaController extends Controller
 
             DB::commit();
 
+            // Obtener el stock actualizado de los productos involucrados
+            $stocks_actualizados = [];
+            foreach ($data['detalle'] as $d) {
+                $producto = Producto::find($d['id_producto']);
+                if ($producto) {
+                    $stocks_actualizados[] = [
+                        'id_producto' => $producto->id_producto,
+                        'descripcion' => $producto->descripcion,
+                        'stock_actual' => $producto->stock_actual
+                    ];
+                }
+            }
+
             return response()->json([
                 'ok' => true, 
                 'id_venta' => $venta->id_venta, 
                 'total' => $total,
                 'numero_comprobante' => $nuevo_numero,
-                'serie' => $data['serie']
+                'serie' => $data['serie'],
+                'stocks_actualizados' => $stocks_actualizados
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -582,7 +608,114 @@ class VentaController extends Controller
     // Método store para el formulario tradicional (si es necesario)
     public function store(Request $request)
     {
-        return redirect()->route('ventas.create')->with('info', 'Use la interfaz AJAX para registrar ventas');
+        // Implementación de registro tradicional con generación automática de número de comprobante
+        $data = $request->validate([
+            'id_cliente' => 'required|integer',
+            'tipo_comprobante' => 'required',
+            'moneda' => 'required|string',
+            'serie' => 'required|string',
+            'detalle' => 'required|array|min:1',
+            'detalle.*.id_producto' => 'required|integer',
+            'detalle.*.cantidad' => 'required|numeric|min:0.01',
+            'detalle.*.precio_unitario' => 'required|numeric|min:0',
+            'detalle.*.descuento_porcentaje' => 'nullable|numeric|min:0|max:100',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $igv_rate = 0.18;
+            $subtotal = 0;
+            foreach ($data['detalle'] as $d) {
+                $precio_final = $d['precio_unitario'] * (1 - ($d['descuento_porcentaje'] ?? 0) / 100);
+                $subtotal += $precio_final * $d['cantidad'];
+            }
+            $igv = round($subtotal * $igv_rate, 2);
+            $total = round($subtotal + $igv, 2);
+            $id_moneda = $data['moneda'] === 'PEN' ? 1 : 2;
+            if (is_numeric($data['tipo_comprobante'])) {
+                $id_tipo_comprobante = (int) $data['tipo_comprobante'];
+            } else {
+                $tipoComprobanteMap = [
+                    'Cotización' => 8,
+                    'Factura' => 1,
+                    'Boleta de Venta' => 2,
+                    'Nota de Crédito' => 3,
+                    'Nota de Débito' => 4,
+                    'Guía de Remisión' => 5,
+                    'Ticket de Máquina Registradora' => 6,
+                    'Recibo por Honorarios' => 7
+                ];
+                $id_tipo_comprobante = $tipoComprobanteMap[$data['tipo_comprobante']] ?? 1;
+            }
+            $ultimo_numero_venta = Venta::where('serie', $data['serie'])
+                ->where('id_tipo_comprobante', $id_tipo_comprobante)
+                ->max('numero');
+            if ($ultimo_numero_venta && is_string($ultimo_numero_venta)) {
+                if (strpos($ultimo_numero_venta, '-') !== false) {
+                    $ultimo_numero_venta = explode('-', $ultimo_numero_venta)[1];
+                }
+                $ultimo_numero_venta = intval($ultimo_numero_venta);
+            } else {
+                $ultimo_numero_venta = intval($ultimo_numero_venta ?: 0);
+            }
+            $nuevo_numero = $ultimo_numero_venta + 1;
+            $prefijos = [
+                'Cotizacion' => 'COT-',
+                'Factura' => 'F001-',
+                'Boleta' => 'B001-',
+                'Nota de Crédito' => 'NC01-'
+            ];
+            $prefijo = $prefijos[$data['tipo_comprobante']] ?? '';
+            $numero_formateado = $prefijo . str_pad($nuevo_numero, 8, '0', STR_PAD_LEFT);
+            $venta = Venta::create([
+                'id_cliente' => $data['id_cliente'],
+                'id_vendedor' => auth()->user()->id_usuario ?? 1, // fallback a 1 si no hay usuario
+                'id_moneda' => $id_moneda,
+                'id_tipo_comprobante' => $id_tipo_comprobante,
+                'serie' => $data['serie'],
+                'numero' => $numero_formateado,
+                'fecha' => now(),
+                'subtotal' => $subtotal,
+                'igv' => $igv,
+                'total' => $total,
+                'xml_estado' => 'PENDIENTE'
+            ]);
+            foreach ($data['detalle'] as $d) {
+                $precio_final = $d['precio_unitario'] * (1 - ($d['descuento_porcentaje'] ?? 0) / 100);
+                $subtotal_linea = $precio_final * $d['cantidad'];
+                $igv_linea = $subtotal_linea * $igv_rate;
+                $total_linea = $subtotal_linea + $igv_linea;
+                \App\Models\DetalleVenta::create([
+                    'id_venta' => $venta->id_venta,
+                    'id_producto' => $d['id_producto'],
+                    'cantidad' => $d['cantidad'],
+                    'precio_unitario' => $d['precio_unitario'],
+                    'descuento_porcentaje' => $d['descuento_porcentaje'] ?? 0,
+                    'precio_final' => $precio_final,
+                    'subtotal' => $subtotal_linea,
+                    'igv' => $igv_linea,
+                    'total' => $total_linea,
+                ]);
+            }
+            \App\Models\ComprobanteElectronico::create([
+                'id_venta' => $venta->id_venta,
+                'id_tipo_comprobante' => $id_tipo_comprobante,
+                'serie' => $data['serie'],
+                'numero' => $nuevo_numero,
+                'fecha_emision' => now(),
+                'monto_subtotal' => $subtotal,
+                'monto_igv' => $igv,
+                'monto_total' => $total,
+                'moneda_id' => $id_moneda,
+                'estado' => 'PENDIENTE',
+            ]);
+            DB::commit();
+            return redirect()->route('ventas.show', $venta->id_venta)
+                ->with('success', 'Venta registrada correctamente. Número de comprobante: ' . $numero_formateado);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Error al registrar la venta: ' . $e->getMessage())->withInput();
+        }
     }
 
     // Generar PDF del comprobante electrónico
@@ -713,35 +846,37 @@ class VentaController extends Controller
             
             $tipoDestino = $request->input('tipo_destino');
             
-            if (!in_array($tipoDestino, ['Factura', 'Boleta'])) {
+            if (!in_array($tipoDestino, ['Factura', 'Boleta', 'Ticket'])) {
                 return response()->json([
                     'success' => false,
                     'error' => 'Tipo de destino inválido'
                 ], 400);
             }
-            
+
             DB::beginTransaction();
-            
+
             // Mapear tipo destino
             $tipoComprobanteMap = [
                 'Factura' => 1,
-                'Boleta' => 2
+                'Boleta' => 2,
+                'Ticket' => 6
             ];
             $nuevoTipoId = $tipoComprobanteMap[$tipoDestino];
-            
+
             // Configuración de series
             $seriesConfig = [
                 'Factura' => ['serie' => 'F001', 'prefijo' => 'F001-'],
-                'Boleta' => ['serie' => 'B001', 'prefijo' => 'B001-']
+                'Boleta' => ['serie' => 'B001', 'prefijo' => 'B001-'],
+                'Ticket' => ['serie' => 'TK01', 'prefijo' => 'TK01-']
             ];
             $nuevaSerie = $seriesConfig[$tipoDestino]['serie'];
             $prefijo = $seriesConfig[$tipoDestino]['prefijo'];
-            
+
             // Obtener el siguiente número para el nuevo tipo
             $ultimoNumero = Venta::where('serie', $nuevaSerie)
                 ->where('id_tipo_comprobante', $nuevoTipoId)
                 ->max('numero');
-            
+
             // Extraer solo el número si tiene formato
             if ($ultimoNumero && is_string($ultimoNumero)) {
                 if (strpos($ultimoNumero, '-') !== false) {
@@ -751,10 +886,10 @@ class VentaController extends Controller
             } else {
                 $ultimoNumero = intval($ultimoNumero ?: 0);
             }
-            
+
             $siguienteNumero = $ultimoNumero + 1;
             $nuevoNumeroFormateado = $prefijo . str_pad($siguienteNumero, 8, '0', STR_PAD_LEFT);
-            
+
             // Actualizar la venta
             $venta->update([
                 'id_tipo_comprobante' => $nuevoTipoId,
@@ -762,9 +897,15 @@ class VentaController extends Controller
                 'numero' => $nuevoNumeroFormateado,
                 'xml_estado' => 'PENDIENTE' // Mantener como pendiente para poder procesarla
             ]);
-            
+
+            // Descontar stock de los productos al convertir a boleta/factura/ticket
+            foreach ($venta->detalleVentas as $detalle) {
+                Producto::where('id_producto', $detalle->id_producto)
+                    ->decrement('stock_actual', $detalle->cantidad);
+            }
+
             DB::commit();
-            
+
             \Log::info("Cotización convertida", [
                 'id_venta' => $id,
                 'tipo_original' => 'Cotización',
@@ -772,7 +913,7 @@ class VentaController extends Controller
                 'nueva_serie' => $nuevaSerie,
                 'nuevo_numero' => $nuevoNumeroFormateado
             ]);
-            
+
             return response()->json([
                 'success' => true,
                 'message' => "Cotización convertida exitosamente a {$tipoDestino}",

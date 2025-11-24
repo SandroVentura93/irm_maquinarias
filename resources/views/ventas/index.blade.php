@@ -173,8 +173,6 @@
                                 <span class="comprobante-type">
                                     {{ $venta->tipoComprobante->descripcion ?? 'N/A' }}
                                 </span>
-                                {{-- Debug: Mostrar ID del tipo --}}
-                                <small class="text-muted d-block">ID: {{ $venta->id_tipo_comprobante ?? 'N/A' }}</small>
                                 @php
                                     $esCotizacion = ($venta->id_tipo_comprobante == 8 || 
                                                    (isset($venta->tipoComprobante) && 
@@ -204,6 +202,9 @@
                                     <i class="status-icon fas {{ $venta->xml_estado === 'ACEPTADO' ? 'fa-check-circle' : ($venta->xml_estado === 'PENDIENTE' ? 'fa-clock' : ($venta->xml_estado === 'ANULADO' ? 'fa-times-circle' : 'fa-exclamation-circle')) }}"></i>
                                     {{ $venta->xml_estado }}
                                 </span>
+                                @if($venta->xml_estado === 'PENDIENTE')
+                                    <div class="text-danger small mt-1">Saldo pendiente: <b>S/ {{ number_format($venta->saldo, 2) }}</b></div>
+                                @endif
                             </td>
                             <td>
                                 <div class="action-buttons">
@@ -215,6 +216,125 @@
                                         <i class="fas fa-file-pdf"></i>
                                     </a>
                                     @endif
+                                    <!-- Botón de pago -->
+
+                                    @if($venta->xml_estado === 'PENDIENTE')
+                                    <button class="btn btn-action btn-pay" title="Registrar Pago" data-bs-toggle="modal" data-bs-target="#modalPago" data-id="{{ $venta->id_venta }}" data-total="{{ $venta->total }}" data-saldo="{{ $venta->saldo ?? $venta->total }}" data-pagos='@json($venta->pagos)'>
+                                        <i class="fas fa-credit-card"></i>
+                                    </button>
+                                    @endif
+
+                        <!-- Modal de Pago Mejorado -->
+
+                        <!-- MODAL DE PAGO GLOBAL Y MODERNO -->
+                        <div class="modal fade" id="modalPago" tabindex="-1" aria-labelledby="modalPagoLabel" aria-hidden="true" data-bs-backdrop="false">
+<style>
+/* Fuerza máxima prioridad e interactividad al modal de pago */
+#modalPago.modal.show {
+    z-index: 20000 !important;
+    pointer-events: auto !important;
+}
+#modalPago .modal-dialog, #modalPago .modal-content {
+    z-index: 20001 !important;
+    pointer-events: auto !important;
+}
+</style>
+                            <div class="modal-dialog modal-dialog-scrollable modal-lg modal-fullscreen-sm-down custom-modal-margin">
+<style>
+/* Mejora visual y de interactividad para el modal de pago */
+.modal-backdrop.show {
+    opacity: 0.2 !important;
+    z-index: 1070;
+}
+.modal.show, .modal-content, .modal-dialog, .custom-modal-margin {
+    pointer-events: auto !important;
+    z-index: 1085 !important;
+}
+</style>
+                                <div class="modal-content shadow-lg border-0" style="border-radius: 1.2rem;">
+                                    <div class="modal-header bg-gradient-primary text-white" style="border-top-left-radius: 1.2rem; border-top-right-radius: 1.2rem; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);">
+                                        <h5 class="modal-title fw-bold" id="modalPagoLabel"><i class="fas fa-credit-card me-2"></i>Registrar Pago</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                    </div>
+                                    <form id="formPago" method="POST" action="{{ route('ventas.pago') }}">
+                                        @csrf
+                                        <div class="modal-body py-4" style="background: #f8f9fa;">
+                                            <input type="hidden" name="id_venta" id="pago_id_venta">
+                                            <div class="row g-3">
+                                                <div class="col-12 col-md-6">
+                                                    <label for="pago_monto" class="form-label">Monto a pagar</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">S/</span>
+                                                        <input type="number" step="0.01" min="0.01" class="form-control form-control-lg" name="monto" id="pago_monto" required autocomplete="off" tabindex="1">
+                                                    </div>
+                                                    <div class="form-text">Saldo pendiente: <span id="pago_saldo" class="fw-bold text-danger"></span></div>
+                                                </div>
+                                                <div class="col-12 col-md-6">
+                                                    <label for="pago_metodo" class="form-label">Método de pago</label>
+                                                    <select class="form-select form-select-lg" name="metodo" id="pago_metodo" required tabindex="2">
+                                                        <option value="">Seleccione</option>
+                                                        <option value="Efectivo">Efectivo</option>
+                                                        <option value="Tarjeta">Tarjeta</option>
+                                                        <option value="Transferencia">Transferencia</option>
+                                                        <option value="Yape/Plin">Yape/Plin</option>
+                                                        <option value="Otro">Otro</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-12">
+                                                    <label class="form-label">Historial de Pagos</label>
+                                                    <div id="historialPagos" class="bg-light rounded p-2 border" style="max-height: 140px; overflow-y: auto; font-size: 0.97em;"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer bg-light" style="border-bottom-left-radius: 1.2rem; border-bottom-right-radius: 1.2rem;">
+                                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" tabindex="4"><i class="fas fa-times me-1"></i> Cerrar</button>
+                                            <button type="submit" class="btn btn-gradient-primary" tabindex="3"><i class="fas fa-save me-1"></i> Registrar Pago</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <style>
+                        .btn-gradient-primary {
+                            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+                            color: #fff;
+                            border: none;
+                        }
+                        .btn-gradient-primary:hover {
+                            background: linear-gradient(90deg, #764ba2 0%, #667eea 100%);
+                            color: #fff;
+                        }
+                        </style>
+                        <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            var modalPago = document.getElementById('modalPago');
+                            modalPago.addEventListener('show.bs.modal', function (event) {
+                                var button = event.relatedTarget;
+                                var idVenta = button.getAttribute('data-id');
+                                var saldo = button.getAttribute('data-saldo');
+                                var pagos = JSON.parse(button.getAttribute('data-pagos') || '[]');
+                                document.getElementById('pago_id_venta').value = idVenta;
+                                document.getElementById('pago_saldo').textContent = 'S/ ' + parseFloat(saldo).toFixed(2);
+                                document.getElementById('pago_monto').max = saldo;
+                                document.getElementById('pago_monto').value = '';
+                                document.getElementById('pago_metodo').value = '';
+                                // Render historial de pagos
+                                var historial = '';
+                                if (pagos.length === 0) {
+                                    historial = '<span class="text-muted">Sin pagos registrados.</span>';
+                                } else {
+                                    historial = '<ul class="list-unstyled mb-0">';
+                                    pagos.forEach(function(p) {
+                                        historial += '<li><i class="fas fa-check-circle text-success me-1"></i>' +
+                                            '<b>S/ ' + parseFloat(p.monto).toFixed(2) + '</b> - ' +
+                                            (p.metodo ? p.metodo : '') + ' <span class="text-muted">(' + (p.fecha ? p.fecha.substring(0, 16).replace('T', ' ') : '') + ')</span></li>';
+                                    });
+                                    historial += '</ul>';
+                                }
+                                document.getElementById('historialPagos').innerHTML = historial;
+                            });
+                        });
+                        </script>
                                     
                                     @if($esCotizacion && $venta->xml_estado === 'PENDIENTE')
                                     <div class="dropdown d-inline-block">
@@ -227,6 +347,9 @@
                                             </a></li>
                                             <li><a class="dropdown-item conversion-link" href="javascript:void(0)" onclick="convertirCotizacion({{ $venta->id_venta }}, 'BOLETA')">
                                                 <i class="fas fa-receipt text-info me-2"></i>Convertir a Boleta
+                                            </a></li>
+                                            <li><a class="dropdown-item conversion-link" href="javascript:void(0)" onclick="convertirCotizacion({{ $venta->id_venta }}, 'Ticket')">
+                                                <i class="fas fa-ticket-alt text-warning me-2"></i>Convertir a Ticket
                                             </a></li>
                                         </ul>
                                     </div>
@@ -779,48 +902,71 @@ function convertirCotizacion(idVenta, tipoDestino) {
     // Confirmar la conversión con un mensaje más moderno
     const mensaje = `¿Está seguro que desea convertir esta cotización a ${tipoDestino}?
 
-Esta acción:
-• Cambiará el tipo de comprobante
-• Generará una nueva serie y número  
-• No se puede deshacer
+    Esta acción:
+    • Cambiará el tipo de comprobante
+    • Generará una nueva serie y número  
+    • No se puede deshacer
 
-¿Desea continuar?`;
-    
+    ¿Desea continuar?`;
     if (!confirm(mensaje)) {
         return;
     }
-    
+
     // Buscar todos los enlaces de conversión para esta venta
     const conversionLinks = document.querySelectorAll(`[onclick*="${idVenta}"]`);
     let targetLink = null;
-    
     conversionLinks.forEach(link => {
         if (link.onclick.toString().includes(tipoDestino)) {
             targetLink = link;
         }
     });
-    
     if (targetLink) {
-        // Mostrar loading en el enlace específico
         const originalHTML = targetLink.innerHTML;
         targetLink.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Convirtiendo...';
         targetLink.classList.add('loading');
-        
-        // Determinar la URL según el tipo
-        let url;
+
+        // Si es Factura o Boleta, redirigir como antes
+        let url = null;
         if (tipoDestino === 'FACTURA') {
             url = `/ventas/${idVenta}/convertir-factura`;
+            window.location.href = url;
+            return;
         } else if (tipoDestino === 'BOLETA') {
             url = `/ventas/${idVenta}/convertir-boleta`;
+            window.location.href = url;
+            return;
+        }
+
+        // Si es Ticket, hacer POST AJAX al endpoint convertirCotizacion
+        if (tipoDestino === 'Ticket') {
+            fetch(`/ventas/${idVenta}/convertir`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ tipo_destino: 'Ticket' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + (data.error || 'No se pudo convertir.'));
+                }
+            })
+            .catch(() => {
+                alert('Error de red al convertir.');
+            })
+            .finally(() => {
+                targetLink.innerHTML = originalHTML;
+                targetLink.classList.remove('loading');
+            });
         } else {
             alert('❌ Tipo de conversión no válido');
             targetLink.innerHTML = originalHTML;
             targetLink.classList.remove('loading');
-            return;
         }
-        
-        // Realizar la conversión con redirect
-        window.location.href = url;
     }
 }
 </script>

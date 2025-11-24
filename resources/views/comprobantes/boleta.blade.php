@@ -453,7 +453,10 @@
             <p><strong>Atendido por:</strong> {{ $venta->vendedor->nombre }}</p>
             @endif
             <p>¡Gracias por su compra!</p>
-            <p>Sistema de Gestión IRM Maquinarias - Generado el {{ now()->format('d/m/Y H:i:s') }}</p>
+                <p>Sistema de Gestión IRM Maquinarias - Generado el {{ now()->format('d/m/Y H:i:s') }}</p>
+                @if(strtoupper($venta->xml_estado) === 'PENDIENTE')
+                    <p style="color: #d9534f; font-weight: bold;">Saldo pendiente: S/ {{ number_format($venta->saldo, 2) }}</p>
+                @endif
         </div>
     </div>
 </body>

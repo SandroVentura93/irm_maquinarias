@@ -1,3 +1,8 @@
+<li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('reportes.*') ? 'active' : '' }}" href="{{ route('reportes.diario') }}">
+                <i class="fas fa-chart-bar"></i> Reportes
+            </a>
+        </li>
 <!doctype html>
 <html lang="es">
 <head>
@@ -160,8 +165,8 @@
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ route('dashboard') }}">IRM Maquinarias</a>
             <div class="ml-auto d-flex align-items-center">
-                <span class="navbar-text text-white text-uppercase font-weight-bold mr-3">Bienvenido</span>
-                <span class="navbar-text text-white mr-3">{{ Auth::check() ? (Auth::user()->nombre ?: 'Usuario') : 'Invitado' }}</span>
+                <span class="navbar-text text-white text-uppercase font-weight-bold mr-3">Bienvenido:&nbsp;</span>
+                <span class="navbar-text text-white mr-3">{{ Auth::check() ? (Auth::user()->nombre ?: 'Usuario') : 'Invitado' }}&nbsp;</span>
                 @if(Auth::check())
                 <form action="{{ route('logout') }}" method="POST" style="display: inline;">
                     @csrf

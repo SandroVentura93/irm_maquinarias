@@ -12,6 +12,7 @@ class Venta extends Model
     protected $table = 'ventas';
     protected $primaryKey = 'id_venta';
 
+
     protected $fillable = [
         'id_cliente',
         'id_vendedor',
@@ -23,11 +24,17 @@ class Venta extends Model
         'subtotal',
         'igv',
         'total',
+        'saldo',
         'xml_hash',
         'xml_nombre',
         'xml_estado',
         'qr_hash'
     ];
+    // Relación con pagos de la venta
+    public function pagos()
+    {
+        return $this->hasMany(PagoVenta::class, 'id_venta');
+    }
 
     protected $casts = [
         'fecha' => 'datetime',

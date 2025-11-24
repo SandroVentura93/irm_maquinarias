@@ -289,6 +289,9 @@
                         <button class="btn btn-primary btn-modern" onclick="convertirCotizacion({{ $venta->id_venta }}, 'Boleta')">
                             <i class="fas fa-receipt me-2"></i>Convertir a Boleta
                         </button>
+                        <button class="btn btn-warning btn-modern" onclick="convertirCotizacion({{ $venta->id_venta }}, 'Ticket')">
+                            <i class="fas fa-ticket-alt me-2"></i>Convertir a Ticket
+                        </button>
                     </div>
                 </div>
             </div>
@@ -742,50 +745,74 @@ function convertirCotizacion(idVenta, tipoDestino) {
     // Confirmar la conversión con un mensaje más moderno
     const mensaje = `¿Está seguro que desea convertir esta cotización a ${tipoDestino}?
 
-Esta acción:
-• Cambiará el tipo de comprobante
-• Generará una nueva serie y número  
-• No se puede deshacer
+    Esta acción:
+    • Cambiará el tipo de comprobante
+    • Generará una nueva serie y número  
+    • No se puede deshacer
 
-¿Desea continuar?`;
-    
+    ¿Desea continuar?`;
     if (!confirm(mensaje)) {
         return;
     }
-    
+
     // Buscar el botón clickeado
     const buttons = document.querySelectorAll('.btn-modern');
     let targetButton = null;
-    
     buttons.forEach(btn => {
         if (btn.textContent.includes(tipoDestino)) {
             targetButton = btn;
         }
     });
-    
     if (targetButton) {
-        // Mostrar loading en el botón específico
         const originalText = targetButton.innerHTML;
         targetButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Convirtiendo...';
         targetButton.disabled = true;
         targetButton.classList.add('loading');
-        
-        // Determinar la URL según el tipo
-        let url;
+
+        // Si es Factura o Boleta, redirigir como antes
+        let url = null;
         if (tipoDestino.toLowerCase() === 'factura') {
             url = `/ventas/${idVenta}/convertir-factura`;
+            window.location.href = url;
+            return;
         } else if (tipoDestino.toLowerCase() === 'boleta') {
             url = `/ventas/${idVenta}/convertir-boleta`;
+            window.location.href = url;
+            return;
+        }
+
+        // Si es Ticket, hacer POST AJAX al endpoint convertirCotizacion
+        if (tipoDestino.toLowerCase() === 'ticket') {
+            fetch(`/ventas/${idVenta}/convertir`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ tipo_destino: 'Ticket' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + (data.error || 'No se pudo convertir.'));
+                }
+            })
+            .catch(() => {
+                alert('Error de red al convertir.');
+            })
+            .finally(() => {
+                targetButton.innerHTML = originalText;
+                targetButton.disabled = false;
+                targetButton.classList.remove('loading');
+            });
         } else {
             alert('❌ Tipo de conversión no válido');
             targetButton.innerHTML = originalText;
             targetButton.disabled = false;
             targetButton.classList.remove('loading');
-            return;
         }
-        
-        // Realizar la conversión con GET request
-        window.location.href = url;
     }
 }
 

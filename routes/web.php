@@ -129,6 +129,8 @@ Route::middleware(['auth'])->group(function () {
     
     // Acciones especiales de ventas
     Route::prefix('ventas')->name('ventas.')->group(function () {
+    // Registrar pago parcial o total de una venta
+    Route::post('pago', [VentaController::class, 'registrarPago'])->name('pago');
         Route::get('{venta}/confirm-cancel', [VentaController::class, 'confirmCancel'])->name('confirm-cancel');
         Route::patch('{venta}/cancel', [VentaController::class, 'cancel'])->name('cancel');
         Route::get('{venta}/pdf', [VentaController::class, 'generarPDF'])->name('pdf');
@@ -279,8 +281,4 @@ Route::middleware(['auth'])->group(function () {
     */
         Route::resource('compras', \App\Http\Controllers\CompraController::class);
         Route::resource('detalle_compras', \App\Http\Controllers\DetalleCompraController::class);
-});
-
-Route::get('/', function () {
-    return redirect()->route('dashboard');
 });

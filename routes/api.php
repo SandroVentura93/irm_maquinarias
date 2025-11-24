@@ -55,4 +55,4 @@ Route::post('/clientes', [ClienteController::class, 'storePublic']);
 Route::post('/ventas/guardar', [VentaController::class, 'guardarVenta']);
 
 // Obtener siguiente número de comprobante
-Route::get('/ventas/siguiente-numero', [VentaController::class, 'getSiguienteNumero']);
+Route::get('/ventas/siguiente-numero', [VentaController::class, 'siguienteNumero']);

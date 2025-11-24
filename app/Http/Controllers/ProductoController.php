@@ -41,9 +41,9 @@ class ProductoController extends Controller
         // Filtro por estado de stock
         if ($request->has('stock_status') && $request->stock_status != '') {
             if ($request->stock_status == 'bajo') {
-                $query->whereColumn('stock_actual', '<=', 'stock_minimo');
+                $query->whereColumn('stock_actual', '<', 'stock_minimo');
             } elseif ($request->stock_status == 'normal') {
-                $query->whereColumn('stock_actual', '>', 'stock_minimo');
+                $query->whereColumn('stock_actual', '>=', 'stock_minimo');
             }
         }
         
@@ -64,7 +64,7 @@ class ProductoController extends Controller
         // Estadísticas rápidas
         $estadisticas = [
             'total_productos' => Producto::count(),
-            'productos_bajo_stock' => Producto::whereColumn('stock_actual', '<=', 'stock_minimo')->count(),
+            'productos_bajo_stock' => Producto::whereColumn('stock_actual', '<', 'stock_minimo')->count(),
             'valor_total_inventario' => Producto::sum('precio_venta'),
         ];
         
@@ -278,46 +278,42 @@ class ProductoController extends Controller
             return response()->json([]);
         }
         
-        // ⚡ Cache para búsquedas frecuentes
-        $cacheKey = "producto_search_" . md5($query);
-        
-        $productos = Cache::remember($cacheKey, 300, function() use ($query) {
-            return Producto::with(['categoria', 'marca', 'proveedor'])
-                ->select(
-                    'id_producto', 'codigo', 'numero_parte', 'descripcion', 'modelo', 'precio_venta', 'precio_compra',
-                    'stock_actual', 'stock_minimo', 'ubicacion', 'peso', 'importado', 'activo', 'id_categoria', 'id_marca', 'id_proveedor'
-                )
-                ->where(function($q) use ($query) {
-                    $q->where('codigo', 'LIKE', "%{$query}%")
-                      ->orWhere('numero_parte', 'LIKE', "%{$query}%")
-                      ->orWhere('descripcion', 'LIKE', "%{$query}%")
-                      ->orWhere('modelo', 'LIKE', "%{$query}%");
-                })
-                ->orderBy('descripcion')
-                ->limit(15)
-                ->get()
-                ->map(function($producto) {
-                    return [
-                        'id_producto' => $producto->id_producto,
-                        'codigo' => $producto->codigo ?? '',
-                        'numero_parte' => $producto->numero_parte ?? '',
-                        'descripcion' => $producto->descripcion ?? '',
-                        'modelo' => $producto->modelo ?? '',
-                        'precio_venta' => number_format($producto->precio_venta ?? 0, 2, '.', ''),
-                        'precio_compra' => number_format($producto->precio_compra ?? 0, 2, '.', ''),
-                        'stock_actual' => intval($producto->stock_actual ?? 0),
-                        'stock_minimo' => intval($producto->stock_minimo ?? 0),
-                        'ubicacion' => $producto->ubicacion ?? 'Sin ubicación',
-                        'peso' => $producto->peso ?? 0,
-                        'importado' => $producto->importado ? 'Sí' : 'No',
-                        'activo' => $producto->activo ? 'Activo' : 'Inactivo',
-                        'categoria' => $producto->categoria ? $producto->categoria->descripcion : 'Sin categoría',
-                        'marca' => $producto->marca ? $producto->marca->descripcion : 'Sin marca',
-                        'proveedor' => $producto->proveedor ? ($producto->proveedor->nombre ?? $producto->proveedor->razon_social ?? $producto->proveedor->descripcion) : 'Sin proveedor',
-                        'stock_status' => ($producto->stock_actual ?? 0) <= ($producto->stock_minimo ?? 0) ? 'Bajo' : 'Normal',
-                    ];
-                });
-        });
+        // Sin caché: siempre devolver stock actualizado
+        $productos = Producto::with(['categoria', 'marca', 'proveedor'])
+            ->select(
+                'id_producto', 'codigo', 'numero_parte', 'descripcion', 'modelo', 'precio_venta', 'precio_compra',
+                'stock_actual', 'stock_minimo', 'ubicacion', 'peso', 'importado', 'activo', 'id_categoria', 'id_marca', 'id_proveedor'
+            )
+            ->where(function($q) use ($query) {
+                $q->where('codigo', 'LIKE', "%{$query}%")
+                  ->orWhere('numero_parte', 'LIKE', "%{$query}%")
+                  ->orWhere('descripcion', 'LIKE', "%{$query}%")
+                  ->orWhere('modelo', 'LIKE', "%{$query}%");
+            })
+            ->orderBy('descripcion')
+            ->limit(15)
+            ->get()
+            ->map(function($producto) {
+                return [
+                    'id_producto' => $producto->id_producto,
+                    'codigo' => $producto->codigo ?? '',
+                    'numero_parte' => $producto->numero_parte ?? '',
+                    'descripcion' => $producto->descripcion ?? '',
+                    'modelo' => $producto->modelo ?? '',
+                    'precio_venta' => number_format($producto->precio_venta ?? 0, 2, '.', ''),
+                    'precio_compra' => number_format($producto->precio_compra ?? 0, 2, '.', ''),
+                    'stock_actual' => intval($producto->stock_actual ?? 0),
+                    'stock_minimo' => intval($producto->stock_minimo ?? 0),
+                    'ubicacion' => $producto->ubicacion ?? 'Sin ubicación',
+                    'peso' => $producto->peso ?? 0,
+                    'importado' => $producto->importado ? 'Sí' : 'No',
+                    'activo' => $producto->activo ? 'Activo' : 'Inactivo',
+                    'categoria' => $producto->categoria ? $producto->categoria->descripcion : 'Sin categoría',
+                    'marca' => $producto->marca ? $producto->marca->descripcion : 'Sin marca',
+                    'proveedor' => $producto->proveedor ? ($producto->proveedor->nombre ?? $producto->proveedor->razon_social ?? $producto->proveedor->descripcion) : 'Sin proveedor',
+                    'stock_status' => ($producto->stock_actual ?? 0) <= ($producto->stock_minimo ?? 0) ? 'Bajo' : 'Normal',
+                ];
+            });
         return response()->json($productos);
     }
 }
