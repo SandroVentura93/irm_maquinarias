@@ -275,7 +275,10 @@ class VentaController extends Controller
                 ->where('id_tipo_comprobante', $id_tipo_comprobante)
                 ->max('numero');
             
-            // Extraer solo el número si tiene formato (ej: "F001-00000123" -> 123)
+            // Debugging: Log the last number retrieved for the comprobante
+            \Log::info('Último número obtenido para comprobante:', ['serie' => $data['serie'], 'id_tipo_comprobante' => $id_tipo_comprobante, 'ultimo_numero' => $ultimo_numero_venta]);
+
+            // Extract only the numeric part of the last number
             if ($ultimo_numero_venta && is_string($ultimo_numero_venta)) {
                 if (strpos($ultimo_numero_venta, '-') !== false) {
                     $ultimo_numero_venta = explode('-', $ultimo_numero_venta)[1];
@@ -284,7 +287,9 @@ class VentaController extends Controller
             } else {
                 $ultimo_numero_venta = intval($ultimo_numero_venta ?: 0);
             }
-            
+
+            \Log::info('Número procesado para comprobante:', ['ultimo_numero_procesado' => $ultimo_numero_venta]);
+
             $nuevo_numero = $ultimo_numero_venta + 1;
             
             // Crear formato de número según tipo de comprobante
@@ -292,7 +297,8 @@ class VentaController extends Controller
                 'Cotizacion' => 'COT-',
                 'Factura' => 'F001-',
                 'Boleta' => 'B001-',
-                'Nota de Crédito' => 'NC01-'
+                'Nota de Crédito' => 'NC01-',
+                'Ticket de Máquina Registradora' => 'TK01-',
             ];
             $prefijo = $prefijos[$data['tipo_comprobante']] ?? '';
             $numero_formateado = $prefijo . str_pad($nuevo_numero, 8, '0', STR_PAD_LEFT);
@@ -613,7 +619,7 @@ class VentaController extends Controller
             'id_cliente' => 'required|integer',
             'tipo_comprobante' => 'required',
             'moneda' => 'required|string',
-            'serie' => 'required|string',
+            'serie' => 'nullable|string', // Permitir que sea nulo para generar automáticamente
             'detalle' => 'required|array|min:1',
             'detalle.*.id_producto' => 'required|integer',
             'detalle.*.cantidad' => 'required|numeric|min:0.01',
@@ -636,20 +642,24 @@ class VentaController extends Controller
                 $id_tipo_comprobante = (int) $data['tipo_comprobante'];
             } else {
                 $tipoComprobanteMap = [
-                    'Cotización' => 8,
+                    'Cotizacion' => 8,
                     'Factura' => 1,
-                    'Boleta de Venta' => 2,
+                    'Boleta' => 2,
                     'Nota de Crédito' => 3,
-                    'Nota de Débito' => 4,
-                    'Guía de Remisión' => 5,
-                    'Ticket de Máquina Registradora' => 6,
-                    'Recibo por Honorarios' => 7
+                    'Ticket' => 6
                 ];
                 $id_tipo_comprobante = $tipoComprobanteMap[$data['tipo_comprobante']] ?? 1;
             }
+
+            // Generar automáticamente el número de serie si es un ticket
+            if ($id_tipo_comprobante === 6) { // Ticket
+                $data['serie'] = 'TK01';
+            }
+
             $ultimo_numero_venta = Venta::where('serie', $data['serie'])
                 ->where('id_tipo_comprobante', $id_tipo_comprobante)
                 ->max('numero');
+
             if ($ultimo_numero_venta && is_string($ultimo_numero_venta)) {
                 if (strpos($ultimo_numero_venta, '-') !== false) {
                     $ultimo_numero_venta = explode('-', $ultimo_numero_venta)[1];
@@ -658,15 +668,18 @@ class VentaController extends Controller
             } else {
                 $ultimo_numero_venta = intval($ultimo_numero_venta ?: 0);
             }
+
             $nuevo_numero = $ultimo_numero_venta + 1;
             $prefijos = [
                 'Cotizacion' => 'COT-',
                 'Factura' => 'F001-',
                 'Boleta' => 'B001-',
-                'Nota de Crédito' => 'NC01-'
+                'Nota de Crédito' => 'NC01-',
+                'Ticket de máquina registradora' => 'TK01-'
             ];
             $prefijo = $prefijos[$data['tipo_comprobante']] ?? '';
             $numero_formateado = $prefijo . str_pad($nuevo_numero, 8, '0', STR_PAD_LEFT);
+
             $venta = Venta::create([
                 'id_cliente' => $data['id_cliente'],
                 'id_vendedor' => auth()->user()->id_usuario ?? 1, // fallback a 1 si no hay usuario
@@ -678,8 +691,10 @@ class VentaController extends Controller
                 'subtotal' => $subtotal,
                 'igv' => $igv,
                 'total' => $total,
+                'saldo' => $total,
                 'xml_estado' => 'PENDIENTE'
             ]);
+
             foreach ($data['detalle'] as $d) {
                 $precio_final = $d['precio_unitario'] * (1 - ($d['descuento_porcentaje'] ?? 0) / 100);
                 $subtotal_linea = $precio_final * $d['cantidad'];
@@ -697,6 +712,7 @@ class VentaController extends Controller
                     'total' => $total_linea,
                 ]);
             }
+
             \App\Models\ComprobanteElectronico::create([
                 'id_venta' => $venta->id_venta,
                 'id_tipo_comprobante' => $id_tipo_comprobante,
@@ -709,6 +725,7 @@ class VentaController extends Controller
                 'moneda_id' => $id_moneda,
                 'estado' => 'PENDIENTE',
             ]);
+
             DB::commit();
             return redirect()->route('ventas.show', $venta->id_venta)
                 ->with('success', 'Venta registrada correctamente. Número de comprobante: ' . $numero_formateado);

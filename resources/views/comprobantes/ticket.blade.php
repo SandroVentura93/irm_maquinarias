@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TICKET - {{ $venta->serie }}{{ str_pad($venta->numero_comprobante, 8, '0', STR_PAD_LEFT) }}</title>
+    <title>TICKET - {{ str_pad($venta->numero_comprobante, 8, '0', STR_PAD_LEFT) }}</title>
     <style>
         * {
             margin: 0;
@@ -148,7 +148,14 @@
 
     <!-- Tipo y número de comprobante -->
     <div class="ticket-tipo">{{ $tipoConfig['titulo'] ?? 'TICKET DE MÁQUINA REGISTRADORA' }}</div>
-    <div class="ticket-numero">{{ $venta->serie }}-{{ str_pad($venta->numero_comprobante, 8, '0', STR_PAD_LEFT) }}</div>
+    <!-- Depuración temporal para verificar valores -->
+    <div>Debug: {{ $venta->numero_comprobante }}</div>
+    <!-- Validación de serie y número -->
+    @if(isset($venta->serie) && isset($venta->numero_comprobante))
+        <div class="ticket-numero">{{ $venta->serie }}-{{ str_pad($venta->numero_comprobante, 8, '0', STR_PAD_LEFT) }}</div>
+    @else
+        <div class="ticket-numero" style="color: red;">Error: Serie o número no definido</div>
+    @endif
 
     <!-- Información básica -->
     <div class="cliente-info">

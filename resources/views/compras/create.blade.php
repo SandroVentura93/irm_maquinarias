@@ -295,3 +295,128 @@ function agregarProductoRow() {
     </form>
 </div>
 @endsection
+
+<style>
+    /* Encabezado */
+    h1 {
+        font-size: 2.8rem;
+        font-weight: bold;
+        color: #ffffff;
+        text-align: center;
+        margin-bottom: 30px;
+        background: linear-gradient(90deg, #007bff, #6610f2);
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Contenedor */
+    .form-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem;
+        background: #ffffff;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Campos del formulario */
+    .form-label {
+        font-weight: bold;
+        color: #495057;
+        margin-bottom: 8px;
+    }
+
+    .form-control {
+        border-radius: 10px;
+        border: 1px solid #ced4da;
+        padding: 10px;
+        box-shadow: none;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+        border-color: #80bdff;
+        box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+    }
+
+    .form-select {
+        border-radius: 10px;
+        border: 1px solid #ced4da;
+        padding: 10px;
+        transition: all 0.3s ease;
+    }
+
+    .form-select:focus {
+        border-color: #80bdff;
+        box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+    }
+
+    /* Botones */
+    .btn {
+        border-radius: 10px;
+        font-weight: bold;
+        padding: 10px 20px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        border: none;
+        color: #fff;
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #0056b3, #003f7f);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-secondary {
+        background: linear-gradient(135deg, #6c757d, #343a40);
+        border: none;
+        color: #fff;
+    }
+
+    .btn-secondary:hover {
+        background: linear-gradient(135deg, #343a40, #23272b);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Tabla */
+    .table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 10px;
+    }
+
+    .table thead th {
+        background: #007bff;
+        color: #fff;
+        font-weight: bold;
+        text-transform: uppercase;
+        padding: 12px;
+        border: none;
+        border-radius: 10px;
+    }
+
+    .table tbody tr {
+        background: #f8f9fa;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .table tbody tr td {
+        padding: 12px;
+        border-top: none;
+    }
+
+    .table tbody tr td:first-child {
+        border-top-left-radius: 10px;
+        border-bottom-left-radius: 10px;
+    }
+
+    .table tbody tr td:last-child {
+        border-top-right-radius: 10px;
+        border-bottom-right-radius: 10px;
+    }
+</style>

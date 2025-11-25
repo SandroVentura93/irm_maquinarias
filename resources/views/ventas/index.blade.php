@@ -94,6 +94,146 @@
         </div>
     @endif
 
+    <!-- Modal de Pago (Mejorado visualmente con saldo incluido) -->
+    <div class="modal fade" id="modalPago" tabindex="-1" aria-labelledby="modalPagoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="modalPagoLabel">Registrar Pago</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Información del saldo -->
+                    <div class="alert alert-info mb-4">
+                        <h6 class="mb-0">Saldo Pendiente: <span id="saldoPendiente" class="fw-bold">S/ 0.00</span></h6>
+                    </div>
+
+                    <form id="formPago" method="POST" action="{{ route('ventas.pago') }}">
+                        @csrf
+                        <input type="hidden" name="id_venta" id="pago_id_venta">
+                        <div class="mb-3">
+                            <label for="pago_monto" class="form-label">Monto a Pagar</label>
+                            <input type="number" step="0.01" class="form-control" id="pago_monto" name="monto" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="pago_metodo" class="form-label">Método de Pago</label>
+                            <select class="form-select" id="pago_metodo" name="metodo" required>
+                                <option value="">Seleccione</option>
+                                <option value="Efectivo">Efectivo</option>
+                                <option value="Tarjeta">Tarjeta</option>
+                                <option value="Transferencia">Transferencia</option>
+                                <option value="Yape">Yape</option>
+                                <option value="Plin">Plin</option>
+                            </select>
+                        </div>
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-success">Registrar Pago</button>
+                        </div>
+                    </form>
+
+                    <!-- Historial de Pagos -->
+                    <div class="mt-4">
+                        <h6>Historial de Pagos</h6>
+                        <ul id="historialPagos" class="list-group">
+                            <!-- Los pagos se cargarán dinámicamente aquí -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+    /* Estilos mejorados para el modal */
+    #modalPago .modal-content {
+        background-color: #f8f9fa; /* Fondo elegante */
+        border-radius: 12px; /* Bordes redondeados */
+        box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.2); /* Sombra elegante */
+    }
+    #modalPago .modal-header {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    #modalPago .modal-body {
+        padding: 2rem; /* Espaciado interno */
+    }
+    .alert-info {
+        background-color: #e9f7fd; /* Fondo azul claro */
+        border: 1px solid #bce8f1; /* Borde azul */
+        color: #31708f; /* Texto azul oscuro */
+        border-radius: 8px; /* Bordes redondeados */
+    }
+    .list-group-item {
+        border: none; /* Sin bordes */
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1); /* Línea divisoria */
+    }
+    .list-group-item:last-child {
+        border-bottom: none; /* Eliminar línea divisoria del último elemento */
+    }
+    </style>
+
+    <script>
+    // Configuración del modal mejorado
+    console.log('Inicializando funcionalidad del modalPago...');
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const modalPago = document.getElementById('modalPago');
+
+        if (!modalPago) {
+            console.error('No se encontró el elemento #modalPago');
+            return;
+        }
+
+        modalPago.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+
+            if (!button) {
+                console.error('No se encontró el botón que disparó el modal');
+                return;
+            }
+
+            const idVenta = button.getAttribute('data-id');
+            const saldo = button.getAttribute('data-saldo');
+            const pagos = button.getAttribute('data-pagos');
+
+            if (!idVenta || !saldo) {
+                console.error('Faltan atributos de datos en el botón que disparó el modal');
+                return;
+            }
+
+            console.log('Cargando datos en el modal:', { idVenta, saldo, pagos });
+
+            document.getElementById('pago_id_venta').value = idVenta;
+            document.getElementById('pago_monto').value = saldo;
+            document.getElementById('saldoPendiente').textContent = `S/ ${parseFloat(saldo).toFixed(2)}`;
+
+            // Cargar historial de pagos
+            const historialPagos = document.getElementById('historialPagos');
+            historialPagos.innerHTML = ''; // Limpiar historial previo
+
+            if (pagos) {
+                try {
+                    const pagosData = JSON.parse(pagos);
+                    pagosData.forEach(pago => {
+                        const listItem = document.createElement('li');
+                        listItem.className = 'list-group-item';
+                        listItem.textContent = `Monto: S/ ${pago.monto} - Método: ${pago.metodo} - Fecha: ${pago.fecha}`;
+                        historialPagos.appendChild(listItem);
+                    });
+                } catch (error) {
+                    console.error('Error al procesar el historial de pagos:', error);
+                }
+            } else {
+                const listItem = document.createElement('li');
+                listItem.className = 'list-group-item';
+                listItem.textContent = 'No hay pagos registrados.';
+                historialPagos.appendChild(listItem);
+            }
+        });
+
+        console.log('Funcionalidad del modalPago inicializada.');
+    });
+    </script>
+
     <!-- Main Table Card -->
     <div class="card modern-card">
         <div class="card-header">
@@ -184,7 +324,14 @@
                                     <small class="badge bg-info text-white">🔄 Convertible</small>
                                 @endif
                             </td>
-                            <td class="fw-semibold">{{ $venta->serie }}-{{ $venta->numero }}</td>
+                            <!-- <td class="fw-semibold">{{ $venta->serie }}-{{ $venta->numero }}</td> -->
+                            <td class="fw-semibold">
+                                @if(Str::startsWith($venta->numero, $venta->serie))
+                                    {{ $venta->numero }}
+                                @else
+                                    {{ $venta->serie }}-{{ $venta->numero }}
+                                @endif
+                            </td>
                             <td>
                                 <div class="date-info">
                                     <div class="date">{{ \Carbon\Carbon::parse($venta->fecha)->format('d/m/Y') }}</div>
@@ -224,118 +371,6 @@
                                     </button>
                                     @endif
 
-                        <!-- Modal de Pago Mejorado -->
-
-                        <!-- MODAL DE PAGO GLOBAL Y MODERNO -->
-                        <div class="modal fade" id="modalPago" tabindex="-1" aria-labelledby="modalPagoLabel" aria-hidden="true" data-bs-backdrop="false">
-<style>
-/* Fuerza máxima prioridad e interactividad al modal de pago */
-#modalPago.modal.show {
-    z-index: 20000 !important;
-    pointer-events: auto !important;
-}
-#modalPago .modal-dialog, #modalPago .modal-content {
-    z-index: 20001 !important;
-    pointer-events: auto !important;
-}
-</style>
-                            <div class="modal-dialog modal-dialog-scrollable modal-lg modal-fullscreen-sm-down custom-modal-margin">
-<style>
-/* Mejora visual y de interactividad para el modal de pago */
-.modal-backdrop.show {
-    opacity: 0.2 !important;
-    z-index: 1070;
-}
-.modal.show, .modal-content, .modal-dialog, .custom-modal-margin {
-    pointer-events: auto !important;
-    z-index: 1085 !important;
-}
-</style>
-                                <div class="modal-content shadow-lg border-0" style="border-radius: 1.2rem;">
-                                    <div class="modal-header bg-gradient-primary text-white" style="border-top-left-radius: 1.2rem; border-top-right-radius: 1.2rem; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);">
-                                        <h5 class="modal-title fw-bold" id="modalPagoLabel"><i class="fas fa-credit-card me-2"></i>Registrar Pago</h5>
-                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                                    </div>
-                                    <form id="formPago" method="POST" action="{{ route('ventas.pago') }}">
-                                        @csrf
-                                        <div class="modal-body py-4" style="background: #f8f9fa;">
-                                            <input type="hidden" name="id_venta" id="pago_id_venta">
-                                            <div class="row g-3">
-                                                <div class="col-12 col-md-6">
-                                                    <label for="pago_monto" class="form-label">Monto a pagar</label>
-                                                    <div class="input-group">
-                                                        <span class="input-group-text">S/</span>
-                                                        <input type="number" step="0.01" min="0.01" class="form-control form-control-lg" name="monto" id="pago_monto" required autocomplete="off" tabindex="1">
-                                                    </div>
-                                                    <div class="form-text">Saldo pendiente: <span id="pago_saldo" class="fw-bold text-danger"></span></div>
-                                                </div>
-                                                <div class="col-12 col-md-6">
-                                                    <label for="pago_metodo" class="form-label">Método de pago</label>
-                                                    <select class="form-select form-select-lg" name="metodo" id="pago_metodo" required tabindex="2">
-                                                        <option value="">Seleccione</option>
-                                                        <option value="Efectivo">Efectivo</option>
-                                                        <option value="Tarjeta">Tarjeta</option>
-                                                        <option value="Transferencia">Transferencia</option>
-                                                        <option value="Yape/Plin">Yape/Plin</option>
-                                                        <option value="Otro">Otro</option>
-                                                    </select>
-                                                </div>
-                                                <div class="col-12">
-                                                    <label class="form-label">Historial de Pagos</label>
-                                                    <div id="historialPagos" class="bg-light rounded p-2 border" style="max-height: 140px; overflow-y: auto; font-size: 0.97em;"></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer bg-light" style="border-bottom-left-radius: 1.2rem; border-bottom-right-radius: 1.2rem;">
-                                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" tabindex="4"><i class="fas fa-times me-1"></i> Cerrar</button>
-                                            <button type="submit" class="btn btn-gradient-primary" tabindex="3"><i class="fas fa-save me-1"></i> Registrar Pago</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                        <style>
-                        .btn-gradient-primary {
-                            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-                            color: #fff;
-                            border: none;
-                        }
-                        .btn-gradient-primary:hover {
-                            background: linear-gradient(90deg, #764ba2 0%, #667eea 100%);
-                            color: #fff;
-                        }
-                        </style>
-                        <script>
-                        document.addEventListener('DOMContentLoaded', function() {
-                            var modalPago = document.getElementById('modalPago');
-                            modalPago.addEventListener('show.bs.modal', function (event) {
-                                var button = event.relatedTarget;
-                                var idVenta = button.getAttribute('data-id');
-                                var saldo = button.getAttribute('data-saldo');
-                                var pagos = JSON.parse(button.getAttribute('data-pagos') || '[]');
-                                document.getElementById('pago_id_venta').value = idVenta;
-                                document.getElementById('pago_saldo').textContent = 'S/ ' + parseFloat(saldo).toFixed(2);
-                                document.getElementById('pago_monto').max = saldo;
-                                document.getElementById('pago_monto').value = '';
-                                document.getElementById('pago_metodo').value = '';
-                                // Render historial de pagos
-                                var historial = '';
-                                if (pagos.length === 0) {
-                                    historial = '<span class="text-muted">Sin pagos registrados.</span>';
-                                } else {
-                                    historial = '<ul class="list-unstyled mb-0">';
-                                    pagos.forEach(function(p) {
-                                        historial += '<li><i class="fas fa-check-circle text-success me-1"></i>' +
-                                            '<b>S/ ' + parseFloat(p.monto).toFixed(2) + '</b> - ' +
-                                            (p.metodo ? p.metodo : '') + ' <span class="text-muted">(' + (p.fecha ? p.fecha.substring(0, 16).replace('T', ' ') : '') + ')</span></li>';
-                                    });
-                                    historial += '</ul>';
-                                }
-                                document.getElementById('historialPagos').innerHTML = historial;
-                            });
-                        });
-                        </script>
-                                    
                                     @if($esCotizacion && $venta->xml_estado === 'PENDIENTE')
                                     <div class="dropdown d-inline-block">
                                         <button class="btn btn-action btn-convert dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Convertir Cotización">
@@ -969,6 +1004,64 @@ function convertirCotizacion(idVenta, tipoDestino) {
         }
     }
 }
+
+// Fix modal and backdrop layering
+#modalPago {
+    z-index: 1055 !important; /* Ensure modal is above backdrop */
+    display: block; /* Ensure modal is displayed correctly */
+    opacity: 1; /* Ensure modal is fully visible */
+    pointer-events: auto; /* Allow interaction with modal */
+}
+.modal-backdrop {
+    z-index: 1050 !important; /* Ensure backdrop is below modal */
+    opacity: 0.5; /* Make backdrop semi-transparent */
+    pointer-events: none; /* Prevent backdrop from blocking interaction */
+}
+
+/* Force modal display for debugging */
+console.log('Debugging modalPago visibility...');
+
+document.addEventListener('DOMContentLoaded', function () {
+    const modalPago = document.getElementById('modalPago');
+
+    if (!modalPago) {
+        console.error('Modal element #modalPago not found!');
+        return;
+    }
+
+    modalPago.addEventListener('show.bs.modal', function (event) {
+        console.log('Modal show event triggered.');
+        const button = event.relatedTarget;
+
+        if (!button) {
+            console.error('Trigger button not found!');
+            return;
+        }
+
+        const idVenta = button.getAttribute('data-id');
+        const saldo = button.getAttribute('data-saldo');
+
+        if (!idVenta || !saldo) {
+            console.error('Missing required data attributes on the trigger button.');
+            return;
+        }
+
+        console.log('Populating modal with data:', { idVenta, saldo });
+
+        document.getElementById('pago_id_venta').value = idVenta;
+        document.getElementById('pago_monto').value = saldo;
+    });
+
+    // Force modal to show for debugging
+    const debugButton = document.createElement('button');
+    debugButton.setAttribute('data-bs-toggle', 'modal');
+    debugButton.setAttribute('data-bs-target', '#modalPago');
+    debugButton.style.display = 'none';
+    document.body.appendChild(debugButton);
+    debugButton.click();
+
+    console.log('ModalPago debugging complete.');
+});
 </script>
 
 @endsection

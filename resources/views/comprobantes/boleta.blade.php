@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BOLETA DE VENTA - {{ $venta->serie }}{{ $venta->numero }}</title>
-    <style>
+    <title>BOLETA DE VENTA - {{ $venta->serie }}-{{ $venta->numero }}</title>
+       <style>
         * {
             margin: 0;
             padding: 0;
@@ -12,256 +12,165 @@
         }
         
         body {
-            font-family: 'Arial', sans-serif;
-            font-size: 11px;
-            line-height: 1.3;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
             color: #333;
-            background: #fff;
         }
         
-            width: 100%;
-            max-width: 21cm;
-            margin: 0;
-            padding: 15px;
-        }
         .container {
-            max-width: 900px;
+            max-width: 800px;
             margin: 0 auto;
-            padding: 24px;
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 2px 12px rgba(44,82,130,0.08);
+            padding: 20px;
         }
         
-            width: 100%;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #2c5282;
-            padding-bottom: 12px;
-            overflow: hidden;
-        }
         .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
+            display: table;
             width: 100%;
             margin-bottom: 20px;
-            border-bottom: 2px solid #2c5282;
-            padding-bottom: 16px;
+            border-bottom: 2px solid #4309c8ff;
+            padding-bottom: 15px;
         }
         
-            float: left;
-            width: 65%;
-        }
         .company-info {
-            flex: 1 1 60%;
-            display: flex;
-            align-items: flex-start;
+            display: table-cell;
+            width: 60%;
+            vertical-align: top;
         }
         
-            width: 100px;
-            height: 70px;
-            float: left;
-            margin-right: 15px;
-            margin-bottom: 8px;
-        }
         .company-logo {
-            width: 110px;
+            width: 120px;
             height: 80px;
-            margin-right: 18px;
-            margin-bottom: 0;
             display: flex;
             align-items: center;
             justify-content: center;
+            margin-bottom: 10px;
         }
         
         .company-logo img {
-            width: 100%;
-            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
             object-fit: contain;
         }
         
         .company-details h2 {
-            color: #2c5282;
-            margin-bottom: 4px;
-            font-size: 16px;
-            font-weight: bold;
+            color: #4309c8ff;
+            margin-bottom: 5px;
+            font-size: 18px;
         }
         
-            float: right;
-            width: 32%;
-            text-align: center;
-            border: 2px solid #2c5282;
-            padding: 12px;
-            background: #f7fafc;
-            border-radius: 5px;
-        }
         .document-info {
-            flex: 1 1 35%;
+            display: table-cell;
+            width: 35%;
+            vertical-align: top;
             text-align: center;
-            border: 2px solid #2c5282;
-            padding: 18px 12px;
-            background: #f7fafc;
-            border-radius: 8px;
-            margin-left: 24px;
+            border: 2px solid #4309c8ff;
+            padding: 15px;
+            background: #f8f9fa;
         }
         
         .document-info h1 {
-            color: #2c5282;
-            margin-bottom: 8px;
-            font-size: 16px;
-            font-weight: bold;
+            color: #4309c8ff;
+            margin-bottom: 10px;
+            font-size: 20px;
         }
         
         .document-number {
-            font-size: 14px;
+            font-size: 16px;
             font-weight: bold;
-            color: #2c5282;
-            margin-bottom: 8px;
+            color: rgba(59, 124, 228, 1);
+            margin-bottom: 10px;
         }
         
         .client-info {
             background: #f8f9fa;
             padding: 15px;
             margin: 20px 0;
-            border-left: 4px solid #17a2b8;
+            border-left: 4px solid rgba(59, 124, 228, 1);
         }
         
         .client-info h3 {
-            color: #17a2b8;
+            color: rgba(59, 124, 228, 1);
             margin-bottom: 10px;
             font-size: 14px;
         }
         
+        .details-table {
             width: 100%;
             border-collapse: collapse;
             margin: 20px 0;
         }
-        .details-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            margin: 24px 0;
-            box-shadow: 0 1px 6px rgba(44,82,130,0.06);
-            border-radius: 8px;
-            overflow: hidden;
-        }
         
-            background: #17a2b8;
+        .details-table th {
+            background: rgba(59, 124, 228, 1);
             color: white;
             padding: 10px 8px;
             text-align: center;
             font-size: 11px;
-            border: 1px solid #138496;
-        }
-        .details-table th {
-            background: #17a2b8;
-            color: white;
-            padding: 12px 8px;
-            text-align: center;
-            font-size: 12px;
-            border: none;
+            border: 1px solid #1e7e34;
         }
         
+        .details-table td {
             padding: 8px;
             border: 1px solid #dee2e6;
             text-align: center;
             font-size: 11px;
         }
-        .details-table td {
-            padding: 10px 8px;
-            border: none;
-            text-align: center;
-            font-size: 12px;
-        }
         
-            background-color: #f8f9fa;
-        }
         .details-table tr:nth-child(even) {
             background-color: #f8f9fa;
         }
         
+        .totals {
             margin-top: 20px;
             text-align: right;
         }
-        .totals {
-            margin-top: 28px;
-            text-align: right;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-        }
         
+        .totals table {
             margin-left: auto;
             border-collapse: collapse;
             min-width: 300px;
         }
-        .totals table {
-            margin-left: auto;
-            border-collapse: separate;
-            border-spacing: 0;
-            min-width: 340px;
-            box-shadow: 0 1px 6px rgba(44,82,130,0.06);
-            border-radius: 8px;
-            overflow: hidden;
-        }
         
+        .totals td {
             padding: 8px 15px;
             border: 1px solid #dee2e6;
         }
-        .totals td {
-            padding: 12px 18px;
-            border: none;
-        }
         
-            background: #f8f9fa;
-            font-weight: bold;
-            text-align: right;
-        }
         .totals .total-label {
             background: #f8f9fa;
             font-weight: bold;
             text-align: right;
-            font-size: 13px;
         }
         
-            background: #17a2b8;
+        .totals .total-final {
+            background: rgba(59, 124, 228, 1);
             color: white;
             font-weight: bold;
             font-size: 14px;
         }
-        .totals .total-final {
-            background: #17a2b8;
-            color: white;
-            font-weight: bold;
-            font-size: 16px;
-        }
         
+        .legal-info {
             margin-top: 30px;
-            background: #d1ecf1;
-            border: 1px solid #bee5eb;
+            background: #e9f7ef;
+            border: 1px solid #c3e6cb;
             padding: 15px;
             border-radius: 5px;
         }
-        .payment-info {
-            margin-top: 32px;
-            background: #d1ecf1;
-            border: 1px solid #bee5eb;
-            padding: 18px;
-            border-radius: 8px;
-        }
         
-        .payment-info h4 {
-            color: #0c5460;
+        .legal-info h4 {
+            color: #155724;
             margin-bottom: 10px;
             font-size: 14px;
         }
         
-        .payment-info p {
-            color: #0c5460;
+        .legal-info p {
+            color: #155724;
             font-size: 11px;
             margin-bottom: 5px;
         }
         
+        .footer {
             margin-top: 30px;
             text-align: center;
             font-size: 10px;
@@ -269,34 +178,25 @@
             border-top: 1px solid #dee2e6;
             padding-top: 15px;
         }
-        .footer {
-            margin-top: 36px;
-            text-align: center;
-            font-size: 11px;
-            color: #6c757d;
-            border-top: 1px solid #dee2e6;
-            padding-top: 18px;
-        }
         
         .amount-words {
             background: #f8f9fa;
             padding: 10px;
             margin: 15px 0;
-            border-left: 4px solid #17a2b8;
+            border-left: 4px solid rgba(59, 124, 228, 1);
             font-weight: bold;
-            color: #0c5460;
+            color: #155724;
         }
         
-        .consumer-notice {
+        .tax-info {
             background: #fff3cd;
             border: 1px solid #ffeaa7;
             padding: 10px;
             margin: 15px 0;
             border-radius: 5px;
-            text-align: center;
         }
         
-        .consumer-notice h5 {
+        .tax-info h5 {
             color: #856404;
             margin-bottom: 5px;
             font-size: 12px;
@@ -310,20 +210,19 @@
             <div class="company-info">
                 @include('comprobantes.partials.logo')
                 <div class="company-details">
-                    <h2>{{ $empresa['razon_social'] ?? 'IRM MAQUINARIAS SRL' }}</h2>
+                    <h2 style="color: rgba(59, 124, 228, 1; font-size: 18px; margin-bottom: 5px;">{{ $empresa['razon_social'] ?? 'IRM MAQUINARIAS SRL' }}</h2>
                     <p><strong>RUC:</strong> {{ $empresa['ruc'] ?? '20123456789' }}</p>
                     <p><strong>Dirección:</strong> {{ $empresa['direccion'] ?? 'Av. Industrial 123, Lima - Perú' }}</p>
                     <p><strong>Teléfono:</strong> {{ $empresa['telefono'] ?? '(01) 234-5678' }}</p>
                     <p><strong>Email:</strong> {{ $empresa['email'] ?? 'ventas@irmmaquinarias.com' }}</p>
                 </div>
             </div>
-            <div class="document-info">
-                <h1>BOLETA DE VENTA</h1>
-                <div class="document-number">{{ $venta->serie }}{{ $venta->numero }}</div>
+            <div class="document-info" style="border: 2px solid rgba(59, 124, 228, 1; background: #f8f9fa; padding: 15px; text-align: center;">
+                <h1 style="color: rgba(59, 124, 228, 1; font-size: 20px; margin-bottom: 10px;">BOLETA DE VENTA</h1>
+                <div class="document-number" style="font-size: 16px; font-weight: bold; color: rgba(59, 124, 228, 1); margin-bottom: 10px;">{{ $venta->serie }}-{{ $venta->numero }}</div>
                 <p><strong>Fecha:</strong> {{ date('d/m/Y', strtotime($venta->fecha)) }}</p>
                 <p><strong>Moneda:</strong> {{ $moneda->descripcion }}</p>
             </div>
-            <div style="clear: both;"></div>
         </div>
 
         <!-- Información del Cliente -->

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FACTURA - {{ $venta->serie }}-{{ $venta->numero }}</title>
+    <title>FACTURA - {{ $venta->numero }}</title>
     <style>
         * {
             margin: 0;
@@ -219,7 +219,8 @@
             </div>
             <div class="document-info">
                 <h1>FACTURA</h1>
-                <div class="document-number">{{ $venta->serie }}-{{ $venta->numero }}</div>
+                <!-- <div class="document-number">{{ $venta->serie }}-{{ $venta->numero }}</div> -->
+                <div class="document-number">{{ $venta->numero }}</div>
                 <p><strong>Fecha:</strong> {{ date('d/m/Y', strtotime($venta->fecha)) }}</p>
                 <p><strong>Moneda:</strong> {{ $moneda->descripcion }}</p>
             </div>

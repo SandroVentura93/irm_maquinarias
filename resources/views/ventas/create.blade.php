@@ -613,38 +613,38 @@ async function actualizarSerie() {
   const tipoComprobante = document.getElementById('tipo_comprobante').value;
   const serieInput = document.getElementById('serie');
   const numeroInput = document.getElementById('numero');
-  
+
   if (!tipoComprobante) {
     serieInput.value = '';
     numeroInput.value = 'Seleccione tipo';
     return;
   }
-  
+
   const config = configSeries[tipoComprobante];
   if (!config) return;
-  
+
   // Actualizar serie
   serieInput.value = config.serie;
-  
+
   try {
     // Mostrar cargando
     numeroInput.value = 'Cargando...';
-    
+
     // Obtener el siguiente número para esta serie y tipo
     const response = await fetch(`/api/ventas/siguiente-numero?tipo=${encodeURIComponent(tipoComprobante)}&serie=${encodeURIComponent(config.serie)}`);
-    
+
     if (!response.ok) {
       throw new Error('Error al obtener siguiente número');
     }
-    
+
     const data = await response.json();
-    
+
     // Mostrar el siguiente número con formato
     const numeroFormateado = String(data.siguiente_numero).padStart(8, '0');
-    numeroInput.value = config.prefijo + numeroFormateado;
-    
+    numeroInput.value = `${config.serie}-${numeroFormateado}`;
+
     console.log(`Serie actualizada: ${config.serie}, Próximo número: ${numeroFormateado}`);
-    
+
   } catch (error) {
     console.error('Error al obtener siguiente número:', error);
     numeroInput.value = 'Error al cargar';

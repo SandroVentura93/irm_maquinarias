@@ -20,6 +20,17 @@
                     </div>
                     @else
                     
+                    <!-- Errores de validación -->
+                    @if ($errors->any())
+                    <div class="alert alert-danger">
+                        <ul>
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                    @endif
+                    
                     <form action="{{ route('ventas.update', $venta) }}" method="POST" id="ventaForm">
                         @csrf
                         @method('PUT')
@@ -65,9 +76,28 @@
                             </div>
                             <div class="col-md-3">
                                 <div class="form-group">
-                                    <label for="correlativo">Correlativo <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="correlativo" name="correlativo" 
+                                    <label for="numero">Correlativo <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="numero" name="numero" 
                                            value="{{ $venta->numero }}" required maxlength="20">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mostrar todos los campos de la venta -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="xml_estado">Estado XML</label>
+                                    <input type="text" class="form-control" id="xml_estado" name="xml_estado" value="{{ $venta->xml_estado }}" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="moneda">Moneda</label>
+                                    <select class="form-control" id="moneda" name="moneda" required>
+                                        <option value="PEN" {{ $venta->moneda === 'PEN' ? 'selected' : '' }}>Soles (PEN)</option>
+                                        <option value="USD" {{ $venta->moneda === 'USD' ? 'selected' : '' }}>Dólares (USD)</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -352,6 +382,36 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Calcular totales iniciales
     calcularTotales();
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('ventaForm');
+    form.addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        // Enviar el formulario con fetch
+        fetch(form.action, {
+            method: 'POST',
+            body: new FormData(form),
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('Venta actualizada exitosamente');
+                window.location.href = "{{ route('ventas.index') }}";
+            } else {
+                alert('Hubo un error al actualizar la venta');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Hubo un error al procesar la solicitud');
+        });
+    });
 });
 </script>
 @endsection
