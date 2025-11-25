@@ -103,9 +103,31 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <!-- Información del saldo -->
-                    <div class="alert alert-info mb-4">
-                        <h6 class="mb-0">Saldo Pendiente: <span id="saldoPendiente" class="fw-bold">S/ 0.00</span></h6>
+                    <!-- Información del saldo en ambas monedas -->
+                    <div class="alert alert-info mb-3">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-flag-pe me-2"></i>
+                                    <strong>Soles:</strong> <span id="saldoPendienteSoles" class="fw-bold fs-5">S/ 0.00</span>
+                                </h6>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-flag-usa me-2"></i>
+                                    <strong>Dólares:</strong> <span id="saldoPendienteDolares" class="fw-bold fs-5">$ 0.00</span>
+                                </h6>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-muted small d-flex align-items-center justify-content-between">
+                            <span>
+                                <i class="fas fa-exchange-alt me-1"></i>
+                                Tipo de cambio: S/ <span id="tipoCambioDisplay" class="fw-bold" title="Obtenido desde SUNAT">...</span> por USD
+                            </span>
+                            <span class="badge bg-info" id="fuenteTipoCambio">
+                                <i class="fas fa-sync-alt"></i> Cargando...
+                            </span>
+                        </div>
                     </div>
 
                     <form id="formPago" method="POST" action="{{ route('ventas.pago') }}">
@@ -183,7 +205,7 @@
             return;
         }
 
-        modalPago.addEventListener('show.bs.modal', function (event) {
+        modalPago.addEventListener('show.bs.modal', async function (event) {
             const button = event.relatedTarget;
 
             if (!button) {
@@ -202,9 +224,86 @@
 
             console.log('Cargando datos en el modal:', { idVenta, saldo, pagos });
 
+            // Obtener tipo de cambio desde múltiples fuentes (SOLO desde SUNAT)
+            let tipoCambio = null;
+            let fuenteTipoCambio = 'Obteniendo...';
+            
+            // Intentar obtener el tipo de cambio actualizado desde la API interna
+            try {
+                const responseTipoCambio = await fetch('/ventas/tipo-cambio');
+                const contentType = responseTipoCambio.headers.get('content-type');
+                
+                // Verificar si la respuesta es JSON
+                if (contentType && contentType.includes('application/json')) {
+                    const dataTipoCambio = await responseTipoCambio.json();
+                    
+                    if (dataTipoCambio.success && dataTipoCambio.tipo_cambio) {
+                        tipoCambio = dataTipoCambio.tipo_cambio;
+                        fuenteTipoCambio = dataTipoCambio.fuente || 'API Externa';
+                        console.log('✓ Tipo de cambio obtenido de API interna:', tipoCambio, 'Fuente:', fuenteTipoCambio);
+                    }
+                } else {
+                    console.warn('API interna no disponible, intentando SUNAT directamente...');
+                    throw new Error('Respuesta no es JSON');
+                }
+            } catch (error) {
+                console.warn('Error con API interna, intentando SUNAT directamente:', error);
+                
+                // Fallback: Consultar directamente a SUNAT
+                try {
+                    const fecha = new Date().toISOString().split('T')[0];
+                    const responseSunat = await fetch(`https://api.apis.net.pe/v1/tipo-cambio-sunat?fecha=${fecha}`);
+                    const dataSunat = await responseSunat.json();
+                    
+                    if (dataSunat && dataSunat.compra) {
+                        tipoCambio = parseFloat(dataSunat.compra);
+                        fuenteTipoCambio = 'SUNAT (compra)';
+                        console.log('✓ Tipo de cambio obtenido de SUNAT directo:', tipoCambio);
+                    } else if (dataSunat && dataSunat.venta) {
+                        tipoCambio = parseFloat(dataSunat.venta);
+                        fuenteTipoCambio = 'SUNAT (venta)';
+                        console.log('⚠ Tipo de cambio obtenido de SUNAT (venta):', tipoCambio);
+                    }
+                } catch (errorSunat) {
+                    console.error('Error al obtener tipo de cambio de SUNAT:', errorSunat);
+                    // Si falla todo, usar 3.38 como último recurso
+                    tipoCambio = 3.38;
+                    fuenteTipoCambio = 'Fallback';
+                }
+            }
+            
+            // Validar que tenemos un tipo de cambio válido
+            if (!tipoCambio || tipoCambio <= 0) {
+                tipoCambio = 3.38; // Último recurso
+                fuenteTipoCambio = 'Fallback';
+                console.warn('⚠ Usando tipo de cambio de fallback:', tipoCambio);
+            }
+            
+            // Calcular montos en ambas monedas
+            const saldoNumerico = parseFloat(saldo);
+            const saldoSoles = saldoNumerico;
+            const saldoDolares = saldoNumerico / tipoCambio;
+
             document.getElementById('pago_id_venta').value = idVenta;
             document.getElementById('pago_monto').value = saldo;
-            document.getElementById('saldoPendiente').textContent = `S/ ${parseFloat(saldo).toFixed(2)}`;
+            
+            // Actualizar displays de monedas con información de fuente
+            document.getElementById('saldoPendienteSoles').textContent = `S/ ${saldoSoles.toFixed(2)}`;
+            document.getElementById('saldoPendienteDolares').textContent = `$ ${saldoDolares.toFixed(2)}`;
+            
+            // Mostrar tipo de cambio con fuente
+            const tipoCambioElement = document.getElementById('tipoCambioDisplay');
+            tipoCambioElement.textContent = tipoCambio.toFixed(4);
+            tipoCambioElement.title = `Fuente: ${fuenteTipoCambio}`;
+            
+            // Actualizar badge de fuente
+            const fuenteBadge = document.getElementById('fuenteTipoCambio');
+            if (fuenteBadge) {
+                fuenteBadge.innerHTML = `<i class="fas fa-check-circle"></i> ${fuenteTipoCambio}`;
+                fuenteBadge.className = fuenteTipoCambio.includes('SUNAT') ? 'badge bg-success' : 'badge bg-info';
+            }
+            
+            console.log(`💱 Usando tipo de cambio: S/ ${tipoCambio.toFixed(4)} (${fuenteTipoCambio})`);
 
             // Cargar historial de pagos
             const historialPagos = document.getElementById('historialPagos');
@@ -214,9 +313,20 @@
                 try {
                     const pagosData = JSON.parse(pagos);
                     pagosData.forEach(pago => {
+                        const montoSoles = parseFloat(pago.monto);
+                        const montoDolares = montoSoles / tipoCambio;
+                        
                         const listItem = document.createElement('li');
-                        listItem.className = 'list-group-item';
-                        listItem.textContent = `Monto: S/ ${pago.monto} - Método: ${pago.metodo} - Fecha: ${pago.fecha}`;
+                        listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                        listItem.innerHTML = `
+                            <div>
+                                <strong>${pago.metodo}</strong> - ${pago.fecha}
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-success me-2">S/ ${montoSoles.toFixed(2)}</span>
+                                <span class="badge bg-primary">$ ${montoDolares.toFixed(2)}</span>
+                            </div>
+                        `;
                         historialPagos.appendChild(listItem);
                     });
                 } catch (error) {
@@ -224,7 +334,7 @@
                 }
             } else {
                 const listItem = document.createElement('li');
-                listItem.className = 'list-group-item';
+                listItem.className = 'list-group-item text-muted';
                 listItem.textContent = 'No hay pagos registrados.';
                 historialPagos.appendChild(listItem);
             }

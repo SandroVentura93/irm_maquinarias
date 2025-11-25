@@ -24,4 +24,21 @@ class Proveedor extends Model
         'id_ubigeo',
         'activo',
     ];
+
+    /**
+     * Relación con Ubigeo
+     */
+    public function ubigeo()
+    {
+        return $this->belongsTo(Ubigeo::class, 'id_ubigeo', 'id_ubigeo');
+    }
+
+    /**
+     * Relación con Compras
+     */
+    public function compras()
+    {
+        return $this->hasMany(Compra::class, 'id_proveedor', 'id_proveedor');
+    }
 }
+

@@ -50,12 +50,13 @@ class MonedaController extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\Moneda  $moneda
+     * @param  int  $id_moneda
      * @return \Illuminate\Http\Response
      */
-    public function show(Moneda $moneda)
+    public function show($id_moneda)
     {
-        //
+        $moneda = Moneda::findOrFail($id_moneda);
+        return view('monedas.show', compact('moneda'));
     }
 
     /**

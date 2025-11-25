@@ -95,8 +95,51 @@
                 <i class="fas fa-filter me-2 text-primary"></i>
                 Filtros y Búsqueda Avanzada
             </h5>
+            @if(request('search') || request('categoria_id') || request('marca_id') || request('stock_status'))
+            <div class="active-filters-badge">
+                <span class="badge bg-success">
+                    <i class="fas fa-check-circle me-1"></i>
+                    Filtros Activos
+                </span>
+            </div>
+            @endif
         </div>
         <div class="card-body">
+            <!-- Indicadores de filtros activos -->
+            @if(request('search') || request('categoria_id') || request('marca_id') || request('stock_status'))
+            <div class="active-filters-display mb-3">
+                <strong><i class="fas fa-info-circle me-2 text-primary"></i>Filtros aplicados:</strong>
+                <div class="filter-tags mt-2">
+                    @if(request('search'))
+                    <span class="filter-tag">
+                        <i class="fas fa-search"></i> Búsqueda: <strong>{{ request('search') }}</strong>
+                    </span>
+                    @endif
+                    @if(request('categoria_id'))
+                    @php
+                        $categoriaSeleccionada = $categorias->firstWhere('id', request('categoria_id'));
+                    @endphp
+                    <span class="filter-tag">
+                        <i class="fas fa-tags"></i> Categoría: <strong>{{ $categoriaSeleccionada->descripcion ?? 'N/A' }}</strong>
+                    </span>
+                    @endif
+                    @if(request('marca_id'))
+                    @php
+                        $marcaSeleccionada = $marcas->firstWhere('id', request('marca_id'));
+                    @endphp
+                    <span class="filter-tag">
+                        <i class="fas fa-copyright"></i> Marca: <strong>{{ $marcaSeleccionada->descripcion ?? 'N/A' }}</strong>
+                    </span>
+                    @endif
+                    @if(request('stock_status'))
+                    <span class="filter-tag">
+                        <i class="fas fa-warehouse"></i> Stock: <strong>{{ request('stock_status') == 'bajo' ? 'Bajo' : 'Normal' }}</strong>
+                    </span>
+                    @endif
+                </div>
+            </div>
+            @endif
+
             <form method="GET" action="{{ route('productos.index') }}" id="filterForm">
                 <div class="row g-3">
                     <div class="col-md-4">
@@ -467,12 +510,73 @@
     background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
     border-bottom: 1px solid #e2e8f0;
     padding: 20px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .modern-footer {
     background: #f8fafc;
     border-top: 1px solid #e2e8f0;
     padding: 20px 25px;
+}
+
+/* Indicadores de filtros activos */
+.active-filters-badge {
+    display: inline-flex;
+    align-items: center;
+}
+
+.active-filters-display {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border: 2px solid #86efac;
+    border-radius: 12px;
+    padding: 16px 20px;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.filter-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.filter-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: white;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 2px solid #10b981;
+    color: #065f46;
+    font-size: 14px;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+    transition: all 0.2s ease;
+}
+
+.filter-tag:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.filter-tag i {
+    color: #10b981;
+}
+
+.filter-tag strong {
+    color: #047857;
 }
 
 /* Inputs y selects modernos */
@@ -708,11 +812,21 @@
 <script>
 // JavaScript mejorado para la página de productos
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-submit en cambios de filtros con loading
+    // Auto-submit en cambios de filtros con delay para mejor UX
     document.querySelectorAll('#categoria_id, #marca_id, #stock_status, #sort_by').forEach(function(element) {
         element.addEventListener('change', function() {
-            showLoading();
-            document.getElementById('filterForm').submit();
+            const selectElement = this;
+            const selectedText = selectElement.options[selectElement.selectedIndex].text;
+            
+            // Mostrar feedback visual inmediato
+            selectElement.style.borderColor = '#10b981';
+            selectElement.style.backgroundColor = '#f0fdf4';
+            
+            // Pequeño delay para que el usuario vea su selección
+            setTimeout(function() {
+                showLoading();
+                document.getElementById('filterForm').submit();
+            }, 300);
         });
     });
     
@@ -720,13 +834,15 @@ document.addEventListener('DOMContentLoaded', function() {
     let searchTimeout;
     const searchInput = document.getElementById('search');
     
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(function() {
-            showLoading();
-            document.getElementById('filterForm').submit();
-        }, 800);
-    });
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(function() {
+                showLoading();
+                document.getElementById('filterForm').submit();
+            }, 800);
+        });
+    }
     
     // Loading indicator
     function showLoading() {
@@ -734,6 +850,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (submitBtn) {
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Buscando...';
             submitBtn.disabled = true;
+        }
+        
+        // También mostrar overlay de carga en la tabla
+        const cardBody = document.querySelector('.table-responsive');
+        if (cardBody) {
+            cardBody.style.opacity = '0.5';
+            cardBody.style.pointerEvents = 'none';
         }
     }
     

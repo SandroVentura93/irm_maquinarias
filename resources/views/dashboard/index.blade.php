@@ -264,6 +264,7 @@
                         <div class="client-progress">
                             @php
                                 $max_gastado = $top_clientes->first()->total_gastado ?? 1;
+                                $max_gastado = $max_gastado > 0 ? $max_gastado : 1;
                                 $porcentaje = ($cliente_data->total_gastado / $max_gastado) * 100;
                             @endphp
                             <div class="progress">
@@ -428,6 +429,15 @@
                         <div class="metric-content">
                             <span class="metric-number">{{ number_format($boletas) }}</span>
                             <span class="metric-name">Boletas</span>
+                        </div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-icon tickets">
+                            <i class="fas fa-ticket-alt"></i>
+                        </div>
+                        <div class="metric-content">
+                            <span class="metric-number">{{ number_format($tickets) }}</span>
+                            <span class="metric-name">Tickets</span>
                         </div>
                     </div>
                     <div class="metric-item">
@@ -1345,6 +1355,10 @@
 
 .metric-icon.boletas {
     background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%);
+}
+
+.metric-icon.tickets {
+    background: linear-gradient(135deg, #e83e8c 0%, #fd7e14 100%);
 }
 
 .metric-icon.cotizaciones {
@@ -2754,26 +2768,14 @@ document.addEventListener('DOMContentLoaded', function() {
         observer.observe(el);
     });
     
-    // Contador animado para números
+    // Contador animado para números - DESACTIVADO para mejor rendimiento
     function animateValue(element, start, end, duration) {
-        if (start === end) return;
-        const range = end - start;
-        let current = start;
-        const increment = end > start ? 1 : -1;
-        const stepTime = Math.abs(Math.floor(duration / range));
-        
-        const timer = setInterval(() => {
-            current += increment;
-            if (element.textContent.includes('S/')) {
-                element.textContent = `S/ ${current.toLocaleString()}`;
-            } else {
-                element.textContent = current.toLocaleString();
-            }
-            
-            if (current === end) {
-                clearInterval(timer);
-            }
-        }, stepTime);
+        // Mostrar valor final inmediatamente sin animación
+        if (element.textContent.includes('S/')) {
+            element.textContent = `S/ ${end.toLocaleString()}`;
+        } else {
+            element.textContent = end.toLocaleString();
+        }
     }
     
     // Animar números cuando las cards entran en viewport
@@ -2786,8 +2788,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const targetValue = parseInt(text) || 0;
                 
                 if (targetValue > 0) {
-                    element.textContent = '0';
-                    animateValue(element, 0, targetValue, 2000);
+                    // Mostrar valor inmediatamente sin animación
+                    animateValue(element, 0, targetValue, 0);
                 }
                 
                 numberObserver.unobserve(element);

@@ -61,8 +61,8 @@
               <i class="fas fa-coins me-1"></i>
               Moneda
             </label>
-            <select id="moneda" class="form-select modern-select">
-              <option value="PEN">🇵🇪 Sol Peruano</option>
+            <select id="moneda" class="form-select modern-select" style="font-weight: 600;" onchange="actualizarVisualizacionMoneda()">
+              <option value="PEN" selected style="background-color: #e8f5e9; font-weight: bold;">🇵🇪 Sol Peruano</option>
               <option value="USD">🇺🇸 Dólar</option>
             </select>
           </div>
@@ -586,9 +586,48 @@ const configSeries = {
 
 // === FUNCIÓN ELIMINADA - NO MÁS MENSAJES DE SUGERENCIAS ===
 
-// === SIN VALIDACIONES NI SUGERENCIAS - SOLO LO QUE EL USUARIO ELIJE ===
+// === ACTUALIZAR VISUALIZACIÓN AL CAMBIAR MONEDA MANUALMENTE ===
+function actualizarVisualizacionMoneda() {
+  const monedaSelect = document.getElementById('moneda');
+  const monedaSeleccionada = monedaSelect.value;
+  
+  // Reordenar opciones con la seleccionada primero y resaltada
+  if (monedaSeleccionada === 'USD') {
+    monedaSelect.innerHTML = `
+      <option value="USD" selected style="background-color: #e3f2fd; font-weight: bold; font-size: 1.1em;">🇺🇸 Dólar (Prioritario)</option>
+      <option value="PEN" style="font-size: 0.95em;">🇵🇪 Sol Peruano</option>
+    `;
+  } else {
+    monedaSelect.innerHTML = `
+      <option value="PEN" selected style="background-color: #e8f5e9; font-weight: bold; font-size: 1.1em;">🇵🇪 Sol Peruano (Prioritario)</option>
+      <option value="USD" style="font-size: 0.95em;">🇺🇸 Dólar</option>
+    `;
+  }
+  monedaSelect.value = monedaSeleccionada;
+}
+
+// === VALIDACIÓN Y AJUSTE DE MONEDA SEGÚN TIPO DE COMPROBANTE ===
 function validarCambioTipoComprobante() {
-  // No hacer nada - el usuario decide qué tipo usar
+  const tipoComprobante = document.getElementById('tipo_comprobante').value;
+  const monedaSelect = document.getElementById('moneda');
+  
+  // Configurar orden y resaltado de opciones según tipo de comprobante
+  if (tipoComprobante === 'Factura' || tipoComprobante === 'Boleta de Venta' || tipoComprobante === 'Ticket de Máquina Registradora') {
+    // Para comprobantes oficiales, priorizar SOLES
+    monedaSelect.innerHTML = `
+      <option value="PEN" selected style="background-color: #e8f5e9; font-weight: bold; font-size: 1.1em;">🇵🇪 Sol Peruano (Prioritario)</option>
+      <option value="USD" style="font-size: 0.95em;">🇺🇸 Dólar</option>
+    `;
+    monedaSelect.value = 'PEN';
+  } else if (tipoComprobante === 'Cotización') {
+    // Para cotizaciones, priorizar DÓLARES
+    monedaSelect.innerHTML = `
+      <option value="USD" selected style="background-color: #e3f2fd; font-weight: bold; font-size: 1.1em;">🇺🇸 Dólar (Prioritario)</option>
+      <option value="PEN" style="font-size: 0.95em;">🇵🇪 Sol Peruano</option>
+    `;
+    monedaSelect.value = 'USD';
+  }
+  
   actualizarSerie(); // Solo actualizar la serie
 }
 

@@ -80,11 +80,8 @@ class ClienteController extends Controller
 
         $cliente = Cliente::create($validatedData);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Cliente creado exitosamente.',
-            'cliente' => $cliente
-        ]);
+        return redirect()->route('clientes.index')
+            ->with('success', 'Cliente registrado exitosamente.');
     }
 
     /**

@@ -124,7 +124,64 @@ class VentaController extends Controller
     // Método para obtener tipo de cambio desde múltiples APIs
     private function obtenerTipoCambioAPI()
     {
-        // Método vacío temporalmente
+        // 1. Intentar desde API de SUNAT
+        try {
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 5]);
+            $fecha = now()->format('d-m-Y');
+            
+            $response = $client->get("https://api.apis.net.pe/v1/tipo-cambio-sunat", [
+                'query' => ['fecha' => $fecha]
+            ]);
+            
+            if ($response->getStatusCode() == 200) {
+                $data = json_decode($response->getBody(), true);
+                
+                if (isset($data['compra']) && isset($data['venta'])) {
+                    // Usar precio de COMPRA (para mostrar cuántos soles por dólar)
+                    $tipoCambio = $data['compra'];
+                    
+                    // Guardar info en cache
+                    \Cache::put('tipo_cambio_usd_pen_info', [
+                        'fuente' => 'SUNAT',
+                        'fecha_actualizacion' => now(),
+                        'cache_hit' => false,
+                        'compra' => $data['compra'],
+                        'venta' => $data['venta']
+                    ], 3600);
+                    
+                    \Log::info("Tipo de cambio obtenido de SUNAT (compra): {$tipoCambio}");
+                    return $tipoCambio;
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Error al obtener tipo de cambio de SUNAT: ' . $e->getMessage());
+        }
+        
+        // 2. Fallback: API alternativa
+        try {
+            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 5]);
+            $response = $client->get("https://api.exchangerate-api.com/v4/latest/USD");
+            
+            if ($response->getStatusCode() == 200) {
+                $data = json_decode($response->getBody(), true);
+                
+                if (isset($data['rates']['PEN'])) {
+                    $tipoCambio = $data['rates']['PEN'];
+                    
+                    \Cache::put('tipo_cambio_usd_pen_info', [
+                        'fuente' => 'ExchangeRate-API',
+                        'fecha_actualizacion' => now(),
+                        'cache_hit' => false
+                    ], 3600);
+                    
+                    \Log::info("Tipo de cambio obtenido de API alternativa: {$tipoCambio}");
+                    return $tipoCambio;
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Error al obtener tipo de cambio de API alternativa: ' . $e->getMessage());
+        }
+        
         return null;
     }
 

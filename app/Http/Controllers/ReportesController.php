@@ -640,6 +640,92 @@ class ReportesController extends Controller
 
         return \Excel::download(new \App\Exports\ReporteDiarioExport($data), 'reporte_semanal_' . $year . '_semana_' . $week . '.xlsx');
     }
+
+    // Exportar reporte semanal en PDF
+    public function exportarSemanalPdf(Request $request)
+    {
+        $year = $request->input('year', date('Y'));
+        $week = $request->input('week', date('W'));
+        
+        $dto = new \DateTime();
+        $dto->setISODate($year, $week);
+        $fecha_inicio = $dto->format('Y-m-d');
+        $dto->modify('+6 days');
+        $fecha_fin = $dto->format('Y-m-d');
+        $desde = $fecha_inicio . ' 00:00:00';
+        $hasta = $fecha_fin . ' 23:59:59';
+
+        $total_ventas = Venta::whereBetween('fecha', [$desde, $hasta])->sum('total');
+        $total_compras = Compra::whereBetween('fecha', [$desde, $hasta])->sum('total');
+        $ganancia = $total_ventas - $total_compras;
+        $cantidad_productos_vendidos = \App\Models\DetalleVenta::whereHas('venta', function($q) use ($desde, $hasta) {
+            $q->whereBetween('fecha', [$desde, $hasta]);
+        })->sum('cantidad');
+        $cantidad_productos_comprados = \App\Models\DetalleCompra::whereHas('compra', function($q) use ($desde, $hasta) {
+            $q->whereBetween('fecha', [$desde, $hasta]);
+        })->sum('cantidad');
+
+        $ventas_por_producto = \App\Models\DetalleVenta::select('id_producto', \DB::raw('SUM(cantidad) as cantidad_vendida'), \DB::raw('SUM(total) as total_venta'))
+            ->whereHas('venta', function($q) use ($desde, $hasta) {
+                $q->whereBetween('fecha', [$desde, $hasta]);
+            })
+            ->groupBy('id_producto')
+            ->with('producto')
+            ->get();
+
+        $compras_por_producto = \App\Models\DetalleCompra::select('id_producto', \DB::raw('SUM(cantidad) as cantidad_comprada'), \DB::raw('SUM(total) as total_compra'))
+            ->whereHas('compra', function($q) use ($desde, $hasta) {
+                $q->whereBetween('fecha', [$desde, $hasta]);
+            })
+            ->groupBy('id_producto')
+            ->with('producto')
+            ->get();
+
+        $productos = [];
+        foreach ($ventas_por_producto as $venta) {
+            $prod_id = $venta->id_producto;
+            $productos[$prod_id] = [
+                'nombre' => $venta->producto ? $venta->producto->descripcion : 'N/A',
+                'cantidad_vendida' => $venta->cantidad_vendida,
+                'total_venta' => $venta->total_venta,
+                'cantidad_comprada' => 0,
+                'total_compra' => 0
+            ];
+        }
+
+        foreach ($compras_por_producto as $compra) {
+            $prod_id = $compra->id_producto;
+            if (!isset($productos[$prod_id])) {
+                $productos[$prod_id] = [
+                    'nombre' => $compra->producto ? $compra->producto->descripcion : 'N/A',
+                    'cantidad_vendida' => 0,
+                    'total_venta' => 0,
+                    'cantidad_comprada' => $compra->cantidad_comprada,
+                    'total_compra' => $compra->total_compra
+                ];
+            } else {
+                $productos[$prod_id]['cantidad_comprada'] = $compra->cantidad_comprada;
+                $productos[$prod_id]['total_compra'] = $compra->total_compra;
+            }
+        }
+
+        $data = [
+            'year' => $year,
+            'week' => $week,
+            'fecha_inicio' => $fecha_inicio,
+            'fecha_fin' => $fecha_fin,
+            'total_ventas' => $total_ventas,
+            'total_compras' => $total_compras,
+            'ganancia' => $ganancia,
+            'cantidad_productos_vendidos' => $cantidad_productos_vendidos,
+            'cantidad_productos_comprados' => $cantidad_productos_comprados,
+            'productos' => array_values($productos)
+        ];
+
+        $pdf = \PDF::loadView('reportes.pdf.semanal', $data);
+        return $pdf->download('reporte_semanal_' . $year . '_semana_' . $week . '.pdf');
+    }
+
     // Reporte semanal
     public function semanal(Request $request)
     {
@@ -807,7 +893,9 @@ class ReportesController extends Controller
             'hora_fin',
             'grafico_path'
         );
-        // PDF export logic here (if missing, add return statement)
+        
+        $pdf = \PDF::loadView('reportes.diario_pdf', $data);
+        return $pdf->download('reporte_diario_' . $fecha . '.pdf');
     }
     public function exportarExcel(Request $request)
     {
