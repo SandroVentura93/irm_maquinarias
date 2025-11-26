@@ -148,7 +148,7 @@
                                 <select name="id_marca" id="id_marca" class="form-select modern-select">
                                     <option value="">🏭 Seleccione marca</option>
                                     @foreach ($marcas as $marca)
-                                        <option value="{{ $marca->id }}" {{ old('id_marca') == $marca->id ? 'selected' : '' }}>
+                                        <option value="{{ $marca->id_marca }}" {{ old('id_marca') == $marca->id_marca ? 'selected' : '' }}>
                                             {{ $marca->descripcion }}
                                         </option>
                                     @endforeach
@@ -162,7 +162,7 @@
                                 <select name="id_proveedor" id="id_proveedor" class="form-select modern-select">
                                     <option value="">🚛 Seleccione proveedor</option>
                                     @foreach ($proveedores as $proveedor)
-                                        <option value="{{ $proveedor->id }}" {{ old('id_proveedor') == $proveedor->id ? 'selected' : '' }}>
+                                        <option value="{{ $proveedor->id_proveedor }}" {{ old('id_proveedor') == $proveedor->id_proveedor ? 'selected' : '' }}>
                                             {{ $proveedor->nombre ?? $proveedor->razon_social ?? $proveedor->descripcion }}
                                         </option>
                                     @endforeach

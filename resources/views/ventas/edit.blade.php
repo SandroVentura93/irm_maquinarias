@@ -95,8 +95,14 @@
                                 <div class="form-group">
                                     <label for="moneda">Moneda</label>
                                     <select class="form-control" id="moneda" name="moneda" required>
-                                        <option value="PEN" {{ $venta->moneda === 'PEN' ? 'selected' : '' }}>Soles (PEN)</option>
-                                        <option value="USD" {{ $venta->moneda === 'USD' ? 'selected' : '' }}>Dólares (USD)</option>
+                                        <option value="PEN" {{ $venta->moneda === 'PEN' ? 'selected' : '' }} 
+                                            style="background-color: #d4edda; font-weight: bold; color: #155724;">
+                                            🇵🇪 Sol Peruano (PEN)
+                                        </option>
+                                        <option value="USD" {{ $venta->moneda === 'USD' ? 'selected' : '' }} 
+                                            style="color: #004085;">
+                                            🇺🇸 Dólar Estadounidense (USD)
+                                        </option>
                                     </select>
                                 </div>
                             </div>

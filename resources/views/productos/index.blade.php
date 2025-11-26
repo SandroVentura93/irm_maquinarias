@@ -117,7 +117,7 @@
                     @endif
                     @if(request('categoria_id'))
                     @php
-                        $categoriaSeleccionada = $categorias->firstWhere('id', request('categoria_id'));
+                        $categoriaSeleccionada = $categorias->firstWhere('id_categoria', request('categoria_id'));
                     @endphp
                     <span class="filter-tag">
                         <i class="fas fa-tags"></i> Categoría: <strong>{{ $categoriaSeleccionada->descripcion ?? 'N/A' }}</strong>
@@ -125,7 +125,7 @@
                     @endif
                     @if(request('marca_id'))
                     @php
-                        $marcaSeleccionada = $marcas->firstWhere('id', request('marca_id'));
+                        $marcaSeleccionada = $marcas->firstWhere('id_marca', request('marca_id'));
                     @endphp
                     <span class="filter-tag">
                         <i class="fas fa-copyright"></i> Marca: <strong>{{ $marcaSeleccionada->descripcion ?? 'N/A' }}</strong>
@@ -160,7 +160,7 @@
                         <select name="categoria_id" id="categoria_id" class="form-select modern-select">
                             <option value="">🏷️ Todas las categorías</option>
                             @foreach($categorias as $categoria)
-                                <option value="{{ $categoria->id }}" {{ request('categoria_id') == $categoria->id ? 'selected' : '' }}>
+                                <option value="{{ $categoria->id_categoria }}" {{ request('categoria_id') == $categoria->id_categoria ? 'selected' : '' }}>
                                     {{ $categoria->descripcion }}
                                 </option>
                             @endforeach
@@ -174,7 +174,7 @@
                         <select name="marca_id" id="marca_id" class="form-select modern-select">
                             <option value="">🏭 Todas las marcas</option>
                             @foreach($marcas as $marca)
-                                <option value="{{ $marca->id }}" {{ request('marca_id') == $marca->id ? 'selected' : '' }}>
+                                <option value="{{ $marca->id_marca }}" {{ request('marca_id') == $marca->id_marca ? 'selected' : '' }}>
                                     {{ $marca->descripcion }}
                                 </option>
                             @endforeach

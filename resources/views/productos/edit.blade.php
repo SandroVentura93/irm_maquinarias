@@ -263,8 +263,8 @@
                                                 class="form-select modern-select @error('id_categoria') is-invalid @enderror">
                                             <option value="">Seleccione una categoría</option>
                                             @foreach ($categorias as $categoria)
-                                                <option value="{{ $categoria->id }}" 
-                                                        {{ old('id_categoria', $producto->categoria_id ?? $producto->id_categoria) == $categoria->id ? 'selected' : '' }}>
+                                                <option value="{{ $categoria->id_categoria }}" 
+                                                        {{ old('id_categoria', $producto->categoria_id ?? $producto->id_categoria) == $categoria->id_categoria ? 'selected' : '' }}>
                                                     {{ $categoria->descripcion }}
                                                 </option>
                                             @endforeach
@@ -294,8 +294,8 @@
                                                 class="form-select modern-select @error('id_marca') is-invalid @enderror">
                                             <option value="">Seleccione una marca</option>
                                             @foreach ($marcas as $marca)
-                                                <option value="{{ $marca->id }}" 
-                                                        {{ old('id_marca', $producto->marca_id ?? $producto->id_marca) == $marca->id ? 'selected' : '' }}>
+                                                <option value="{{ $marca->id_marca }}" 
+                                                        {{ old('id_marca', $producto->marca_id ?? $producto->id_marca) == $marca->id_marca ? 'selected' : '' }}>
                                                     {{ $marca->descripcion }}
                                                 </option>
                                             @endforeach
@@ -325,8 +325,8 @@
                                                 class="form-select modern-select @error('id_proveedor') is-invalid @enderror">
                                             <option value="">Seleccione un proveedor</option>
                                             @foreach ($proveedores as $proveedor)
-                                                <option value="{{ $proveedor->id }}" 
-                                                        {{ old('id_proveedor', $producto->proveedor_id ?? $producto->id_proveedor) == $proveedor->id ? 'selected' : '' }}>
+                                                <option value="{{ $proveedor->id_proveedor }}" 
+                                                        {{ old('id_proveedor', $producto->proveedor_id ?? $producto->id_proveedor) == $proveedor->id_proveedor ? 'selected' : '' }}>
                                                     {{ $proveedor->nombre ?? $proveedor->razon_social ?? $proveedor->descripcion }}
                                                 </option>
                                             @endforeach

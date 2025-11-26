@@ -30,12 +30,12 @@ class ProductoController extends Controller
         
         // Filtro por categoría
         if ($request->has('categoria_id') && $request->categoria_id != '') {
-            $query->where('categoria_id', $request->categoria_id);
+            $query->where('id_categoria', $request->categoria_id);
         }
         
         // Filtro por marca
         if ($request->has('marca_id') && $request->marca_id != '') {
-            $query->where('marca_id', $request->marca_id);
+            $query->where('id_marca', $request->marca_id);
         }
         
         // Filtro por estado de stock
@@ -93,8 +93,8 @@ class ProductoController extends Controller
     {
         $validated = $request->validate([
             'id_categoria' => 'nullable|exists:categorias,id_categoria',
-            'id_marca' => 'nullable|integer',
-            'id_proveedor' => 'nullable|integer',
+            'id_marca' => 'nullable|exists:marcas,id_marca',
+            'id_proveedor' => 'nullable|exists:proveedores,id_proveedor',
             'codigo' => 'required|string|max:50|unique:productos,codigo',
             'numero_parte' => 'nullable|string|max:50',
             'descripcion' => 'required|string|max:255',
@@ -149,8 +149,8 @@ class ProductoController extends Controller
     {
         $validated = $request->validate([
             'id_categoria' => 'nullable|exists:categorias,id_categoria',
-            'id_marca' => 'nullable|integer',
-            'id_proveedor' => 'nullable|integer',
+            'id_marca' => 'nullable|exists:marcas,id_marca',
+            'id_proveedor' => 'nullable|exists:proveedores,id_proveedor',
             'codigo' => 'required|string|max:50|unique:productos,codigo,' . $producto->id_producto . ',id_producto',
             'numero_parte' => 'nullable|string|max:50',
             'descripcion' => 'required|string|max:255',

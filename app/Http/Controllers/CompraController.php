@@ -31,6 +31,7 @@ class CompraController extends Controller
             'id_proveedor' => 'required|exists:proveedores,id_proveedor',
             'id_moneda' => 'required|exists:monedas,id_moneda',
             'fecha' => 'required|date',
+            'incluir_igv' => 'nullable|boolean',
             'subtotal' => 'required|numeric',
             'igv' => 'required|numeric',
             'total' => 'required|numeric',
@@ -41,10 +42,14 @@ class CompraController extends Controller
         ]);
 
         $compra = Compra::create($data);
+        
+        // Determinar si se debe calcular IGV
+        $incluir_igv = $data['incluir_igv'] ?? true;
+        
         foreach ($data['detalles'] as $detalle) {
             $detalle['id_compra'] = $compra->id_compra;
             $detalle['subtotal'] = $detalle['cantidad'] * $detalle['precio_unitario'];
-            $detalle['igv'] = $detalle['subtotal'] * 0.18;
+            $detalle['igv'] = $incluir_igv ? $detalle['subtotal'] * 0.18 : 0;
             $detalle['total'] = $detalle['subtotal'] + $detalle['igv'];
             DetalleCompra::create($detalle);
         }
@@ -72,6 +77,7 @@ class CompraController extends Controller
             'id_proveedor' => 'required|exists:proveedores,id_proveedor',
             'id_moneda' => 'required|exists:monedas,id_moneda',
             'fecha' => 'required|date',
+            'incluir_igv' => 'nullable|boolean',
             'subtotal' => 'required|numeric',
             'igv' => 'required|numeric',
             'total' => 'required|numeric',
@@ -81,13 +87,17 @@ class CompraController extends Controller
             'detalles.*.precio_unitario' => 'required|numeric',
         ]);
         $compra = Compra::findOrFail($id);
+        
+        // Determinar si se debe calcular IGV
+        $incluir_igv = $data['incluir_igv'] ?? true;
+        
         // Calcular totales
         $subtotal = 0;
         $igv = 0;
         $total = 0;
         foreach ($data['detalles'] as &$detalle) {
             $detalle['subtotal'] = $detalle['cantidad'] * $detalle['precio_unitario'];
-            $detalle['igv'] = $detalle['subtotal'] * 0.18;
+            $detalle['igv'] = $incluir_igv ? $detalle['subtotal'] * 0.18 : 0;
             $detalle['total'] = $detalle['subtotal'] + $detalle['igv'];
             $subtotal += $detalle['subtotal'];
             $igv += $detalle['igv'];
@@ -111,5 +121,15 @@ class CompraController extends Controller
         $compra->detalles()->delete();
         $compra->delete();
         return redirect()->route('compras.index')->with('success', 'Compra eliminada correctamente');
+    }
+
+    public function productosPorProveedor($id_proveedor)
+    {
+        $productos = Producto::where('id_proveedor', $id_proveedor)
+            ->select('id_producto', 'codigo', 'descripcion')
+            ->orderBy('descripcion')
+            ->get();
+        
+        return response()->json($productos);
     }
 }

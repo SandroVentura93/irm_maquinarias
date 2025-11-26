@@ -313,6 +313,73 @@
         margin-right: 0.5rem;
     }
 
+    /* Estilos para el buscador de productos */
+    .search-container {
+        position: relative;
+    }
+
+    .suggestions-list {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 2px solid #dc2626;
+        border-top: none;
+        border-radius: 0 0 10px 10px;
+        max-height: 300px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .suggestions-list.show {
+        display: block;
+    }
+
+    .suggestion-item {
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        border-bottom: 1px solid #f3f4f6;
+        transition: all 0.2s ease;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .suggestion-item:last-child {
+        border-bottom: none;
+    }
+
+    .suggestion-item:hover {
+        background-color: #fef2f2;
+        padding-left: 1.25rem;
+    }
+
+    .suggestion-item.selected {
+        background-color: #fee2e2;
+        border-left: 4px solid #dc2626;
+    }
+
+    .suggestion-codigo {
+        font-weight: 600;
+        color: #dc2626;
+        margin-right: 0.5rem;
+    }
+
+    .suggestion-descripcion {
+        color: #374151;
+        flex: 1;
+    }
+
+    .no-results {
+        padding: 1rem;
+        text-align: center;
+        color: #6b7280;
+        font-style: italic;
+    }
+
     @media (max-width: 768px) {
         .actions-bar {
             flex-direction: column;
@@ -370,7 +437,11 @@
                         <select name="id_moneda" id="id_moneda" class="form-select" required>
                             <option value="">Seleccione una moneda</option>
                             @foreach($monedas as $moneda)
-                                <option value="{{ $moneda->id_moneda }}">{{ $moneda->nombre }}</option>
+                                <option value="{{ $moneda->id_moneda }}" 
+                                    {{ ($moneda->codigo_iso == 'PEN' || $moneda->id_moneda == 1) ? 'selected' : '' }}
+                                    style="{{ ($moneda->codigo_iso == 'PEN' || $moneda->id_moneda == 1) ? 'background-color: #e8f5e9; font-weight: bold;' : '' }}">
+                                    {{ $moneda->simbolo }} {{ $moneda->nombre }}
+                                </option>
                             @endforeach
                         </select>
                     </div>
@@ -403,6 +474,18 @@
                 </h5>
             </div>
             <div class="card-body-custom">
+                <!-- Buscador de productos -->
+                <div class="mb-3 search-container">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" id="buscadorProducto" class="form-control" placeholder="Buscar producto por código o descripción..." 
+                               autocomplete="off" onkeyup="buscarProducto(event)" onfocus="buscarProducto(event)">
+                    </div>
+                    <div id="suggestionsList" class="suggestions-list"></div>
+                </div>
+
                 <div class="table-responsive">
                     <table class="table table-productos mb-3" id="productos-table">
                         <thead>
@@ -416,11 +499,8 @@
                         <tbody>
                             <tr>
                                 <td>
-                                    <select name="detalles[0][id_producto]" class="form-select form-select-sm" required>
-                                        <option value="">Seleccione...</option>
-                                        @foreach($productos as $producto)
-                                            <option value="{{ $producto->id_producto }}">{{ $producto->descripcion }}</option>
-                                        @endforeach
+                                    <select name="detalles[0][id_producto]" class="form-select form-select-sm producto-select" required>
+                                        <option value="">Primero seleccione un proveedor</option>
                                     </select>
                                 </td>
                                 <td>
@@ -470,7 +550,12 @@
                     </div>
                     
                     <div class="total-item">
-                        <span class="total-label">IGV (18%):</span>
+                        <span class="total-label">
+                            <div class="form-check form-switch d-inline-block me-2">
+                                <input class="form-check-input" type="checkbox" id="incluirIGV" checked onchange="calcularTotales()">
+                            </div>
+                            IGV (18%):
+                        </span>
                         <span class="total-value">
                             <input type="text" name="igv" id="igv" class="form-control form-control-sm text-end" readonly 
                                    style="display: inline-block; width: 150px; border: none; background: transparent; font-weight: 700; color: #dc2626;">
@@ -521,6 +606,9 @@
                 </div>
             </div>
         </div>
+
+        <!-- Campo oculto para incluir_igv -->
+        <input type="hidden" name="incluir_igv" id="incluir_igv_hidden" value="1">
 
         <!-- Acciones -->
         <div class="actions-bar">
@@ -622,18 +710,37 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch(`/compras/productos-por-proveedor/${proveedorId}`)
                 .then(response => response.json())
                 .then(data => {
-                    document.querySelectorAll('select[name^="detalles"]').forEach(function(productSelect) {
+                    // Actualizar array de productos para el buscador
+                    productos = data.map(p => ({
+                        id: p.id_producto,
+                        codigo: p.codigo || '',
+                        descripcion: p.descripcion
+                    }));
+                    
+                    // Actualizar todos los selects
+                    document.querySelectorAll('.producto-select').forEach(function(productSelect) {
                         const currentValue = productSelect.value;
                         productSelect.innerHTML = '<option value="">Seleccione...</option>';
                         data.forEach(function(producto) {
                             const selected = currentValue == producto.id_producto ? 'selected' : '';
-                            productSelect.innerHTML += `<option value="${producto.id_producto}" ${selected}>${producto.descripcion}</option>`;
+                            const codigoText = producto.codigo ? producto.codigo + ' - ' : '';
+                            productSelect.innerHTML += `<option value="${producto.id_producto}" data-codigo="${producto.codigo || ''}" data-descripcion="${producto.descripcion}" ${selected}>${codigoText}${producto.descripcion}</option>`;
                         });
                     });
+                    
+                    // Limpiar búsqueda
+                    document.getElementById('buscadorProducto').value = '';
+                    document.getElementById('suggestionsList').classList.remove('show');
                 })
                 .catch(() => {
                     console.error('Error al cargar productos del proveedor');
                 });
+        } else {
+            // Si no hay proveedor seleccionado, limpiar productos
+            productos = [];
+            document.querySelectorAll('.producto-select').forEach(function(productSelect) {
+                productSelect.innerHTML = '<option value="">Primero seleccione un proveedor</option>';
+            });
         }
     });
 
@@ -674,8 +781,13 @@ function calcularTotales() {
         subtotal += cantidad * precio;
     });
     
-    const igv = subtotal * 0.18;
+    // Calcular IGV solo si el checkbox está marcado
+    const incluirIGV = document.getElementById('incluirIGV').checked;
+    const igv = incluirIGV ? subtotal * 0.18 : 0;
     const total = subtotal + igv;
+    
+    // Actualizar campo hidden para enviar en el formulario
+    document.getElementById('incluir_igv_hidden').value = incluirIGV ? '1' : '0';
     
     document.getElementById('subtotal').value = subtotal.toFixed(2);
     document.getElementById('igv').value = igv.toFixed(2);
@@ -708,13 +820,24 @@ function agregarProductoRow() {
     const tbody = document.querySelector('#productos-table tbody');
     const index = tbody.children.length;
     const row = document.createElement('tr');
+    
+    // Obtener opciones del primer select para mantener la lista de productos
+    const primerSelect = document.querySelector('.producto-select');
+    let optionsHTML = '';
+    
+    if (primerSelect) {
+        const options = primerSelect.querySelectorAll('option');
+        options.forEach(option => {
+            optionsHTML += option.outerHTML;
+        });
+    } else {
+        optionsHTML = '<option value="">Primero seleccione un proveedor</option>';
+    }
+    
     row.innerHTML = `
         <td>
-            <select name="detalles[${index}][id_producto]" class="form-select form-select-sm" required>
-                <option value="">Seleccione...</option>
-                @foreach($productos as $producto)
-                    <option value="{{ $producto->id_producto }}">{{ $producto->descripcion }}</option>
-                @endforeach
+            <select name="detalles[${index}][id_producto]" class="form-select form-select-sm producto-select" required>
+                ${optionsHTML}
             </select>
         </td>
         <td>
@@ -732,6 +855,190 @@ function agregarProductoRow() {
     tbody.appendChild(row);
     calcularTotales();
 }
+
+function filtrarProductos() {
+    const busqueda = document.getElementById('buscadorProducto').value.toLowerCase();
+    const selects = document.querySelectorAll('.producto-select');
+    
+    selects.forEach(select => {
+        const options = select.querySelectorAll('option');
+        let hayCoincidencias = false;
+        
+        options.forEach(option => {
+            if (option.value === '') {
+                option.style.display = '';
+                return;
+            }
+            
+            const codigo = option.dataset.codigo?.toLowerCase() || '';
+            const descripcion = option.dataset.descripcion?.toLowerCase() || '';
+            
+            if (codigo.includes(busqueda) || descripcion.includes(busqueda)) {
+                option.style.display = '';
+                hayCoincidencias = true;
+            } else {
+                option.style.display = 'none';
+            }
+        });
+        
+        // Si hay búsqueda y coincidencias, abrir el select
+        if (busqueda && hayCoincidencias && !select.value) {
+            select.focus();
+        }
+    });
+}
+
+// Variables para el buscador
+let productos = [];
+let selectedIndex = -1;
+
+// No cargar productos al inicio - se cargarán al seleccionar proveedor
+document.addEventListener('DOMContentLoaded', function() {
+    // Deshabilitar búsqueda hasta que se seleccione proveedor
+    const buscadorInput = document.getElementById('buscadorProducto');
+    buscadorInput.disabled = true;
+    buscadorInput.placeholder = 'Primero seleccione un proveedor...';
+    
+    // Habilitar búsqueda cuando se seleccione proveedor
+    const proveedorSelect = document.getElementById('id_proveedor');
+    proveedorSelect.addEventListener('change', function() {
+        if (this.value) {
+            buscadorInput.disabled = false;
+            buscadorInput.placeholder = 'Buscar producto por código o descripción...';
+        } else {
+            buscadorInput.disabled = true;
+            buscadorInput.placeholder = 'Primero seleccione un proveedor...';
+            buscadorInput.value = '';
+        }
+    });
+});
+
+function buscarProducto(event) {
+    const input = document.getElementById('buscadorProducto');
+    const suggestionsList = document.getElementById('suggestionsList');
+    const busqueda = input.value.toLowerCase().trim();
+    
+    // Manejar teclas de navegación
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        selectedIndex = Math.min(selectedIndex + 1, suggestionsList.children.length - 1);
+        actualizarSeleccion();
+        return;
+    } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        selectedIndex = Math.max(selectedIndex - 1, 0);
+        actualizarSeleccion();
+        return;
+    } else if (event.key === 'Enter') {
+        event.preventDefault();
+        if (selectedIndex >= 0) {
+            const selectedItem = suggestionsList.children[selectedIndex];
+            if (selectedItem) {
+                selectedItem.click();
+            }
+        }
+        return;
+    } else if (event.key === 'Escape') {
+        suggestionsList.classList.remove('show');
+        selectedIndex = -1;
+        return;
+    }
+    
+    // Resetear selección al escribir
+    selectedIndex = -1;
+    
+    if (busqueda.length === 0) {
+        suggestionsList.classList.remove('show');
+        return;
+    }
+    
+    // Filtrar productos
+    const resultados = productos.filter(producto => {
+        const codigo = producto.codigo.toLowerCase();
+        const descripcion = producto.descripcion.toLowerCase();
+        return codigo.includes(busqueda) || descripcion.includes(busqueda);
+    });
+    
+    // Mostrar resultados
+    if (resultados.length > 0) {
+        suggestionsList.innerHTML = resultados.map((producto, index) => `
+            <div class="suggestion-item" data-index="${index}" onclick="seleccionarProducto(${producto.id}, '${producto.codigo}', '${producto.descripcion.replace(/'/g, "\\'")}')">
+                <div class="d-flex align-items-center">
+                    ${producto.codigo ? `<span class="suggestion-codigo">${producto.codigo}</span>` : ''}
+                    <span class="suggestion-descripcion">${producto.descripcion}</span>
+                </div>
+                <i class="fas fa-plus-circle text-success"></i>
+            </div>
+        `).join('');
+        suggestionsList.classList.add('show');
+    } else {
+        suggestionsList.innerHTML = '<div class="no-results"><i class="fas fa-search"></i> No se encontraron productos</div>';
+        suggestionsList.classList.add('show');
+    }
+}
+
+function actualizarSeleccion() {
+    const suggestionsList = document.getElementById('suggestionsList');
+    const items = suggestionsList.querySelectorAll('.suggestion-item');
+    
+    items.forEach((item, index) => {
+        if (index === selectedIndex) {
+            item.classList.add('selected');
+            item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        } else {
+            item.classList.remove('selected');
+        }
+    });
+}
+
+function seleccionarProducto(id, codigo, descripcion) {
+    // Buscar el primer select vacío o agregar una nueva fila
+    const selects = document.querySelectorAll('.producto-select');
+    let selectVacio = null;
+    
+    for (let select of selects) {
+        if (!select.value) {
+            selectVacio = select;
+            break;
+        }
+    }
+    
+    // Si no hay select vacío, agregar una nueva fila
+    if (!selectVacio) {
+        agregarProductoRow();
+        // Obtener el nuevo select
+        const tbody = document.querySelector('#productos-table tbody');
+        const ultimaFila = tbody.lastElementChild;
+        selectVacio = ultimaFila.querySelector('.producto-select');
+    }
+    
+    // Seleccionar el producto
+    if (selectVacio) {
+        selectVacio.value = id;
+        // Enfocar el campo de cantidad
+        const filaActual = selectVacio.closest('tr');
+        const inputCantidad = filaActual.querySelector('input[name*="[cantidad]"]');
+        if (inputCantidad) {
+            inputCantidad.focus();
+            inputCantidad.select();
+        }
+    }
+    
+    // Limpiar búsqueda
+    document.getElementById('buscadorProducto').value = '';
+    document.getElementById('suggestionsList').classList.remove('show');
+    selectedIndex = -1;
+}
+
+// Cerrar sugerencias al hacer click fuera
+document.addEventListener('click', function(event) {
+    const searchContainer = document.querySelector('.search-container');
+    if (searchContainer && !searchContainer.contains(event.target)) {
+        document.getElementById('suggestionsList').classList.remove('show');
+        selectedIndex = -1;
+    }
+});
+
 </script>
 
 @endsection

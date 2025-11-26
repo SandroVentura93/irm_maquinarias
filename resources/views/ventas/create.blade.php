@@ -62,8 +62,8 @@
               Moneda
             </label>
             <select id="moneda" class="form-select modern-select" style="font-weight: 600;" onchange="actualizarVisualizacionMoneda()">
-              <option value="PEN" selected style="background-color: #e8f5e9; font-weight: bold;">🇵🇪 Sol Peruano</option>
-              <option value="USD">🇺🇸 Dólar</option>
+              <option value="PEN" selected style="background-color: #d4edda; font-weight: bold; color: #155724;">S/ Sol Peruano (PEN)</option>
+              <option value="USD" style="color: #004085;">$ Dólar (USD)</option>
             </select>
           </div>
           <div class="col-md-2">
@@ -262,6 +262,10 @@
               <div class="summary-row">
                 <span class="summary-label">
                   <i class="fas fa-percent me-1 text-warning"></i> IGV (18%):
+                  <div class="form-check form-switch d-inline-block ms-2" style="vertical-align: middle;">
+                    <input class="form-check-input" type="checkbox" id="incluirIGV" checked onchange="calcularTotales()">
+                    <label class="form-check-label small" for="incluirIGV" style="font-size: 0.85em;">Incluir</label>
+                  </div>
                 </span>
                 <div class="summary-amounts">
                   <span class="amount-pen">S/ <span id="igv">0.00</span></span>
@@ -592,15 +596,16 @@ function actualizarVisualizacionMoneda() {
   const monedaSeleccionada = monedaSelect.value;
   
   // Reordenar opciones con la seleccionada primero y resaltada
+  // SIEMPRE mantener PEN como prioritario visualmente
   if (monedaSeleccionada === 'USD') {
     monedaSelect.innerHTML = `
-      <option value="USD" selected style="background-color: #e3f2fd; font-weight: bold; font-size: 1.1em;">🇺🇸 Dólar (Prioritario)</option>
-      <option value="PEN" style="font-size: 0.95em;">🇵🇪 Sol Peruano</option>
+      <option value="USD" selected style="background-color: #e3f2fd; font-weight: bold; font-size: 1.05em; color: #004085;">$ Dólar (USD)</option>
+      <option value="PEN" style="font-size: 0.95em; color: #155724;">S/ Sol Peruano (PEN)</option>
     `;
   } else {
     monedaSelect.innerHTML = `
-      <option value="PEN" selected style="background-color: #e8f5e9; font-weight: bold; font-size: 1.1em;">🇵🇪 Sol Peruano (Prioritario)</option>
-      <option value="USD" style="font-size: 0.95em;">🇺🇸 Dólar</option>
+      <option value="PEN" selected style="background-color: #d4edda; font-weight: bold; font-size: 1.05em; color: #155724;">S/ Sol Peruano (PEN)</option>
+      <option value="USD" style="font-size: 0.95em; color: #004085;">$ Dólar (USD)</option>
     `;
   }
   monedaSelect.value = monedaSeleccionada;
@@ -612,20 +617,21 @@ function validarCambioTipoComprobante() {
   const monedaSelect = document.getElementById('moneda');
   
   // Configurar orden y resaltado de opciones según tipo de comprobante
+  // SIEMPRE priorizar SOLES (PEN) para todos los tipos de comprobante
   if (tipoComprobante === 'Factura' || tipoComprobante === 'Boleta de Venta' || tipoComprobante === 'Ticket de Máquina Registradora') {
     // Para comprobantes oficiales, priorizar SOLES
     monedaSelect.innerHTML = `
-      <option value="PEN" selected style="background-color: #e8f5e9; font-weight: bold; font-size: 1.1em;">🇵🇪 Sol Peruano (Prioritario)</option>
-      <option value="USD" style="font-size: 0.95em;">🇺🇸 Dólar</option>
+      <option value="PEN" selected style="background-color: #d4edda; font-weight: bold; font-size: 1.05em; color: #155724;">S/ Sol Peruano (PEN)</option>
+      <option value="USD" style="font-size: 0.95em; color: #004085;">$ Dólar (USD)</option>
     `;
     monedaSelect.value = 'PEN';
   } else if (tipoComprobante === 'Cotización') {
-    // Para cotizaciones, priorizar DÓLARES
+    // Para cotizaciones, TAMBIÉN priorizar SOLES
     monedaSelect.innerHTML = `
-      <option value="USD" selected style="background-color: #e3f2fd; font-weight: bold; font-size: 1.1em;">🇺🇸 Dólar (Prioritario)</option>
-      <option value="PEN" style="font-size: 0.95em;">🇵🇪 Sol Peruano</option>
+      <option value="PEN" selected style="background-color: #d4edda; font-weight: bold; font-size: 1.05em; color: #155724;">S/ Sol Peruano (PEN)</option>
+      <option value="USD" style="font-size: 0.95em; color: #004085;">$ Dólar (USD)</option>
     `;
-    monedaSelect.value = 'USD';
+    monedaSelect.value = 'PEN';
   }
   
   actualizarSerie(); // Solo actualizar la serie
@@ -934,18 +940,33 @@ function renderTabla(){
     tr.innerHTML=`<td>${d.descripcion}</td><td>${d.cantidad}</td><td>${precioConMonedas}</td><td>${d.descuento_porcentaje}%</td><td>S/ ${d.subtotal.toFixed(2)}</td>`;
     tbody.appendChild(tr);
   });
-  const igv=subtotal*IGV;
-  const total=subtotal+igv;
+  
+  calcularTotales();
+}
+
+// === CALCULAR TOTALES (con IGV opcional) ===
+function calcularTotales() {
+  const tbody = document.querySelector('#tablaDetalle tbody');
+  let subtotal = 0;
+  
+  detalle.forEach((d) => {
+    subtotal += d.subtotal;
+  });
+  
+  // Verificar si el checkbox de IGV está marcado
+  const incluirIGV = document.getElementById('incluirIGV').checked;
+  const igv = incluirIGV ? subtotal * IGV : 0;
+  const total = subtotal + igv;
   
   // Actualizar totales en soles
-  document.getElementById('subTotal').textContent=subtotal.toFixed(2);
-  document.getElementById('igv').textContent=igv.toFixed(2);
-  document.getElementById('total').textContent=total.toFixed(2);
+  document.getElementById('subTotal').textContent = subtotal.toFixed(2);
+  document.getElementById('igv').textContent = igv.toFixed(2);
+  document.getElementById('total').textContent = total.toFixed(2);
   
   // Actualizar totales en dólares
-  document.getElementById('subTotalUSD').textContent=(subtotal / TIPO_CAMBIO).toFixed(2);
-  document.getElementById('igvUSD').textContent=(igv / TIPO_CAMBIO).toFixed(2);
-  document.getElementById('totalUSD').textContent=(total / TIPO_CAMBIO).toFixed(2);
+  document.getElementById('subTotalUSD').textContent = (subtotal / TIPO_CAMBIO).toFixed(2);
+  document.getElementById('igvUSD').textContent = (igv / TIPO_CAMBIO).toFixed(2);
+  document.getElementById('totalUSD').textContent = (total / TIPO_CAMBIO).toFixed(2);
 }
 
 // === GUARDAR VENTA ===
@@ -972,6 +993,7 @@ document.getElementById('btnGuardar').addEventListener('click', async ()=>{
     tipo_comprobante: document.getElementById('tipo_comprobante').value,
     moneda: document.getElementById('moneda').value,
     serie: document.getElementById('serie').value,
+    incluir_igv: document.getElementById('incluirIGV').checked, // Agregar estado del checkbox
     // numero se auto-genera en el servidor
     detalle: detalle
   };

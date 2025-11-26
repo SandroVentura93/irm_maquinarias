@@ -385,8 +385,10 @@
                             <i class="fas fa-coins input-icon"></i>
                             <select name="id_moneda" id="id_moneda" class="form-select" required>
                                 @foreach($monedas as $moneda)
-                                    <option value="{{ $moneda->id_moneda }}" {{ $compra->id_moneda == $moneda->id_moneda ? 'selected' : '' }}>
-                                        {{ $moneda->descripcion }}
+                                    <option value="{{ $moneda->id_moneda }}" 
+                                        {{ $compra->id_moneda == $moneda->id_moneda ? 'selected' : '' }}
+                                        style="{{ ($moneda->codigo_iso == 'PEN' || $moneda->id_moneda == 1) ? 'background-color: #e8f5e9; font-weight: bold;' : '' }}">
+                                        {{ $moneda->simbolo ?? '' }} {{ $moneda->descripcion ?? $moneda->nombre }}
                                     </option>
                                 @endforeach
                             </select>
@@ -510,7 +512,12 @@
                     </div>
                     
                     <div class="total-item">
-                        <span class="total-label">IGV (18%):</span>
+                        <span class="total-label">
+                            <div class="form-check form-switch d-inline-block me-2">
+                                <input class="form-check-input" type="checkbox" id="incluirIGV" checked onchange="calcularTotales()">
+                            </div>
+                            IGV (18%):
+                        </span>
                         <span class="total-value" style="font-size: 1rem;">
                             <input type="number" step="0.01" name="igv" id="igv" 
                                    class="form-control form-control-sm text-end" 
@@ -531,6 +538,9 @@
                 </div>
             </div>
         </div>
+
+        <!-- Campo oculto para incluir_igv -->
+        <input type="hidden" name="incluir_igv" id="incluir_igv_hidden" value="1">
 
         <!-- Acciones -->
         <div class="actions-bar">
@@ -596,8 +606,12 @@ function calcularFila(input) {
     let cantidad = parseFloat(row.querySelector('input[name*="[cantidad]"]').value) || 0;
     let precio = parseFloat(row.querySelector('input[name*="[precio_unitario]"]').value) || 0;
     let sub = cantidad * precio;
-    let igvProd = sub * 0.18;
+    
+    // Calcular IGV solo si el checkbox está marcado
+    const incluirIGV = document.getElementById('incluirIGV').checked;
+    let igvProd = incluirIGV ? sub * 0.18 : 0;
     let totProd = sub + igvProd;
+    
     row.querySelector('input[name*="[subtotal]"]').value = sub.toFixed(2);
     row.querySelector('input[name*="[igv]"]').value = igvProd.toFixed(2);
     row.querySelector('input[name*="[total]"]').value = totProd.toFixed(2);
@@ -617,6 +631,11 @@ function calcularTotales() {
         igv += igvProd;
         total += totProd;
     });
+    
+    // Actualizar campo hidden para enviar en el formulario
+    const incluirIGV = document.getElementById('incluirIGV').checked;
+    document.getElementById('incluir_igv_hidden').value = incluirIGV ? '1' : '0';
+    
     document.getElementById('subtotal').value = subtotal.toFixed(2);
     document.getElementById('igv').value = igv.toFixed(2);
     document.getElementById('total').value = total.toFixed(2);

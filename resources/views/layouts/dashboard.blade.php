@@ -210,6 +210,7 @@
     <div class="menu-item">
         <h5>Gestión de Productos</h5>
         <div class="submenu">
+            @if(Auth::check() && in_array(Auth::user()->id_rol, [1,2,3,4]))
             <a href="{{ route('productos.index') }}">
                 <i class="fas fa-boxes"></i> Productos
             </a>
@@ -219,36 +220,61 @@
             <a href="{{ route('marcas.index') }}">
                 <i class="fas fa-tags"></i> Marcas
             </a>
+            @endif
+            @if(Auth::check() && in_array(Auth::user()->id_rol, [1,2,4]))
             <a href="{{ route('proveedores.index') }}">
                 <i class="fas fa-truck"></i> Proveedores
             </a>
+            @endif
         </div>
     </div>
     <div class="menu-item">
         <h5>Administración</h5>
         <div class="submenu">
+            @if(Auth::check() && in_array(Auth::user()->id_rol, [1,2]))
             <a href="{{ route('monedas.index') }}">
                 <i class="fas fa-dollar-sign"></i> Monedas
             </a>
+            @endif
+            @if(Auth::check() && Auth::user()->id_rol == 1)
             <a href="{{ route('usuarios.index') }}">
                 <i class="fas fa-users-cog"></i> Usuarios
             </a>
+            @endif
         </div>
     </div>
     <div class="menu-item">
         <h5>Gestión de Ventas</h5>
         <div class="submenu">
+            @if(Auth::check() && in_array(Auth::user()->id_rol, [1,2,3,5]))
             <a href="{{ route('ventas.index') }}">
                 <i class="fas fa-list"></i> Ver Todas las Ventas
             </a>
+            @endif
+            @if(Auth::check() && in_array(Auth::user()->id_rol, [1,2,3]))
             <a href="{{ route('ventas.create') }}">
                 <i class="fas fa-plus"></i> Nueva Venta
             </a>
             <a href="{{ route('clientes.index') }}">
                 <i class="fas fa-users"></i> Gestionar Clientes
             </a>
+            @endif
         </div>
     </div>
+    @if(Auth::check() && in_array(Auth::user()->id_rol, [1,2,4]))
+    <div class="menu-item">
+        <h5>Gestión de Compras</h5>
+        <div class="submenu">
+            <a href="{{ route('compras.index') }}">
+                <i class="fas fa-shopping-bag"></i> Ver Todas las Compras
+            </a>
+            <a href="{{ route('compras.create') }}">
+                <i class="fas fa-plus"></i> Nueva Compra
+            </a>
+        </div>
+    </div>
+    @endif
+    @if(Auth::check() && in_array(Auth::user()->id_rol, [1,2,5]))
     <div class="menu-item">
         <h5>Reportes</h5>
         <div class="submenu">
@@ -272,6 +298,7 @@
             </a>
         </div>
     </div>
+    @endif
 </div>
 <div class="content">
     @yield('content')

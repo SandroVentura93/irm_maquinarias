@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NOTA DE DÉBITO - {{ $venta->serie }}{{ str_pad($venta->numero_comprobante, 8, '0', STR_PAD_LEFT) }}</title>
+    <title>NOTA DE DÉBITO - {{ $venta->numero }}</title>
     <style>
         * {
             margin: 0;
@@ -224,7 +224,7 @@
             
             <div class="document-info">
                 <h1>{{ $tipoConfig['titulo'] ?? 'NOTA DE DÉBITO ELECTRÓNICA' }}</h1>
-                <div class="document-number">{{ $venta->serie }}-{{ str_pad($venta->numero_comprobante, 8, '0', STR_PAD_LEFT) }}</div>
+                <div class="document-number">{{ $venta->numero }}</div>
                 <p><strong>Código SUNAT:</strong> {{ $tipoConfig['codigo_sunat'] ?? '08' }}</p>
             </div>
         </div>

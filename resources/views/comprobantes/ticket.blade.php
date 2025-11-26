@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TICKET - {{ str_pad($venta->numero_comprobante, 8, '0', STR_PAD_LEFT) }}</title>
+    <title>TICKET - {{ $venta->numero }}</title>
     <style>
         * {
             margin: 0;
@@ -148,7 +148,7 @@
 
     <!-- Tipo y número de comprobante -->
     <div class="ticket-tipo">{{ $tipoConfig['titulo'] ?? 'TICKET DE MÁQUINA REGISTRADORA' }}</div>
-    <div class="ticket-numero">{{ str_pad($venta->numero_comprobante, 8, '0', STR_PAD_LEFT) }}</div>
+    <div class="ticket-numero">{{ $venta->numero }}</div>
 
     <!-- Información básica -->
     <div class="cliente-info">

@@ -31,7 +31,7 @@
                 </div>
                 <div class="stats-content">
                     <div class="stats-value">{{ count($ventas) }}</div>
-                    <div class="stats-label">Total Ventas</div>
+                    <div class="stats-label">{{ request()->hasAny(['search', 'tipo_comprobante', 'xml_estado', 'fecha_desde', 'fecha_hasta']) ? 'Ventas Filtradas' : 'Total Ventas' }}</div>
                 </div>
             </div>
         </div>
@@ -58,13 +58,13 @@
             </div>
         </div>
         <div class="col-md-3 mb-3">
-            <div class="stats-card stats-info">
+            <div class="stats-card stats-danger">
                 <div class="stats-icon">
-                    <i class="fas fa-dollar-sign"></i>
+                    <i class="fas fa-ban"></i>
                 </div>
                 <div class="stats-content">
-                    <div class="stats-value">{{ number_format($tipoCambio, 2) }}</div>
-                    <div class="stats-label">Tipo Cambio USD</div>
+                    <div class="stats-value">{{ $ventas->where('xml_estado', 'ANULADO')->count() }}</div>
+                    <div class="stats-label">Anuladas</div>
                 </div>
             </div>
         </div>
@@ -344,6 +344,83 @@
     });
     </script>
 
+    <!-- Filtros Avanzados -->
+    <div class="card modern-card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-filter me-2 text-primary"></i>
+                Filtros de Búsqueda
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ route('ventas.index') }}" id="filterForm">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">
+                            <i class="fas fa-search me-1"></i>
+                            Buscar
+                        </label>
+                        <input type="text" name="search" class="form-control" 
+                               placeholder="N° Documento, Cliente..." value="{{ request('search') }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">
+                            <i class="fas fa-file-alt me-1"></i>
+                            Tipo Comprobante
+                        </label>
+                        <select name="tipo_comprobante" class="form-select" id="tipoComprobanteFilter">
+                            <option value="">Todos</option>
+                            <option value="Cotización" {{ request('tipo_comprobante') == 'Cotización' ? 'selected' : '' }}>Cotización</option>
+                            <option value="Factura" {{ request('tipo_comprobante') == 'Factura' ? 'selected' : '' }}>Factura</option>
+                            <option value="Boleta de Venta" {{ request('tipo_comprobante') == 'Boleta de Venta' ? 'selected' : '' }}>Boleta de Venta</option>
+                            <option value="Ticket de Máquina Registradora" {{ request('tipo_comprobante') == 'Ticket de Máquina Registradora' ? 'selected' : '' }}>Ticket</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Estado
+                        </label>
+                        <select name="xml_estado" class="form-select" id="estadoFilter">
+                            <option value="">Todos</option>
+                            <option value="ACEPTADO" {{ request('xml_estado') == 'ACEPTADO' ? 'selected' : '' }}>Aceptado</option>
+                            <option value="PENDIENTE" {{ request('xml_estado') == 'PENDIENTE' ? 'selected' : '' }}>Pendiente</option>
+                            <option value="ANULADO" {{ request('xml_estado') == 'ANULADO' ? 'selected' : '' }}>Anulado</option>
+                            <option value="RECHAZADO" {{ request('xml_estado') == 'RECHAZADO' ? 'selected' : '' }}>Rechazado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">
+                            <i class="fas fa-calendar me-1"></i>
+                            Fecha Desde
+                        </label>
+                        <input type="date" name="fecha_desde" class="form-control" value="{{ request('fecha_desde') }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">
+                            <i class="fas fa-calendar me-1"></i>
+                            Fecha Hasta
+                        </label>
+                        <input type="date" name="fecha_hasta" class="form-control" value="{{ request('fecha_hasta') }}">
+                    </div>
+                    <div class="col-md-1 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                @if(request()->hasAny(['search', 'tipo_comprobante', 'xml_estado', 'fecha_desde', 'fecha_hasta']))
+                <div class="mt-3">
+                    <a href="{{ route('ventas.index') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-times me-1"></i>
+                        Limpiar Filtros
+                    </a>
+                </div>
+                @endif
+            </form>
+        </div>
+    </div>
+
     <!-- Main Table Card -->
     <div class="card modern-card">
         <div class="card-header">
@@ -481,21 +558,34 @@
                                     </button>
                                     @endif
 
-                                    @if($esCotizacion && $venta->xml_estado === 'PENDIENTE')
+                                    @if($esCotizacion && in_array($venta->xml_estado, ['PENDIENTE', 'ENVIADO']))
                                     <div class="dropdown d-inline-block">
                                         <button class="btn btn-action btn-convert dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Convertir Cotización">
                                             <i class="fas fa-exchange-alt"></i>
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end">
-                                            <li><a class="dropdown-item conversion-link" href="javascript:void(0)" onclick="convertirCotizacion({{ $venta->id_venta }}, 'FACTURA')">
-                                                <i class="fas fa-file-invoice text-success me-2"></i>Convertir a Factura
-                                            </a></li>
-                                            <li><a class="dropdown-item conversion-link" href="javascript:void(0)" onclick="convertirCotizacion({{ $venta->id_venta }}, 'BOLETA')">
-                                                <i class="fas fa-receipt text-info me-2"></i>Convertir a Boleta
-                                            </a></li>
-                                            <li><a class="dropdown-item conversion-link" href="javascript:void(0)" onclick="convertirCotizacion({{ $venta->id_venta }}, 'Ticket')">
-                                                <i class="fas fa-ticket-alt text-warning me-2"></i>Convertir a Ticket
-                                            </a></li>
+                                            <li>
+                                                <a class="dropdown-item" href="{{ route('ventas.convertir-factura', $venta->id_venta) }}" 
+                                                   onclick="return confirm('¿Está seguro que desea convertir esta cotización a Factura?\n\nEsta acción:\n• Cambiará el tipo de comprobante\n• Generará una nueva serie y número\n• Descontará el stock de los productos\n• Cambiará el estado a PENDIENTE\n• No se puede deshacer\n\n¿Desea continuar?');">
+                                                    <i class="fas fa-file-invoice text-success me-2"></i>Convertir a Factura
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="{{ route('ventas.convertir-boleta', $venta->id_venta) }}" 
+                                                   onclick="return confirm('¿Está seguro que desea convertir esta cotización a Boleta?\n\nEsta acción:\n• Cambiará el tipo de comprobante\n• Generará una nueva serie y número\n• Descontará el stock de los productos\n• Cambiará el estado a PENDIENTE\n• No se puede deshacer\n\n¿Desea continuar?');">
+                                                    <i class="fas fa-receipt text-info me-2"></i>Convertir a Boleta
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <form action="{{ route('ventas.convertir', $venta->id_venta) }}" method="POST" style="display: inline;" 
+                                                      onsubmit="return confirm('¿Está seguro que desea convertir esta cotización a Ticket?\n\nEsta acción:\n• Cambiará el tipo de comprobante\n• Generará una nueva serie y número\n• Descontará el stock de los productos\n• Cambiará el estado a PENDIENTE\n• No se puede deshacer\n\n¿Desea continuar?');">
+                                                    @csrf
+                                                    <input type="hidden" name="tipo_destino" value="Ticket">
+                                                    <button type="submit" class="dropdown-item" style="background: none; border: none; padding: 0; width: 100%; text-align: left; cursor: pointer;">
+                                                        <i class="fas fa-ticket-alt text-warning me-2"></i>Convertir a Ticket
+                                                    </button>
+                                                </form>
+                                            </li>
                                         </ul>
                                     </div>
                                     @endif
@@ -1021,157 +1111,190 @@
 </style>
 
 <script>
-// Filter functionality
-function filterByStatus(status) {
-    const rows = document.querySelectorAll('.table-row');
-    rows.forEach(row => {
-        if (status === 'all' || row.dataset.status === status) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
+console.log('📜 Script de ventas cargando...');
+
+// Esperar a que el DOM esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('✅ DOM listo, inicializando funcionalidades...');
+    
+    // Filter functionality
+    window.filterByStatus = function(status) {
+        const rows = document.querySelectorAll('.table-row');
+        rows.forEach(row => {
+            if (status === 'all' || row.dataset.status === status) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    };
+
+    // Sort functionality
+    document.querySelectorAll('.sortable').forEach(header => {
+        header.addEventListener('click', function() {
+            const sortBy = this.dataset.sort;
+            console.log('Sorting by:', sortBy);
+        });
+    });
+
+    // ============================================
+    // SISTEMA DE CONVERSIONES
+    // ============================================
+    console.log('🚀 Inicializando sistema de conversiones...');
+    
+    // Event delegation para clicks en enlaces de conversión
+    document.addEventListener('click', function(e) {
+        const conversionLink = e.target.closest('.conversion-link');
+        
+        if (conversionLink) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const idVenta = conversionLink.getAttribute('data-venta-id');
+            const tipoDestino = conversionLink.getAttribute('data-tipo');
+            
+            console.log('🔄 Click detectado en conversión:', { idVenta, tipoDestino });
+            
+            if (!idVenta || !tipoDestino) {
+                console.error('❌ Faltan datos:', { idVenta, tipoDestino });
+                alert('Error: Datos de conversión incompletos');
+                return;
+            }
+            
+            convertirCotizacion(idVenta, tipoDestino, conversionLink);
         }
     });
-}
-
-// Sort functionality
-document.querySelectorAll('.sortable').forEach(header => {
-    header.addEventListener('click', function() {
-        const sortBy = this.dataset.sort;
-        // Implement sorting logic here if needed
-        console.log('Sorting by:', sortBy);
-    });
+    
+    // Verificar que hay enlaces de conversión en la página
+    const conversionLinks = document.querySelectorAll('.conversion-link');
+    console.log('📊 Enlaces de conversión encontrados:', conversionLinks.length);
+    
+    console.log('✅ Sistema de conversiones inicializado');
 });
 
-// Conversion functionality
-function convertirCotizacion(idVenta, tipoDestino) {
-    // Confirmar la conversión con un mensaje más moderno
-    const mensaje = `¿Está seguro que desea convertir esta cotización a ${tipoDestino}?
+// Función de conversión (global para poder ser llamada desde cualquier lugar)
+function convertirCotizacion(idVenta, tipoDestino, targetLink) {
+    console.log('🔧 Ejecutando convertirCotizacion:', { idVenta, tipoDestino });
+    
+    const tipoNormalizado = tipoDestino.toUpperCase();
+    const nombreTipo = tipoNormalizado === 'FACTURA' ? 'Factura' : 
+                       tipoNormalizado === 'BOLETA' ? 'Boleta' : 
+                       tipoNormalizado === 'TICKET' ? 'Ticket' : tipoDestino;
+    
+    const mensaje = `¿Está seguro que desea convertir esta cotización a ${nombreTipo}?
 
-    Esta acción:
-    • Cambiará el tipo de comprobante
-    • Generará una nueva serie y número  
-    • No se puede deshacer
+Esta acción:
+• Cambiará el tipo de comprobante
+• Generará una nueva serie y número  
+• Descontará el stock de los productos
+• No se puede deshacer
 
-    ¿Desea continuar?`;
+¿Desea continuar?`;
+    
     if (!confirm(mensaje)) {
+        console.log('❌ Usuario canceló la conversión');
         return;
     }
 
-    // Buscar todos los enlaces de conversión para esta venta
-    const conversionLinks = document.querySelectorAll(`[onclick*="${idVenta}"]`);
-    let targetLink = null;
-    conversionLinks.forEach(link => {
-        if (link.onclick.toString().includes(tipoDestino)) {
-            targetLink = link;
-        }
-    });
+    let originalHTML = '';
     if (targetLink) {
-        const originalHTML = targetLink.innerHTML;
+        originalHTML = targetLink.innerHTML;
         targetLink.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Convirtiendo...';
-        targetLink.classList.add('loading');
+        targetLink.classList.add('disabled');
+        targetLink.style.pointerEvents = 'none';
+    }
 
-        // Si es Factura o Boleta, redirigir como antes
-        let url = null;
-        if (tipoDestino === 'FACTURA') {
-            url = `/ventas/${idVenta}/convertir-factura`;
-            window.location.href = url;
-            return;
-        } else if (tipoDestino === 'BOLETA') {
-            url = `/ventas/${idVenta}/convertir-boleta`;
-            window.location.href = url;
-            return;
-        }
+    console.log('⏳ Procesando conversión a:', tipoNormalizado);
 
-        // Si es Ticket, hacer POST AJAX al endpoint convertirCotizacion
-        if (tipoDestino === 'Ticket') {
-            fetch(`/ventas/${idVenta}/convertir`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify({ tipo_destino: 'Ticket' })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    window.location.reload();
-                } else {
-                    alert('Error: ' + (data.error || 'No se pudo convertir.'));
+    if (tipoNormalizado === 'FACTURA') {
+        console.log('➡️ Redirigiendo a convertir-factura');
+        window.location.href = `/ventas/${idVenta}/convertir-factura`;
+    } else if (tipoNormalizado === 'BOLETA') {
+        console.log('➡️ Redirigiendo a convertir-boleta');
+        window.location.href = `/ventas/${idVenta}/convertir-boleta`;
+    } else if (tipoNormalizado === 'TICKET') {
+        console.log('📤 Enviando POST para Ticket');
+        
+        fetch(`/ventas/${idVenta}/convertir`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({ tipo_destino: 'Ticket' })
+        })
+        .then(response => {
+            console.log('📥 Respuesta recibida:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('📦 Datos:', data);
+            if (data.success) {
+                alert('✅ ' + data.message);
+                console.log('✅ Conversión exitosa, recargando...');
+                window.location.reload();
+            } else {
+                console.error('❌ Error:', data.error);
+                alert('❌ Error: ' + (data.error || 'No se pudo convertir.'));
+                if (targetLink) {
+                    targetLink.innerHTML = originalHTML;
+                    targetLink.classList.remove('disabled');
+                    targetLink.style.pointerEvents = 'auto';
                 }
-            })
-            .catch(() => {
-                alert('Error de red al convertir.');
-            })
-            .finally(() => {
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error de red:', error);
+            alert('❌ Error de red: ' + error.message);
+            if (targetLink) {
                 targetLink.innerHTML = originalHTML;
-                targetLink.classList.remove('loading');
-            });
-        } else {
-            alert('❌ Tipo de conversión no válido');
+                targetLink.classList.remove('disabled');
+                targetLink.style.pointerEvents = 'auto';
+            }
+        });
+    } else {
+        console.error('❌ Tipo no válido:', tipoDestino);
+        alert('❌ Tipo de conversión no válido: ' + tipoDestino);
+        if (targetLink) {
             targetLink.innerHTML = originalHTML;
-            targetLink.classList.remove('loading');
+            targetLink.classList.remove('disabled');
+            targetLink.style.pointerEvents = 'auto';
         }
     }
 }
 
-// Fix modal and backdrop layering
-#modalPago {
-    z-index: 1055 !important; /* Ensure modal is above backdrop */
-    display: block; /* Ensure modal is displayed correctly */
-    opacity: 1; /* Ensure modal is fully visible */
-    pointer-events: auto; /* Allow interaction with modal */
-}
-.modal-backdrop {
-    z-index: 1050 !important; /* Ensure backdrop is below modal */
-    opacity: 0.5; /* Make backdrop semi-transparent */
-    pointer-events: none; /* Prevent backdrop from blocking interaction */
-}
+console.log('📜 Script de ventas cargado completamente');
 
-/* Force modal display for debugging */
-console.log('Debugging modalPago visibility...');
-
-document.addEventListener('DOMContentLoaded', function () {
-    const modalPago = document.getElementById('modalPago');
-
-    if (!modalPago) {
-        console.error('Modal element #modalPago not found!');
-        return;
+            targetLink.innerHTML = originalHTML;
+            targetLink.classList.remove('disabled');
+            targetLink.style.pointerEvents = 'auto';
+        }
     }
+}
 
-    modalPago.addEventListener('show.bs.modal', function (event) {
-        console.log('Modal show event triggered.');
-        const button = event.relatedTarget;
-
-        if (!button) {
-            console.error('Trigger button not found!');
-            return;
-        }
-
-        const idVenta = button.getAttribute('data-id');
-        const saldo = button.getAttribute('data-saldo');
-
-        if (!idVenta || !saldo) {
-            console.error('Missing required data attributes on the trigger button.');
-            return;
-        }
-
-        console.log('Populating modal with data:', { idVenta, saldo });
-
-        document.getElementById('pago_id_venta').value = idVenta;
-        document.getElementById('pago_monto').value = saldo;
-    });
-
-    // Force modal to show for debugging
-    const debugButton = document.createElement('button');
-    debugButton.setAttribute('data-bs-toggle', 'modal');
-    debugButton.setAttribute('data-bs-target', '#modalPago');
-    debugButton.style.display = 'none';
-    document.body.appendChild(debugButton);
-    debugButton.click();
-
-    console.log('ModalPago debugging complete.');
+// Filtrado automático al cambiar selects
+document.addEventListener('DOMContentLoaded', function() {
+    const tipoComprobanteFilter = document.getElementById('tipoComprobanteFilter');
+    const estadoFilter = document.getElementById('estadoFilter');
+    const filterForm = document.getElementById('filterForm');
+    
+    if (tipoComprobanteFilter) {
+        tipoComprobanteFilter.addEventListener('change', function() {
+            console.log('Filtro tipo comprobante cambiado, enviando formulario...');
+            filterForm.submit();
+        });
+    }
+    
+    if (estadoFilter) {
+        estadoFilter.addEventListener('change', function() {
+            console.log('Filtro estado cambiado, enviando formulario...');
+            filterForm.submit();
+        });
+    }
+    
+    console.log('✅ Filtros automáticos activados');
 });
+
 </script>
 
 @endsection

@@ -52,13 +52,48 @@ class VentaController extends Controller
     }
         
     // Lista de ventas
-    public function index()
+    public function index(Request $request)
     {
-        // ⚡ Optimización de consulta con paginación y cache selectivo
-        $ventas = Venta::with(['cliente:id_cliente,nombre,numero_documento', 'tipoComprobante:id_tipo_comprobante,descripcion,codigo_sunat'])
-            ->select('id_venta', 'id_cliente', 'id_tipo_comprobante', 'serie', 'numero', 'fecha', 'total', 'saldo', 'xml_estado', 'created_at')
-            ->orderBy('created_at', 'desc')
-            ->limit(100) // Limitar resultados para mejor performance
+        // ⚡ Optimización de consulta con paginación y filtros
+        $query = Venta::with(['cliente:id_cliente,nombre,numero_documento', 'tipoComprobante:id_tipo_comprobante,descripcion,codigo_sunat'])
+            ->select('id_venta', 'id_cliente', 'id_tipo_comprobante', 'serie', 'numero', 'fecha', 'total', 'saldo', 'xml_estado', 'created_at');
+        
+        // Filtro por búsqueda de texto (número de documento o cliente)
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('numero', 'LIKE', "%{$search}%")
+                  ->orWhere('serie', 'LIKE', "%{$search}%")
+                  ->orWhereHas('cliente', function($subQ) use ($search) {
+                      $subQ->where('nombre', 'LIKE', "%{$search}%")
+                           ->orWhere('numero_documento', 'LIKE', "%{$search}%");
+                  });
+            });
+        }
+        
+        // Filtro por tipo de comprobante
+        if ($request->has('tipo_comprobante') && $request->tipo_comprobante != '') {
+            $query->whereHas('tipoComprobante', function($q) use ($request) {
+                $q->where('descripcion', $request->tipo_comprobante);
+            });
+        }
+        
+        // Filtro por estado XML
+        if ($request->has('xml_estado') && $request->xml_estado != '') {
+            $query->where('xml_estado', $request->xml_estado);
+        }
+        
+        // Filtro por rango de fechas
+        if ($request->has('fecha_desde') && $request->fecha_desde != '') {
+            $query->whereDate('fecha', '>=', $request->fecha_desde);
+        }
+        
+        if ($request->has('fecha_hasta') && $request->fecha_hasta != '') {
+            $query->whereDate('fecha', '<=', $request->fecha_hasta);
+        }
+        
+        $ventas = $query->orderBy('created_at', 'desc')
+            ->limit(500) // Limitar resultados para mejor performance
             ->get();
         
         // Obtener tipo de cambio actual (ya tiene cache interno)
@@ -284,6 +319,7 @@ class VentaController extends Controller
             'tipo_comprobante' => 'required', // Puede ser ID o string para compatibilidad
             'moneda' => 'required|string',
             'serie' => 'required|string',
+            'incluir_igv' => 'nullable|boolean', // Campo opcional para IGV
             // 'numero' se auto-genera, no requerido en el request
             'detalle' => 'required|array|min:1',
             'detalle.*.id_producto' => 'required|integer',
@@ -302,7 +338,9 @@ class VentaController extends Controller
                 $subtotal += $precio_final * $d['cantidad'];
             }
 
-            $igv = round($subtotal * $igv_rate, 2);
+            // Calcular IGV solo si está marcado (por defecto true para compatibilidad)
+            $incluir_igv = $data['incluir_igv'] ?? true;
+            $igv = $incluir_igv ? round($subtotal * $igv_rate, 2) : 0;
             $total = round($subtotal + $igv, 2);
 
             // Mapear valores del formulario a IDs de base de datos
@@ -330,35 +368,44 @@ class VentaController extends Controller
             // Obtener el último número para esta serie y tipo de comprobante
             $ultimo_numero_venta = Venta::where('serie', $data['serie'])
                 ->where('id_tipo_comprobante', $id_tipo_comprobante)
-                ->max('numero');
+                ->orderBy('numero', 'desc')
+                ->first();
             
             // Debugging: Log the last number retrieved for the comprobante
-            \Log::info('Último número obtenido para comprobante:', ['serie' => $data['serie'], 'id_tipo_comprobante' => $id_tipo_comprobante, 'ultimo_numero' => $ultimo_numero_venta]);
+            \Log::info('Último registro obtenido para comprobante:', [
+                'serie' => $data['serie'], 
+                'id_tipo_comprobante' => $id_tipo_comprobante, 
+                'ultimo_numero' => $ultimo_numero_venta ? $ultimo_numero_venta->numero : 'null'
+            ]);
 
-            // Extract only the numeric part of the last number
-            if ($ultimo_numero_venta && is_string($ultimo_numero_venta)) {
-                if (strpos($ultimo_numero_venta, '-') !== false) {
-                    $ultimo_numero_venta = explode('-', $ultimo_numero_venta)[1];
+            // Extraer solo la parte numérica del último número
+            $ultimo_correlativo = 0;
+            if ($ultimo_numero_venta && $ultimo_numero_venta->numero) {
+                $numero_str = $ultimo_numero_venta->numero;
+                // Extraer solo los dígitos después del último guión
+                if (strpos($numero_str, '-') !== false) {
+                    $partes = explode('-', $numero_str);
+                    $ultimo_correlativo = intval(end($partes));
+                } else {
+                    // Si no tiene guión, intentar extraer solo números
+                    preg_match('/\d+$/', $numero_str, $matches);
+                    $ultimo_correlativo = isset($matches[0]) ? intval($matches[0]) : 0;
                 }
-                $ultimo_numero_venta = intval($ultimo_numero_venta);
-            } else {
-                $ultimo_numero_venta = intval($ultimo_numero_venta ?: 0);
             }
 
-            \Log::info('Número procesado para comprobante:', ['ultimo_numero_procesado' => $ultimo_numero_venta]);
+            \Log::info('Correlativo procesado:', ['ultimo_correlativo' => $ultimo_correlativo]);
 
-            $nuevo_numero = $ultimo_numero_venta + 1;
+            // Incrementar el correlativo
+            $nuevo_correlativo = $ultimo_correlativo + 1;
             
-            // Crear formato de número según tipo de comprobante
-            $prefijos = [
-                'Cotizacion' => 'COT-',
-                'Factura' => 'F001-',
-                'Boleta' => 'B001-',
-                'Nota de Crédito' => 'NC01-',
-                'Ticket de Máquina Registradora' => 'TK01-',
-            ];
-            $prefijo = $prefijos[$data['tipo_comprobante']] ?? '';
-            $numero_formateado = $prefijo . str_pad($nuevo_numero, 8, '0', STR_PAD_LEFT);
+            // Formatear número completo: SERIE-CORRELATIVO
+            $numero_formateado = $data['serie'] . '-' . str_pad($nuevo_correlativo, 8, '0', STR_PAD_LEFT);
+            
+            \Log::info('Nuevo número generado:', ['numero_formateado' => $numero_formateado]);
+
+            // Determinar el estado inicial según el tipo de comprobante
+            // Cotizaciones (ID 8) empiezan en ENVIADO, los demás en PENDIENTE
+            $estadoInicial = ($id_tipo_comprobante == 8) ? 'ENVIADO' : 'PENDIENTE';
 
             $venta = Venta::create([
                 'id_cliente' => $data['id_cliente'],
@@ -372,10 +419,10 @@ class VentaController extends Controller
                 'igv' => $igv,
                 'total' => $total,
                 'saldo' => $total,
-                'xml_estado' => 'PENDIENTE'
+                'xml_estado' => $estadoInicial
             ]);
 
-            \Log::info('Venta creada:', ['id_venta' => $venta->id_venta]);
+            \Log::info('Venta creada:', ['id_venta' => $venta->id_venta, 'estado' => $estadoInicial]);
 
             // Buscar tipo de comprobante real en la base de datos (por codigo_sunat o descripcion)
             $tipoComprobanteDB = \App\Models\TipoComprobante::where(function($q) use ($data, $id_tipo_comprobante) {
@@ -386,11 +433,31 @@ class VentaController extends Controller
 
             // Definir comprobantes que SÍ descuentan stock
             // Solo descuentan stock los comprobantes con codigo_sunat '01', '03', '12' (Factura, Boleta, Ticket)
+            // Las cotizaciones (CT) NUNCA descuentan stock
             $descuentaStock = false;
             if ($tipoComprobanteDB) {
                 $codigo = strtoupper($tipoComprobanteDB->codigo_sunat ?? '');
-                if (in_array($codigo, ['01', '03', '12'])) {
+                
+                // Verificación explícita: Las cotizaciones NUNCA descuentan stock
+                if ($codigo === 'CT') {
+                    $descuentaStock = false;
+                    \Log::info('[CONTROL STOCK] COTIZACIÓN DETECTADA - NO se descontará stock', [
+                        'codigo_sunat' => $codigo,
+                        'id_tipo_comprobante' => $id_tipo_comprobante
+                    ]);
+                } 
+                // Solo estos comprobantes descuentan stock
+                elseif (in_array($codigo, ['01', '03', '12'])) {
                     $descuentaStock = true;
+                    \Log::info('[CONTROL STOCK] Comprobante de venta detectado - SÍ se descontará stock', [
+                        'codigo_sunat' => $codigo,
+                        'id_tipo_comprobante' => $id_tipo_comprobante
+                    ]);
+                } else {
+                    \Log::info('[CONTROL STOCK] Otro tipo de comprobante - NO se descontará stock', [
+                        'codigo_sunat' => $codigo,
+                        'id_tipo_comprobante' => $id_tipo_comprobante
+                    ]);
                 }
             }
 
@@ -435,7 +502,7 @@ class VentaController extends Controller
                 'id_venta' => $venta->id_venta,
                 'id_tipo_comprobante' => $id_tipo_comprobante,
                 'serie' => $data['serie'],
-                'numero' => $nuevo_numero, // Usar el número entero, no el string con ceros
+                'numero' => $nuevo_correlativo, // Solo el número correlativo (entero)
                 'fecha_emision' => now(),
                 'monto_subtotal' => $subtotal,
                 'monto_igv' => $igv,
@@ -463,7 +530,7 @@ class VentaController extends Controller
                 'ok' => true, 
                 'id_venta' => $venta->id_venta, 
                 'total' => $total,
-                'numero_comprobante' => $nuevo_numero,
+                'numero_comprobante' => $numero_formateado,
                 'serie' => $data['serie'],
                 'stocks_actualizados' => $stocks_actualizados
             ]);
@@ -752,6 +819,29 @@ class VentaController extends Controller
                 'xml_estado' => 'PENDIENTE'
             ]);
 
+            // Determinar si debe descontar stock
+            $tipoComprobanteDB = \App\Models\TipoComprobante::where('id_tipo_comprobante', $id_tipo_comprobante)->first();
+            $descuentaStock = false;
+            if ($tipoComprobanteDB) {
+                $codigo = strtoupper($tipoComprobanteDB->codigo_sunat ?? '');
+                
+                // Verificación explícita: Las cotizaciones (CT) NUNCA descuentan stock
+                if ($codigo === 'CT') {
+                    $descuentaStock = false;
+                } 
+                // Solo descuentan stock: Factura (01), Boleta (03), Ticket (12)
+                elseif (in_array($codigo, ['01', '03', '12'])) {
+                    $descuentaStock = true;
+                }
+                
+                \Log::info('[CONTROL STOCK] Verificación de tipo de comprobante', [
+                    'tipo_comprobante_id' => $id_tipo_comprobante,
+                    'codigo_sunat' => $codigo,
+                    'descripcion' => $tipoComprobanteDB->descripcion,
+                    'descuenta_stock' => $descuentaStock ? 'SÍ' : 'NO'
+                ]);
+            }
+
             foreach ($data['detalle'] as $d) {
                 $precio_final = $d['precio_unitario'] * (1 - ($d['descuento_porcentaje'] ?? 0) / 100);
                 $subtotal_linea = $precio_final * $d['cantidad'];
@@ -768,13 +858,37 @@ class VentaController extends Controller
                     'igv' => $igv_linea,
                     'total' => $total_linea,
                 ]);
+
+                // Descontar stock solo para comprobantes de venta (Factura, Boleta, Ticket)
+                if ($descuentaStock) {
+                    $productoAntes = Producto::find($d['id_producto']);
+                    $stockAntes = $productoAntes ? $productoAntes->stock_actual : 0;
+                    
+                    Producto::where('id_producto', $d['id_producto'])
+                        ->decrement('stock_actual', $d['cantidad']);
+                    
+                    $productoDespues = Producto::find($d['id_producto']);
+                    $stockDespues = $productoDespues ? $productoDespues->stock_actual : 0;
+                    
+                    \Log::info('[CONTROL STOCK] Stock descontado', [
+                        'producto_id' => $d['id_producto'],
+                        'cantidad_descontada' => $d['cantidad'],
+                        'stock_antes' => $stockAntes,
+                        'stock_despues' => $stockDespues
+                    ]);
+                } else {
+                    \Log::info('[CONTROL STOCK] NO se descuenta stock - Es cotización u otro comprobante', [
+                        'producto_id' => $d['id_producto'],
+                        'cantidad' => $d['cantidad']
+                    ]);
+                }
             }
 
             \App\Models\ComprobanteElectronico::create([
                 'id_venta' => $venta->id_venta,
                 'id_tipo_comprobante' => $id_tipo_comprobante,
                 'serie' => $data['serie'],
-                'numero' => $nuevo_numero,
+                'numero' => $nuevo_numero, // Solo el número correlativo (entero)
                 'fecha_emision' => now(),
                 'monto_subtotal' => $subtotal,
                 'monto_igv' => $igv,
@@ -903,28 +1017,38 @@ class VentaController extends Controller
         try {
             $venta = Venta::findOrFail($id);
             
-            // Verificar que sea una cotización y esté pendiente
+            // Verificar que sea una cotización
             if ($venta->id_tipo_comprobante != 8) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Solo se pueden convertir cotizaciones'
-                ], 400);
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Solo se pueden convertir cotizaciones'
+                    ], 400);
+                }
+                return redirect()->back()->with('error', 'Solo se pueden convertir cotizaciones');
             }
             
-            if ($venta->xml_estado !== 'PENDIENTE') {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Solo se pueden convertir cotizaciones pendientes'
-                ], 400);
+            // Permitir conversión de cotizaciones en estado PENDIENTE o ENVIADO
+            if (!in_array($venta->xml_estado, ['PENDIENTE', 'ENVIADO'])) {
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Solo se pueden convertir cotizaciones pendientes o enviadas'
+                    ], 400);
+                }
+                return redirect()->back()->with('error', 'Solo se pueden convertir cotizaciones pendientes o enviadas');
             }
             
             $tipoDestino = $request->input('tipo_destino');
             
             if (!in_array($tipoDestino, ['Factura', 'Boleta', 'Ticket'])) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Tipo de destino inválido'
-                ], 400);
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Tipo de destino inválido'
+                    ], 400);
+                }
+                return redirect()->back()->with('error', 'Tipo de destino inválido');
             }
 
             DB::beginTransaction();
@@ -972,10 +1096,24 @@ class VentaController extends Controller
                 'xml_estado' => 'PENDIENTE' // Mantener como pendiente para poder procesarla
             ]);
 
-            // Descontar stock de los productos al convertir a boleta/factura/ticket
+            // Descontar stock manualmente porque los triggers solo se activan en INSERT/UPDATE/DELETE de detalle_ventas
+            // Al convertir cotización solo actualizamos la tabla ventas, por eso debemos descontar aquí
             foreach ($venta->detalleVentas as $detalle) {
+                $productoAntes = Producto::find($detalle->id_producto);
+                $stockAntes = $productoAntes ? $productoAntes->stock_actual : 0;
+                
                 Producto::where('id_producto', $detalle->id_producto)
                     ->decrement('stock_actual', $detalle->cantidad);
+                
+                $productoDespues = Producto::find($detalle->id_producto);
+                $stockDespues = $productoDespues ? $productoDespues->stock_actual : 0;
+                
+                \Log::info('[CONVERSIÓN] Stock descontado al convertir cotización', [
+                    'producto_id' => $detalle->id_producto,
+                    'cantidad' => $detalle->cantidad,
+                    'stock_antes' => $stockAntes,
+                    'stock_despues' => $stockDespues
+                ]);
             }
 
             DB::commit();
@@ -988,22 +1126,35 @@ class VentaController extends Controller
                 'nuevo_numero' => $nuevoNumeroFormateado
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => "Cotización convertida exitosamente a {$tipoDestino}",
-                'nueva_serie' => $nuevaSerie,
-                'nuevo_numero' => $nuevoNumeroFormateado,
-                'tipo_destino' => $tipoDestino
-            ]);
+            // Si es una petición AJAX, devolver JSON
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Cotización convertida exitosamente a {$tipoDestino}",
+                    'nueva_serie' => $nuevaSerie,
+                    'nuevo_numero' => $nuevoNumeroFormateado,
+                    'tipo_destino' => $tipoDestino
+                ]);
+            }
+            
+            // Si es un formulario HTML normal, redirigir
+            return redirect()->route('ventas.index')
+                ->with('success', "Cotización convertida exitosamente a {$tipoDestino}: {$nuevoNumeroFormateado}");
             
         } catch (\Exception $e) {
             DB::rollback();
             \Log::error("Error al convertir cotización: " . $e->getMessage());
             
-            return response()->json([
-                'success' => false,
-                'error' => 'Error interno del servidor: ' . $e->getMessage()
-            ], 500);
+            // Si es una petición AJAX, devolver JSON de error
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Error interno del servidor: ' . $e->getMessage()
+                ], 500);
+            }
+            
+            // Si es un formulario HTML normal, redirigir con error
+            return redirect()->back()->with('error', 'Error al convertir cotización: ' . $e->getMessage());
         }
     }
 
@@ -1105,20 +1256,49 @@ class VentaController extends Controller
         try {
             DB::beginTransaction();
             
-            // Revertir stock de productos
-            foreach ($venta->detalleVentas as $detalle) {
-                $producto = Producto::find($detalle->id_producto);
-                if ($producto) {
-                    $oldStock = $producto->stock_actual;
-                    $producto->stock_actual += $detalle->cantidad;
-                    $producto->save();
-                    \Log::info('Stock actualizado', [
-                        'producto_id' => $producto->id,
-                        'stock_anterior' => $oldStock,
-                        'cantidad_revertida' => $detalle->cantidad,
-                        'stock_nuevo' => $producto->stock_actual
+            // Obtener tipo de comprobante para determinar si debe revertir stock
+            $tipoComprobanteDB = \App\Models\TipoComprobante::where('id_tipo_comprobante', $venta->id_tipo_comprobante)->first();
+            $revertirStock = false;
+            
+            if ($tipoComprobanteDB) {
+                $codigo = strtoupper($tipoComprobanteDB->codigo_sunat ?? '');
+                
+                // Verificación explícita: Las cotizaciones (CT) NUNCA revierten stock
+                if ($codigo === 'CT') {
+                    $revertirStock = false;
+                    \Log::info('[CONTROL STOCK] COTIZACIÓN - NO se revertirá stock al anular', [
+                        'codigo_sunat' => $codigo,
+                        'id_venta' => $id
                     ]);
                 }
+                // Solo revertir stock para comprobantes de venta: Factura (01), Boleta (03), Ticket (12)
+                elseif (in_array($codigo, ['01', '03', '12'])) {
+                    $revertirStock = true;
+                    \Log::info('[CONTROL STOCK] Comprobante de venta - SÍ se revertirá stock al anular', [
+                        'codigo_sunat' => $codigo,
+                        'id_venta' => $id
+                    ]);
+                }
+            }
+            
+            // Revertir stock de productos solo si no es cotización
+            if ($revertirStock) {
+                foreach ($venta->detalleVentas as $detalle) {
+                    $producto = Producto::find($detalle->id_producto);
+                    if ($producto) {
+                        $oldStock = $producto->stock_actual;
+                        $producto->stock_actual += $detalle->cantidad;
+                        $producto->save();
+                        \Log::info('Stock revertido', [
+                            'producto_id' => $producto->id_producto,
+                            'stock_anterior' => $oldStock,
+                            'cantidad_revertida' => $detalle->cantidad,
+                            'stock_nuevo' => $producto->stock_actual
+                        ]);
+                    }
+                }
+            } else {
+                \Log::info('NO se revierte stock porque es cotización u otro comprobante que no afecta inventario');
             }
             
             // Actualizar estado de la venta
@@ -1128,12 +1308,16 @@ class VentaController extends Controller
                 'motivo_anulacion' => $request->input('motivo', 'Anulación manual')
             ]);
             
-            \Log::info('Venta anulada exitosamente', ['venta_id' => $id]);
+            \Log::info('Venta anulada exitosamente', ['venta_id' => $id, 'stock_revertido' => $revertirStock]);
             
             DB::commit();
             
+            $mensaje = $revertirStock 
+                ? 'Venta anulada exitosamente. Stock revertido.' 
+                : 'Cotización anulada exitosamente.';
+            
             return redirect()->route('ventas.index')
-                           ->with('success', 'Venta anulada exitosamente. Stock revertido.');
+                           ->with('success', $mensaje);
         } catch (\Exception $e) {
             DB::rollback();
             \Log::error('Error al anular venta', ['error' => $e->getMessage(), 'venta_id' => $id]);
@@ -1147,15 +1331,26 @@ class VentaController extends Controller
      */
     public function convertirAFactura($id)
     {
+        \Log::info('[CONVERSIÓN] Iniciando conversión a Factura', ['id_venta' => $id]);
+        
         try {
             $venta = Venta::findOrFail($id);
             
+            \Log::info('[CONVERSIÓN] Venta encontrada', [
+                'id_venta' => $venta->id_venta,
+                'tipo_comprobante' => $venta->id_tipo_comprobante,
+                'estado' => $venta->xml_estado,
+                'serie_numero' => $venta->serie . '-' . $venta->numero
+            ]);
+            
             // Verificar que sea una cotización (ID 8 según seeder)
             if ($venta->id_tipo_comprobante != 8) {
+                \Log::warning('[CONVERSIÓN] No es cotización', ['tipo_comprobante' => $venta->id_tipo_comprobante]);
                 return redirect()->back()->with('error', 'Solo se pueden convertir cotizaciones');
             }
             
             if ($venta->xml_estado === 'ANULADO') {
+                \Log::warning('[CONVERSIÓN] Cotización anulada');
                 return redirect()->back()->with('error', 'No se puede convertir una cotización anulada');
             }
 
@@ -1177,6 +1372,8 @@ class VentaController extends Controller
             $siguienteNumero = $ultimoNumero + 1;
             $nuevoNumeroFormateado = 'F001-' . str_pad($siguienteNumero, 8, '0', STR_PAD_LEFT);
             
+            \Log::info('[CONVERSIÓN] Nuevo número generado', ['numero' => $nuevoNumeroFormateado]);
+            
             // Actualizar la venta
             $venta->update([
                 'id_tipo_comprobante' => $nuevoTipoId,
@@ -1185,14 +1382,32 @@ class VentaController extends Controller
                 'xml_estado' => 'PENDIENTE'
             ]);
             
+            \Log::info('[CONVERSIÓN] Venta actualizada');
+            
+            // Descontar stock de los productos al convertir a factura
+            foreach ($venta->detalleVentas as $detalle) {
+                Producto::where('id_producto', $detalle->id_producto)
+                    ->decrement('stock_actual', $detalle->cantidad);
+                \Log::info('[CONVERSIÓN] Stock descontado', [
+                    'producto_id' => $detalle->id_producto,
+                    'cantidad' => $detalle->cantidad
+                ]);
+            }
+            
             DB::commit();
+            
+            \Log::info('[CONVERSIÓN] ✅ Conversión completada exitosamente', [
+                'nuevo_numero' => $nuevoNumeroFormateado
+            ]);
             
             return redirect()->route('ventas.index')
                            ->with('success', 'Cotización convertida exitosamente a Factura: ' . $nuevoNumeroFormateado);
             
         } catch (\Exception $e) {
             DB::rollback();
-            \Log::error("Error al convertir cotización a factura: " . $e->getMessage());
+            \Log::error("[CONVERSIÓN] ❌ Error al convertir: " . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
             return redirect()->back()->with('error', 'Error al convertir cotización: ' . $e->getMessage());
         }
     }
@@ -1202,15 +1417,25 @@ class VentaController extends Controller
      */
     public function convertirABoleta($id)
     {
+        \Log::info('[CONVERSIÓN] Iniciando conversión a Boleta', ['id_venta' => $id]);
+        
         try {
             $venta = Venta::findOrFail($id);
             
+            \Log::info('[CONVERSIÓN] Venta encontrada', [
+                'id_venta' => $venta->id_venta,
+                'tipo_comprobante' => $venta->id_tipo_comprobante,
+                'estado' => $venta->xml_estado
+            ]);
+            
             // Verificar que sea una cotización (ID 8 según seeder)
             if ($venta->id_tipo_comprobante != 8) {
+                \Log::warning('[CONVERSIÓN] No es cotización', ['tipo_comprobante' => $venta->id_tipo_comprobante]);
                 return redirect()->back()->with('error', 'Solo se pueden convertir cotizaciones');
             }
             
             if ($venta->xml_estado === 'ANULADO') {
+                \Log::warning('[CONVERSIÓN] Cotización anulada');
                 return redirect()->back()->with('error', 'No se puede convertir una cotización anulada');
             }
 
@@ -1232,6 +1457,8 @@ class VentaController extends Controller
             $siguienteNumero = $ultimoNumero + 1;
             $nuevoNumeroFormateado = 'B001-' . str_pad($siguienteNumero, 8, '0', STR_PAD_LEFT);
             
+            \Log::info('[CONVERSIÓN] Nuevo número generado', ['numero' => $nuevoNumeroFormateado]);
+            
             // Actualizar la venta
             $venta->update([
                 'id_tipo_comprobante' => $nuevoTipoId,
@@ -1240,7 +1467,23 @@ class VentaController extends Controller
                 'xml_estado' => 'PENDIENTE'
             ]);
             
+            \Log::info('[CONVERSIÓN] Venta actualizada');
+            
+            // Descontar stock de los productos al convertir a boleta
+            foreach ($venta->detalleVentas as $detalle) {
+                Producto::where('id_producto', $detalle->id_producto)
+                    ->decrement('stock_actual', $detalle->cantidad);
+                \Log::info('[CONVERSIÓN] Stock descontado', [
+                    'producto_id' => $detalle->id_producto,
+                    'cantidad' => $detalle->cantidad
+                ]);
+            }
+            
             DB::commit();
+            
+            \Log::info('[CONVERSIÓN] ✅ Conversión completada exitosamente', [
+                'nuevo_numero' => $nuevoNumeroFormateado
+            ]);
             
             return redirect()->route('ventas.index')
                            ->with('success', 'Cotización convertida exitosamente a Boleta: ' . $nuevoNumeroFormateado);

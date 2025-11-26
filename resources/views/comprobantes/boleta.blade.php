@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BOLETA DE VENTA - {{ $venta->serie }}-{{ $venta->numero }}</title>
+    <title>BOLETA DE VENTA - {{ $venta->numero }}</title>
        <style>
         * {
             margin: 0;
@@ -219,7 +219,7 @@
             </div>
             <div class="document-info" style="border: 2px solid rgba(59, 124, 228, 1; background: #f8f9fa; padding: 15px; text-align: center;">
                 <h1 style="color: rgba(59, 124, 228, 1; font-size: 20px; margin-bottom: 10px;">BOLETA DE VENTA</h1>
-                <div class="document-number" style="font-size: 16px; font-weight: bold; color: rgba(59, 124, 228, 1); margin-bottom: 10px;">{{ $venta->serie }}-{{ $venta->numero }}</div>
+                <div class="document-number" style="font-size: 16px; font-weight: bold; color: rgba(59, 124, 228, 1); margin-bottom: 10px;">{{ $venta->numero }}</div>
                 <p><strong>Fecha:</strong> {{ date('d/m/Y', strtotime($venta->fecha)) }}</p>
                 <p><strong>Moneda:</strong> {{ $moneda->descripcion }}</p>
             </div>

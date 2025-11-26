@@ -39,8 +39,19 @@
                                 <i class="fas fa-user"></i>
                             </div>
                             <div class="profile-info">
-                                <span class="profile-name">Administrator</span>
-                                <span class="profile-role">Sistema IRM</span>
+                                <span class="profile-name">{{ Auth::user()->nombre ?? 'Usuario' }}</span>
+                                <span class="profile-role">
+                                    @php
+                                        $roles = [
+                                            1 => 'Administrador',
+                                            2 => 'Gerente',
+                                            3 => 'Vendedor',
+                                            4 => 'Almacenero',
+                                            5 => 'Contador'
+                                        ];
+                                    @endphp
+                                    {{ $roles[Auth::user()->id_rol] ?? 'Usuario' }}
+                                </span>
                             </div>
                         </div>
                     </div>

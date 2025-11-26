@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="test-token">
+    <title>Test de Conversiones</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .btn {
+            padding: 10px 20px;
+            margin: 10px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            color: white;
+        }
+        .btn-factura { background: #28a745; }
+        .btn-boleta { background: #17a2b8; }
+        .btn-ticket { background: #ffc107; color: #333; }
+        #resultado {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test de Conversiones de Cotizaciones</h1>
+    
+    <p>Esta página prueba las conversiones de cotizaciones sin depender del backend completo.</p>
+    
+    <div>
+        <button class="btn btn-factura" onclick="testConversion(42, 'FACTURA')">
+            Convertir a Factura (ID: 42)
+        </button>
+        <button class="btn btn-boleta" onclick="testConversion(42, 'BOLETA')">
+            Convertir a Boleta (ID: 42)
+        </button>
+        <button class="btn btn-ticket" onclick="testConversion(42, 'TICKET')">
+            Convertir a Ticket (ID: 42)
+        </button>
+    </div>
+    
+    <div id="resultado">
+        <strong>Resultado:</strong> Haz clic en un botón para probar...
+    </div>
+    
+    <script>
+        console.log('🚀 Test de conversiones cargado');
+        
+        function testConversion(idVenta, tipoDestino) {
+            console.log('testConversion llamada:', { idVenta, tipoDestino });
+            const resultado = document.getElementById('resultado');
+            resultado.innerHTML = `<strong>Procesando...</strong> Convirtiendo venta ${idVenta} a ${tipoDestino}`;
+            
+            const tipoNormalizado = tipoDestino.toUpperCase();
+            const nombreTipo = tipoNormalizado === 'FACTURA' ? 'Factura' : 
+                               tipoNormalizado === 'BOLETA' ? 'Boleta' : 
+                               tipoNormalizado === 'TICKET' ? 'Ticket' : tipoDestino;
+            
+            const mensaje = `¿Está seguro que desea convertir esta cotización a ${nombreTipo}?`;
+            
+            if (!confirm(mensaje)) {
+                resultado.innerHTML = `<strong>Cancelado:</strong> Usuario canceló la operación`;
+                return;
+            }
+            
+            // Simular la conversión según el tipo
+            if (tipoNormalizado === 'FACTURA') {
+                resultado.innerHTML = `<strong>Redireccionando...</strong> /ventas/${idVenta}/convertir-factura`;
+                console.log('Redirección GET a:', `/ventas/${idVenta}/convertir-factura`);
+                setTimeout(() => {
+                    window.location.href = `/ventas/${idVenta}/convertir-factura`;
+                }, 1000);
+            } else if (tipoNormalizado === 'BOLETA') {
+                resultado.innerHTML = `<strong>Redireccionando...</strong> /ventas/${idVenta}/convertir-boleta`;
+                console.log('Redirección GET a:', `/ventas/${idVenta}/convertir-boleta`);
+                setTimeout(() => {
+                    window.location.href = `/ventas/${idVenta}/convertir-boleta`;
+                }, 1000);
+            } else if (tipoNormalizado === 'TICKET') {
+                resultado.innerHTML = `<strong>Enviando POST...</strong> /ventas/${idVenta}/convertir`;
+                console.log('POST AJAX a:', `/ventas/${idVenta}/convertir`);
+                
+                fetch(`/ventas/${idVenta}/convertir`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({ tipo_destino: 'Ticket' })
+                })
+                .then(response => {
+                    console.log('Respuesta recibida:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Datos:', data);
+                    if (data.success) {
+                        resultado.innerHTML = `<strong>✅ Éxito:</strong> ${data.message}`;
+                        setTimeout(() => {
+                            window.location.href = '/ventas';
+                        }, 2000);
+                    } else {
+                        resultado.innerHTML = `<strong>❌ Error:</strong> ${data.error || 'No se pudo convertir'}`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    resultado.innerHTML = `<strong>❌ Error de red:</strong> ${error.message}`;
+                });
+            } else {
+                resultado.innerHTML = `<strong>❌ Error:</strong> Tipo de conversión no válido: ${tipoDestino}`;
+            }
+        }
+        
+        console.log('✅ Script de test cargado correctamente');
+    </script>
+</body>
+</html>
