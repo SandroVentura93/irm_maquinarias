@@ -534,6 +534,9 @@
                     <a href="{{ route('usuarios.index') }}">
                         <i class="fas fa-users-cog"></i> Usuarios
                     </a>
+                    <a href="{{route('bitacoras.index')}}">
+                        <i class="fas fa-book"></i> Bitácoras
+                    </a>
                     @endif
                 </div>
             </div>

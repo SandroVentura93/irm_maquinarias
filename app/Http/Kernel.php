@@ -66,5 +66,6 @@ class Kernel extends HttpKernel
         'admin' => \App\Http\Middleware\AdminMiddleware::class,
         'role' => \App\Http\Middleware\RoleMiddleware::class,
         'isAdmin' => \App\Http\Middleware\IsAdmin::class,
+        'log.bitacora' => \App\Http\Middleware\LogBitacora::class,
     ];
 }
