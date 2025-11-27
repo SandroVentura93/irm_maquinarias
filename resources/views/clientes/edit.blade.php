@@ -5,22 +5,22 @@
 @section('content')
 <style>
     :root {
-        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        --glass-bg: rgba(255, 255, 255, 0.25);
-        --glass-border: rgba(255, 255, 255, 0.18);
-        --text-primary: #2d3748;
-        --text-secondary: #4a5568;
-        --shadow-elegant: 0 8px 32px rgba(31, 38, 135, 0.37);
+        --primary-gradient: linear-gradient(135deg, #827ed6ff, #827ed6ff);
+        --secondary-gradient: linear-gradient(135deg, #0ea5e9, #0284c7);
+        --success-gradient: linear-gradient(135deg, #10b981, #059669);
+        --glass-bg: rgba(31, 41, 55, 0.85);
+        --glass-border: rgba(75, 85, 99, 0.5);
+        --text-primary: #e5e7eb;
+        --text-secondary: #9ca3af;
+        --shadow-elegant: 0 8px 32px rgba(0, 0, 0, 0.37);
         --border-radius: 16px;
         --transition-smooth: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
     }
 
     body {
-        background: var(--primary-gradient);
-        min-height: 100vh;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background-color: #1f2937; /* Fondo oscuro */
+        color: var(--text-primary); /* Texto claro */
+        font-family: Arial, sans-serif; /* Fuente legible */
     }
 
     .edit-container {
@@ -30,9 +30,8 @@
     }
 
     .edit-header {
-        background: var(--glass-bg);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
+        background: var(--primary-gradient);
+        color: var(--text-primary);
         border: 1px solid var(--glass-border);
         border-radius: var(--border-radius);
         padding: 2rem;
@@ -110,16 +109,10 @@
     }
 
     .section-title {
-        color: white;
-        font-size: 1.4rem;
-        font-weight: 700;
-        margin-bottom: 2rem;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding-bottom: 1rem;
-        border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+        color: var(--text-primary);
+        background: var(--secondary-gradient);
+        padding: 10px;
+        border-radius: var(--border-radius);
     }
 
     .section-title i {
@@ -142,23 +135,22 @@
     }
 
     .form-control, .form-select {
+        background-color: #374151; /* Fondo gris oscuro para los campos de entrada */
+        color: var(--text-primary); /* Texto claro */
+        border: 1px solid #4b5563; /* Borde gris oscuro */
         width: 100%;
         padding: 1.25rem 1.25rem 1.25rem 3.5rem;
-        background: rgba(255, 255, 255, 0.9);
-        border: 2px solid rgba(255, 255, 255, 0.3);
         border-radius: 12px;
         font-size: 1rem;
         font-weight: 500;
-        color: var(--text-primary);
         transition: var(--transition-smooth);
         backdrop-filter: blur(5px);
         -webkit-backdrop-filter: blur(5px);
     }
 
     .form-control:focus, .form-select:focus {
-        outline: none;
-        border-color: rgba(255, 255, 255, 0.6);
-        background: rgba(255, 255, 255, 0.95);
+        border-color: #2563eb; /* Azul vibrante */
+        background-color: #1e293b; /* Fondo más oscuro */
         box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1);
         transform: translateY(-2px);
     }
@@ -191,8 +183,9 @@
     }
 
     .btn-primary {
-        background: var(--success-gradient);
-        color: white;
+        background-color: #2563eb; /* Azul vibrante */
+        border-color: #1d4ed8;
+        color: var(--text-primary); /* Texto claro */
         padding: 1.25rem 3rem;
         border: none;
         border-radius: 12px;
@@ -207,15 +200,17 @@
     }
 
     .btn-primary:hover {
+        background-color: #1d4ed8; /* Azul más oscuro */
+        border-color: #1e40af;
         transform: translateY(-3px);
         box-shadow: 0 8px 30px rgba(79, 172, 254, 0.4);
     }
 
     .btn-secondary {
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
+        background-color: #374151; /* Gris oscuro */
+        color: var(--text-secondary); /* Texto gris claro */
+        border: 1px solid #4b5563;
         padding: 1.25rem 2rem;
-        border: 2px solid rgba(255, 255, 255, 0.3);
         border-radius: 12px;
         font-weight: 600;
         text-decoration: none;
@@ -227,8 +222,8 @@
     }
 
     .btn-secondary:hover {
-        background: rgba(255, 255, 255, 0.3);
-        color: white;
+        background-color: #4b5563; /* Gris más oscuro */
+        color: var(--text-primary); /* Texto claro */
         text-decoration: none;
         transform: translateY(-2px);
     }

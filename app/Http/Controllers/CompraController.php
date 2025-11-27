@@ -86,11 +86,12 @@ class CompraController extends Controller
             'detalles.*.cantidad' => 'required|integer|min:1',
             'detalles.*.precio_unitario' => 'required|numeric',
         ]);
+
         $compra = Compra::findOrFail($id);
-        
+
         // Determinar si se debe calcular IGV
-        $incluir_igv = $data['incluir_igv'] ?? true;
-        
+        $incluir_igv = $data['incluir_igv'] ?? false;
+
         // Calcular totales
         $subtotal = 0;
         $igv = 0;
@@ -106,6 +107,8 @@ class CompraController extends Controller
         $data['subtotal'] = $subtotal;
         $data['igv'] = $igv;
         $data['total'] = $total;
+        $data['incluir_igv'] = $incluir_igv; // Guardar el estado del checkbox
+
         $compra->update($data);
         $compra->detalles()->delete();
         foreach ($data['detalles'] as $detalle) {

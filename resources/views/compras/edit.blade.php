@@ -1,4 +1,3 @@
-
 @extends('layouts.dashboard')
 
 @section('content')
@@ -406,6 +405,12 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="form-group form-check">
+                    <input type="hidden" name="incluir_igv" value="0">
+                    <input type="checkbox" name="incluir_igv" id="incluir_igv" class="form-check-input" value="1" {{ $compra->incluir_igv ? 'checked' : '' }}>
+                    <label for="incluir_igv" class="form-check-label">Incluir IGV</label>
+                </div>
             </div>
         </div>
 
@@ -606,12 +611,12 @@ function calcularFila(input) {
     let cantidad = parseFloat(row.querySelector('input[name*="[cantidad]"]').value) || 0;
     let precio = parseFloat(row.querySelector('input[name*="[precio_unitario]"]').value) || 0;
     let sub = cantidad * precio;
-    
-    // Calcular IGV solo si el checkbox está marcado
+
+    // Check IGV toggle state
     const incluirIGV = document.getElementById('incluirIGV').checked;
     let igvProd = incluirIGV ? sub * 0.18 : 0;
     let totProd = sub + igvProd;
-    
+
     row.querySelector('input[name*="[subtotal]"]').value = sub.toFixed(2);
     row.querySelector('input[name*="[igv]"]').value = igvProd.toFixed(2);
     row.querySelector('input[name*="[total]"]').value = totProd.toFixed(2);
@@ -623,22 +628,32 @@ function calcularTotales() {
     let igv = 0;
     let total = 0;
     let rows = document.querySelectorAll('#productos-table tr');
-    rows.forEach(row => {
-        let sub = parseFloat(row.querySelector('input[name*="[subtotal]"]').value) || 0;
-        let igvProd = parseFloat(row.querySelector('input[name*="[igv]"]').value) || 0;
-        let totProd = parseFloat(row.querySelector('input[name*="[total]"]').value) || 0;
-        subtotal += sub;
-        igv += igvProd;
-        total += totProd;
-    });
-    
-    // Actualizar campo hidden para enviar en el formulario
+
+    // Check IGV toggle state
     const incluirIGV = document.getElementById('incluirIGV').checked;
-    document.getElementById('incluir_igv_hidden').value = incluirIGV ? '1' : '0';
-    
+
+    rows.forEach(row => {
+        let cantidad = parseFloat(row.querySelector('input[name*="[cantidad]"]').value) || 0;
+        let precio = parseFloat(row.querySelector('input[name*="[precio_unitario]"]').value) || 0;
+        let sub = cantidad * precio;
+        let igvProd = incluirIGV ? sub * 0.18 : 0;
+        let totProd = sub + igvProd;
+
+        subtotal += sub;
+        igv += incluirIGV ? igvProd : 0;
+        total += incluirIGV ? totProd : sub;
+
+        row.querySelector('input[name*="[subtotal]"]').value = sub.toFixed(2);
+        row.querySelector('input[name*="[igv]"]').value = incluirIGV ? igvProd.toFixed(2) : "0.00";
+        row.querySelector('input[name*="[total]"]').value = incluirIGV ? totProd.toFixed(2) : sub.toFixed(2);
+    });
+
     document.getElementById('subtotal').value = subtotal.toFixed(2);
-    document.getElementById('igv').value = igv.toFixed(2);
+    document.getElementById('igv').value = incluirIGV ? igv.toFixed(2) : "0.00";
     document.getElementById('total').value = total.toFixed(2);
+
+    // Update hidden field for IGV inclusion
+    document.getElementById('incluir_igv_hidden').value = incluirIGV ? '1' : '0';
 }
 
 // Inicializar tooltips

@@ -95,14 +95,8 @@
                                 <div class="form-group">
                                     <label for="moneda">Moneda</label>
                                     <select class="form-control" id="moneda" name="moneda" required>
-                                        <option value="PEN" {{ $venta->moneda === 'PEN' ? 'selected' : '' }} 
-                                            style="background-color: #d4edda; font-weight: bold; color: #155724;">
-                                            🇵🇪 Sol Peruano (PEN)
-                                        </option>
-                                        <option value="USD" {{ $venta->moneda === 'USD' ? 'selected' : '' }} 
-                                            style="color: #004085;">
-                                            🇺🇸 Dólar Estadounidense (USD)
-                                        </option>
+                                        <option value="PEN" {{ $venta->moneda === 'PEN' ? 'selected' : '' }}>Soles (PEN)</option>
+                                        <option value="USD" {{ $venta->moneda === 'USD' ? 'selected' : '' }}>Dólares (USD)</option>
                                     </select>
                                 </div>
                             </div>
@@ -184,7 +178,11 @@
                                             </tr>
                                             <tr>
                                                 <td><strong>IGV (18%):</strong></td>
-                                                <td class="text-right"><span id="igv-display">S/ 0.00</span></td>
+                                                <td class="text-right">
+                                                    <span id="igv-display">S/ 0.00</span>
+                                                    <input class="form-check-input ml-2" type="checkbox" id="igv-checkbox" checked>
+                                                    <label class="form-check-label" for="igv-checkbox">Aplicar</label>
+                                                </td>
                                             </tr>
                                             <tr class="table-active">
                                                 <td><strong>Total:</strong></td>
@@ -260,7 +258,11 @@ document.addEventListener('DOMContentLoaded', function() {
             subtotal += cantidad * precioFinal;
         });
         
-        const igv = subtotal * 0.18;
+        let igv = 0;
+        if (document.getElementById('igv-checkbox').checked) {
+            igv = subtotal * 0.18;
+        }
+
         const total = subtotal + igv;
         
         // Actualizar displays
@@ -386,6 +388,48 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    // Calcular totales iniciales
+    calcularTotales();
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const igvCheckbox = document.getElementById('igv-checkbox');
+
+    // Escuchar cambios en el checkbox
+    igvCheckbox.addEventListener('change', function() {
+        calcularTotales();
+    });
+
+    // Modificar la función calcularTotales para considerar el checkbox
+    function calcularTotales() {
+        let subtotal = 0;
+
+        document.querySelectorAll('.producto-row').forEach(function(row) {
+            const cantidad = parseFloat(row.querySelector('.cantidad-input').value) || 0;
+            const precioFinal = parseFloat(row.querySelector('.precio-final-input').value) || 0;
+            subtotal += cantidad * precioFinal;
+        });
+
+        let igv = 0;
+        if (igvCheckbox.checked) {
+            igv = subtotal * 0.18;
+        }
+
+        const total = subtotal + igv;
+
+        // Actualizar displays
+        document.getElementById('subtotal-display').textContent = 'S/ ' + subtotal.toFixed(2);
+        document.getElementById('igv-display').textContent = 'S/ ' + igv.toFixed(2);
+        document.getElementById('total-display').textContent = 'S/ ' + total.toFixed(2);
+
+        // Actualizar campos ocultos para el formulario
+        document.getElementById('subtotal-input').value = subtotal.toFixed(2);
+        document.getElementById('igv-input').value = igv.toFixed(2);
+        document.getElementById('total-input').value = total.toFixed(2);
+    }
+
     // Calcular totales iniciales
     calcularTotales();
 });

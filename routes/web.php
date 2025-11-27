@@ -20,7 +20,8 @@ use App\Http\Controllers\{
     PdfController,
     RolController,
     UsuarioController,
-    ReportesController
+    ReportesController,
+    AdminController
 };
 
 /*
@@ -59,22 +60,12 @@ Route::middleware('guest')->group(function () {
     });
 
     // Registro (si es necesario)
-    Route::get('/register', fn() => view('auth.register'))->name('register');
-    Route::post('/register', function (Request $request) {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-        ]);
+    Route::get('/register', function () {
+        return redirect()->route('login')->with('message', 'No se pueden crear cuentas nuevas. Contacte con su administrador.');
+    })->name('register');
 
-        $user = \App\Models\User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => \Illuminate\Support\Facades\Hash::make($validated['password']),
-        ]);
-
-        Auth::login($user);
-        return redirect('dashboard');
+    Route::post('/register', function () {
+        return redirect()->route('login')->with('message', 'No se pueden crear cuentas nuevas. Contacte con su administrador.');
     });
 });
 
@@ -419,5 +410,14 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['admin'])->group(function () {
         Route::delete('compras/{compra}', [\App\Http\Controllers\CompraController::class, 'destroy'])->name('compras.destroy');
         Route::delete('detalle_compras/{detalle_compra}', [\App\Http\Controllers\DetalleCompraController::class, 'destroy'])->name('detalle_compras.destroy');
+    });
+    
+    // Ruta para la bitácora de administración
+    Route::get('/admin/bitacora', [AdminController::class, 'bitacora'])->name('admin.bitacora');
+    
+    // Rutas para la gestión de bitácoras
+    Route::prefix('admin')->middleware(['auth', 'isAdmin'])->group(function () {
+        Route::get('/bitacoras', [AdminController::class, 'indexBitacoras'])->name('bitacoras.index');
+        Route::post('/bitacoras', [AdminController::class, 'storeBitacora'])->name('bitacoras.store');
     });
 });

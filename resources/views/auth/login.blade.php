@@ -114,5 +114,17 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const registerLink = document.querySelector('a[href="{{ route('register') }}"]');
+            if (registerLink) {
+                registerLink.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    alert('No se pueden crear cuentas nuevas. Contacte con su administrador.');
+                });
+                registerLink.setAttribute('href', 'javascript:void(0);');
+            }
+        });
+    </script>
 </body>
 </html>
