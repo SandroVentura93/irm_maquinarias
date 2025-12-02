@@ -24,7 +24,6 @@
             <div class="header-actions d-flex align-items-center">
                 <div class="tipo-cambio-badge me-3">
                     <i class="fas fa-exchange-alt me-2"></i>
-                    <strong>TC:</strong> S/ {{ number_format($tipoCambio, 2) }}/USD
                 </div>
                 <button type="submit" form="productForm" class="btn btn-success btn-modern">
                     <i class="fas fa-save me-2"></i>Guardar Producto
