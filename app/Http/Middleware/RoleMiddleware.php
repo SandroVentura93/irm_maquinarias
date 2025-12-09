@@ -23,6 +23,11 @@ class RoleMiddleware
             return redirect()->route('login');
         }
 
+        // Permitir acceso total al administrador (id_rol == 1)
+        if (Auth::user()->id_rol == 1) {
+            return $next($request);
+        }
+
         // Convertir roles a array de integers
         $allowedRoles = array_map('intval', $roles);
 

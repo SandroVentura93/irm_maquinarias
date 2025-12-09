@@ -20,37 +20,6 @@ use PDF;
 
 class VentaController extends Controller
 {
-    /**
-     * Registrar pago parcial o total de una venta
-     */
-    public function registrarPago(Request $request)
-    {
-        $request->validate([
-            'id_venta' => 'required|exists:ventas,id_venta',
-            'monto' => 'required|numeric|min:0.01',
-            'metodo' => 'required|string|max:50',
-        ]);
-
-        $venta = \App\Models\Venta::findOrFail($request->id_venta);
-
-        // Crear el pago
-        $pago = new \App\Models\PagoVenta();
-        $pago->id_venta = $venta->id_venta;
-        $pago->monto = $request->monto;
-        $pago->metodo = $request->metodo;
-        $pago->fecha = now();
-        $pago->save();
-
-        // Actualizar saldo y estado de la venta
-        $totalPagado = \App\Models\PagoVenta::where('id_venta', $venta->id_venta)->sum('monto');
-        $saldo = $venta->total - $totalPagado;
-        $venta->saldo = $saldo > 0 ? $saldo : 0;
-        $venta->xml_estado = $saldo <= 0 ? 'ACEPTADO' : 'PENDIENTE';
-        $venta->save();
-
-        return redirect()->route('ventas.index')->with('success', 'Pago registrado correctamente.');
-    }
-        
     // Lista de ventas
     public function index(Request $request)
     {
@@ -979,10 +948,7 @@ class VentaController extends Controller
                         'stock_despues' => $stockDespues
                     ]);
                 } else {
-                    \Log::info('[CONTROL STOCK] NO se descuenta stock - Es cotización u otro comprobante', [
-                        'producto_id' => $d['id_producto'],
-                        'cantidad' => $d['cantidad']
-                    ]);
+                    \Log::info('[CONTROL STOCK] NO se descuenta stock porque no es comprobante de venta');
                 }
             }
 
@@ -1656,6 +1622,7 @@ class VentaController extends Controller
             $tipoCambio = $this->obtenerTipoCambio();
             
             // Obtener información de cache para saber si es reciente
+
             $cacheInfo = \Cache::get('tipo_cambio_usd_pen_info', [
                 'fuente' => 'Valor por defecto',
                 'fecha_actualizacion' => now(),
@@ -1752,5 +1719,42 @@ class VentaController extends Controller
         return view('ventas.pago', [
             'venta' => $venta
         ]);
+    }
+
+    public function registrarPagoConId(Request $request, $id)
+    {
+        \Log::info('Iniciando registro de pago', ['id_venta' => $id, 'request' => $request->all()]);
+
+        $venta = Venta::findOrFail($id);
+        \Log::info('Venta encontrada', ['venta' => $venta]);
+
+        // Validate the payment input
+        $request->validate([
+            'monto' => 'required|numeric|min:0.01',
+            'metodo' => 'required|string|max:255',
+            'numero_operacion' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            // Register the payment
+            $pago = new \App\Models\PagoVenta();
+            $pago->id_venta = $venta->id;
+            $pago->monto = $request->monto;
+            $pago->metodo = $request->metodo;
+            $pago->numero_operacion = $request->numero_operacion;
+            $pago->fecha = now();
+            $pago->save();
+            \Log::info('Pago registrado', ['pago' => $pago]);
+
+            // Deduct the payment from the pending balance
+            $venta->saldo_pendiente -= $request->monto;
+            $venta->save();
+            \Log::info('Saldo actualizado', ['venta' => $venta]);
+
+            return redirect('/ventas')->with('success', 'Pago registrado correctamente.');
+        } catch (\Exception $e) {
+            \Log::error('Error al registrar el pago', ['error' => $e->getMessage()]);
+            return redirect('/ventas')->with('error', 'Hubo un problema al registrar el pago.');
+        }
     }
 }

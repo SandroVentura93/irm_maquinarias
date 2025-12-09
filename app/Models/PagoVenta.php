@@ -16,6 +16,7 @@ class PagoVenta extends Model
         'id_venta',
         'monto',
         'metodo',
+        'numero_operacion', // Added to fillable properties
         'fecha',
     ];
 

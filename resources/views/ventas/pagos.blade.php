@@ -87,6 +87,7 @@
 @endsection
 
 @section('scripts')
+@once
 <script>
 /* ============================================================
    SCRIPT ÚNICO — SIN DUPLICACIONES
@@ -143,5 +144,8 @@
     });
 
 })();
+
+console.log('CARGÓ pagos.blade.php — render completo');
 </script>
+@endonce
 @endsection
