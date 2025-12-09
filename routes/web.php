@@ -21,8 +21,11 @@ use App\Http\Controllers\{
     RolController,
     UsuarioController,
     ReportesController,
-    AdminController
+    AdminController,
+    PagosController
 };
+
+use Database\Seeders\SeedVentasPrueba;
 
 /*
 // Ruta de prueba para cancel (POST)
@@ -41,6 +44,12 @@ Route::post('/test-cancel/{id}', function($id) {
 
 // Rutas de autenticación (públicas)
 Route::middleware('guest')->group(function () {
+
+    // Ruta temporal de desarrollo para ejecutar el seeder de ventas de prueba
+    Route::get('/dev/seed-ventas-prueba', function () {
+        (new SeedVentasPrueba())->run();
+        return response()->json(['status' => 'ok']);
+    });
     // Login
     Route::get('/login', fn() => view('auth.login'))->name('login');
     Route::post('/login', function (Request $request) {
@@ -49,9 +58,12 @@ Route::middleware('guest')->group(function () {
             'password' => ['required'],
         ]);
 
-        if (Auth::attempt($credentials)) {
+        $remember = $request->boolean('remember');
+
+        if (Auth::attempt($credentials, $remember)) {
             $request->session()->regenerate();
-            return redirect()->intended('/');
+            // Redirige a la ruta protegida que intentó abrir o al dashboard
+            return redirect()->intended(route('home'));
         }
 
         return back()->withErrors([
@@ -117,12 +129,20 @@ Route::middleware(['auth'])->group(function () {
     */
     
     // Crear, editar ventas - Admin, Gerente y Vendedor (DEBE IR PRIMERO)
-    Route::middleware(['role:1,2,3'])->group(function () {
+    Route::middleware(['role:1', 'role:2', 'role:3'])->group(function () {
+        // Primero las rutas específicas
         Route::get('ventas/create', [VentaController::class, 'create'])->name('ventas.create');
         Route::post('ventas', [VentaController::class, 'store'])->name('ventas.store');
         Route::get('ventas/{venta}/edit', [VentaController::class, 'edit'])->name('ventas.edit');
         Route::put('ventas/{venta}', [VentaController::class, 'update'])->name('ventas.update');
-        
+        Route::get('ventas/{venta}/pdf', [VentaController::class, 'generarPDF'])->name('ventas.pdf.generar');
+
+        // Luego las rutas genéricas
+        Route::get('ventas/{venta}', [VentaController::class, 'show'])->name('ventas.show');
+
+        // Y al final el listado
+        Route::get('ventas', [VentaController::class, 'index'])->name('ventas.index');
+
         // Ruta alternativa personalizada para nueva venta
         Route::get('/venta/create', [VentaController::class, 'create'])->name('venta.create');
     });
@@ -133,13 +153,12 @@ Route::middleware(['auth'])->group(function () {
     });
     
     // Ver ventas - Todos los roles con acceso a ventas
-    Route::middleware(['role:1,2,3,5'])->group(function () {
-        Route::get('ventas', [VentaController::class, 'index'])->name('ventas.index');
-        Route::get('ventas/{venta}', [VentaController::class, 'show'])->name('ventas.show');
+    Route::middleware(['role:1', 'role:2', 'role:3', 'role:5'])->group(function () {
+        // Eliminadas las rutas duplicadas
     });
     
     // Acciones especiales de ventas - Admin, Gerente y Vendedor
-    Route::middleware(['role:1,2,3'])->prefix('ventas')->name('ventas.')->group(function () {
+    Route::middleware(['role:1', 'role:2', 'role:3'])->prefix('ventas')->name('ventas.')->group(function () {
         Route::post('pago', [VentaController::class, 'registrarPago'])->name('pago');
         Route::get('{venta}/confirm-cancel', [VentaController::class, 'confirmCancel'])->name('confirm-cancel');
         Route::patch('{venta}/cancel', [VentaController::class, 'cancel'])->name('cancel');
@@ -161,7 +180,7 @@ Route::middleware(['auth'])->group(function () {
     | Permisos: Todos los roles con acceso a ventas
     |--------------------------------------------------------------------------
     */
-    Route::middleware(['role:1,2,3,5'])->prefix('pdf')->name('pdf.')->group(function () {
+    Route::middleware(['role:1', 'role:2', 'role:3', 'role:5'])->prefix('pdf')->name('pdf.')->group(function () {
         Route::get('comprobante/{venta}/download', [PdfController::class, 'generatePdf'])->name('download');
         Route::get('comprobante/{venta}/view', [PdfController::class, 'viewPdf'])->name('view');
         Route::get('comprobante/{venta}/qr', [PdfController::class, 'generarQR'])->name('qr');
@@ -172,7 +191,7 @@ Route::middleware(['auth'])->group(function () {
     });
     
     // Detalle de ventas - Ver y editar para Admin, Gerente y Vendedor
-    Route::middleware(['role:1,2,3'])->group(function () {
+    Route::middleware(['role:1', 'role:2', 'role:3'])->group(function () {
         Route::get('detalle_ventas', [DetalleVentaController::class, 'index'])->name('detalle_ventas.index');
         Route::get('detalle_ventas/create', [DetalleVentaController::class, 'create'])->name('detalle_ventas.create');
         Route::post('detalle_ventas', [DetalleVentaController::class, 'store'])->name('detalle_ventas.store');
@@ -191,7 +210,7 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     */
     // Ver y gestionar comprobantes - Admin, Gerente, Contador
-    Route::middleware(['role:1,2,5'])->prefix('comprobantes')->name('comprobantes.')->group(function () {
+    Route::middleware(['role:1', 'role:2', 'role:5'])->prefix('comprobantes')->name('comprobantes.')->group(function () {
         // Comprobantes electrónicos
         Route::get('electronicos', [ComprobanteElectronicoController::class, 'index'])->name('electronicos.index');
         Route::get('electronicos/create', [ComprobanteElectronicoController::class, 'create'])->name('electronicos.create');
@@ -222,7 +241,7 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     */
     // Gestión completa de productos - Admin, Gerente, Vendedor y Almacenero
-    Route::middleware(['role:1,2,3,4'])->group(function () {
+    Route::middleware(['role:1', 'role:2', 'role:3', 'role:4'])->group(function () {
         // Productos
         Route::get('productos', [ProductoController::class, 'index'])->name('productos.index');
         Route::get('productos/create', [ProductoController::class, 'create'])->name('productos.create');
@@ -263,7 +282,7 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     */
     // Ver y gestionar clientes - Admin, Gerente, Vendedor
-    Route::middleware(['role:1,2,3'])->group(function () {
+    Route::middleware(['role:1', 'role:2', 'role:3'])->group(function () {
         Route::get('clientes', [ClienteController::class, 'index'])->name('clientes.index');
         Route::get('clientes/create', [ClienteController::class, 'create'])->name('clientes.create');
         Route::post('clientes', [ClienteController::class, 'store'])->name('clientes.store');
@@ -273,7 +292,7 @@ Route::middleware(['auth'])->group(function () {
     });
     
     // Ver y gestionar proveedores - Admin, Gerente, Almacenero
-    Route::middleware(['role:1,2,4'])->group(function () {
+    Route::middleware(['role:1', 'role:2', 'role:4'])->group(function () {
         Route::get('proveedores', [ProveedorController::class, 'index'])->name('proveedores.index');
         Route::get('proveedores/create', [ProveedorController::class, 'create'])->name('proveedores.create');
         Route::post('proveedores', [ProveedorController::class, 'store'])->name('proveedores.store');
@@ -295,7 +314,7 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     */
     // Ver y gestionar monedas - Admin, Gerente
-    Route::middleware(['role:1,2'])->group(function () {
+    Route::middleware(['role:1', 'role:2'])->group(function () {
         Route::get('monedas', [MonedaController::class, 'index'])->name('monedas.index');
         Route::get('monedas/create', [MonedaController::class, 'create'])->name('monedas.create');
         Route::post('monedas', [MonedaController::class, 'store'])->name('monedas.store');
@@ -315,7 +334,7 @@ Route::middleware(['auth'])->group(function () {
     */
     Route::prefix('api')->name('api.')->group(function () {
         // API de ventas - Admin, Gerente, Vendedor
-        Route::middleware(['role:1,2,3'])->prefix('ventas')->name('ventas.')->group(function () {
+        Route::middleware(['role:1', 'role:2', 'role:3'])->prefix('ventas')->name('ventas.')->group(function () {
             Route::post('guardar', [VentaController::class, 'guardarVenta'])->name('guardar');
         });
     });
@@ -336,7 +355,7 @@ Route::middleware(['auth'])->group(function () {
     | Permisos: Administrador(1), Gerente(2), Contador(5)
     |--------------------------------------------------------------------------
     */
-    Route::middleware(['role:1,2,5'])->prefix('reportes')->name('reportes.')->group(function () {
+    Route::middleware(['role:1', 'role:2', 'role:5'])->prefix('reportes')->name('reportes.')->group(function () {
         // Reporte Anual
         Route::get('/anual', [ReportesController::class, 'anual'])->name('anual');
         Route::get('/anual/pdf', [ReportesController::class, 'exportarAnualPdf'])->name('anual.pdf');
@@ -354,7 +373,7 @@ Route::middleware(['auth'])->group(function () {
     });
     
     // Reporte Semanal fuera del grupo 'reportes'
-    Route::middleware(['role:1,2,5'])->group(function () {
+    Route::middleware(['role:1', 'role:2', 'role:5'])->group(function () {
         Route::get('/semanal', [ReportesController::class, 'semanal'])->name('semanal');
         Route::get('/semanal/pdf', [ReportesController::class, 'exportarSemanalPdf'])->name('semanal.pdf');
         Route::get('/semanal/excel', [ReportesController::class, 'exportarSemanalExcel'])->name('semanal.excel');
@@ -366,14 +385,14 @@ Route::middleware(['auth'])->group(function () {
     });
     
     // Reporte Mensual
-    Route::middleware(['role:1,2,5'])->group(function () {
+    Route::middleware(['role:1', 'role:2', 'role:5'])->group(function () {
         Route::get('/mensual', [ReportesController::class, 'mensual'])->name('mensual');
         Route::get('/mensual/pdf', [ReportesController::class, 'exportarMensualPdf'])->name('mensual.pdf');
         Route::get('/mensual/excel', [ReportesController::class, 'exportarMensualExcel'])->name('mensual.excel');
     });
 
     // Reporte Trimestral
-    Route::middleware(['role:1,2,5'])->group(function () {
+    Route::middleware(['role:1', 'role:2', 'role:5'])->group(function () {
         Route::get('/trimestral', [ReportesController::class, 'trimestral'])->name('trimestral');
         Route::get('/trimestral/pdf', [ReportesController::class, 'exportarTrimestralPdf'])->name('trimestral.pdf');
         Route::get('/trimestral/excel', [ReportesController::class, 'exportarTrimestralExcel'])->name('trimestral.excel');
@@ -385,7 +404,7 @@ Route::middleware(['auth'])->group(function () {
     | Permisos: Administrador(1), Gerente(2), Almacenero(4)
     |--------------------------------------------------------------------------
     */
-    Route::middleware(['role:1,2,4'])->group(function () {
+    Route::middleware(['role:1', 'role:2', 'role:4'])->group(function () {
         // API para productos por proveedor
         Route::get('compras/productos-por-proveedor/{id_proveedor}', [\App\Http\Controllers\CompraController::class, 'productosPorProveedor'])->name('compras.productos-por-proveedor');
         
@@ -420,4 +439,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/bitacoras', [AdminController::class, 'indexBitacoras'])->name('bitacoras.index');
         Route::post('/bitacoras', [AdminController::class, 'storeBitacora'])->name('bitacoras.store');
     });
+    
+    // Nueva ruta para la vista de pagos
+    Route::get('/ventas/pagos', [PagosController::class, 'index'])->name('ventas.pagos');
+    
+    // Ruta para registrar un pago
+    Route::post('/ventas/pago', [PagosController::class, 'store'])->name('ventas.pago');
+
+    // Ruta para mostrar la vista de pago para una venta específica
+    Route::match(['get', 'post'], '/ventas/{id}/pago', [PagosController::class, 'show'])->name('ventas.mostrar_pago');
 });

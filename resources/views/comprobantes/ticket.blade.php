@@ -165,12 +165,16 @@
 
     <!-- Productos -->
     <div class="productos">
+        @php
+            $codigoIso = optional($venta->moneda)->codigo_iso ?? (is_string($venta->moneda) ? $venta->moneda : 'PEN');
+            $simbolo = $codigoIso === 'USD' ? '$' : 'S/';
+        @endphp
         @foreach($venta->detalleVenta as $detalle)
         <div class="producto-item">
             <div class="producto-nombre">{{ $detalle->producto->descripcion }}</div>
             <div class="producto-detalle">
-                <span>{{ $detalle->cantidad }} x {{ number_format($detalle->precio_unitario, 2) }}</span>
-                <span>{{ number_format($detalle->cantidad * $detalle->precio_unitario * (1 - $detalle->descuento_porcentaje/100), 2) }}</span>
+                <span>{{ $detalle->cantidad }} x {{ $simbolo }} {{ number_format($detalle->precio_unitario, 2) }}</span>
+                <span>{{ $simbolo }} {{ number_format($detalle->cantidad * $detalle->precio_unitario * (1 - $detalle->descuento_porcentaje/100), 2) }}</span>
             </div>
             @if($detalle->descuento_porcentaje > 0)
             <div style="font-size: 7px; color: #666;">Desc: {{ $detalle->descuento_porcentaje }}%</div>
@@ -183,15 +187,15 @@
     <div class="totales">
         <div class="total-row">
             <span>Subtotal:</span>
-            <span>S/ {{ number_format($datos['base_imponible'] ?? 0, 2) }}</span>
+            <span>{{ $simbolo }} {{ number_format($venta->subtotal, 2) }}</span>
         </div>
         <div class="total-row">
             <span>IGV (18%):</span>
-            <span>S/ {{ number_format($datos['igv'] ?? 0, 2) }}</span>
+            <span>{{ $simbolo }} {{ number_format(($venta->total - $venta->subtotal), 2) }}</span>
         </div>
         <div class="total-row total-final">
             <span>TOTAL:</span>
-            <span>S/ {{ number_format($datos['total'] ?? 0, 2) }}</span>
+            <span>{{ $simbolo }} {{ number_format($venta->total, 2) }}</span>
         </div>
     </div>
 

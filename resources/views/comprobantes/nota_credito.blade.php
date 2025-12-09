@@ -309,16 +309,18 @@
                         <br><small style="color: #dc3545;"><strong>CRÉDITO POR ANULACIÓN</strong></small>
                     </td>
                     <td>-{{ number_format($detalle->cantidad, 2) }}</td>
+                    @php
+                        $codigoIso = optional($moneda)->codigo_iso ?? (is_string($venta->moneda) ? $venta->moneda : 'PEN');
+                        $simbolo = $codigoIso === 'USD' ? '$' : 'S/';
+                    @endphp
                     <td>
-                        S/ -{{ number_format($detalle->precio_unitario, 2) }}<br>
-                        <small style="color: #666;">$-{{ number_format($detalle->precio_unitario / $tipoCambio, 2) }}</small>
+                        {{ $simbolo }} -{{ number_format($detalle->precio_unitario, 2) }}
                     </td>
                     <td>
                         @php
                             $valorVenta = $detalle->cantidad * $detalle->precio_unitario * (1 - ($detalle->descuento_porcentaje ?? 0)/100);
                         @endphp
-                        S/ -{{ number_format($valorVenta, 2) }}<br>
-                        <small style="color: #666;">$-{{ number_format($valorVenta / $tipoCambio, 2) }}</small>
+                        {{ $simbolo }} -{{ number_format($valorVenta, 2) }}
                     </td>
                 </tr>
                 @endforeach
@@ -336,28 +338,27 @@
                 <tr>
                     <td class="total-label">SUB TOTAL:</td>
                     <td>
-                        S/ -{{ number_format($venta->subtotal, 2) }}<br>
-                        <small style="color: #666;">$-{{ number_format($venta->subtotal / $tipoCambio, 2) }}</small>
+                        {{ $simbolo }} -{{ number_format($venta->subtotal, 2) }}
                     </td>
                 </tr>
                 <tr>
                     <td class="total-label">IGV (18%):</td>
                     <td>
-                        S/ -{{ number_format($venta->igv, 2) }}<br>
-                        <small style="color: #666;">$-{{ number_format($venta->igv / $tipoCambio, 2) }}</small>
+                        {{ $simbolo }} -{{ number_format(($venta->total - $venta->subtotal), 2) }}
                     </td>
                 </tr>
                 <tr class="total-final">
                     <td>TOTAL NOTA DE CRÉDITO:</td>
                     <td>
-                        S/ -{{ number_format($venta->total, 2) }}<br>
-                        <small style="color: #666;">$-{{ number_format($venta->total / $tipoCambio, 2) }}</small>
+                        {{ $simbolo }} -{{ number_format($venta->total, 2) }}
                     </td>
                 </tr>
             </table>
+            @if(($codigoIso ?? 'PEN') === 'USD')
             <p style="margin-top: 10px; font-size: 10px; color: #666;">
-                <strong>Tipo de Cambio:</strong> S/ {{ number_format($tipoCambio, 2) }} por USD
+                <strong>Tipo de Cambio (referencial):</strong> S/ {{ number_format($tipoCambio, 2) }} por USD
             </p>
+            @endif
         </div>
 
         <!-- Información legal -->

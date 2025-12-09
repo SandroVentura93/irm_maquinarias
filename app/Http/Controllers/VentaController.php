@@ -55,8 +55,12 @@ class VentaController extends Controller
     public function index(Request $request)
     {
         // ⚡ Optimización de consulta con paginación y filtros
-        $query = Venta::with(['cliente:id_cliente,nombre,numero_documento', 'tipoComprobante:id_tipo_comprobante,descripcion,codigo_sunat'])
-            ->select('id_venta', 'id_cliente', 'id_tipo_comprobante', 'serie', 'numero', 'fecha', 'total', 'saldo', 'xml_estado', 'created_at');
+        $query = Venta::with([
+                'cliente:id_cliente,nombre,numero_documento',
+                'tipoComprobante:id_tipo_comprobante,descripcion,codigo_sunat',
+                'moneda:id_moneda,codigo_iso,simbolo'
+            ])
+            ->select('id_venta', 'id_cliente', 'id_tipo_comprobante', 'id_moneda', 'serie', 'numero', 'fecha', 'total', 'saldo', 'xml_estado', 'created_at');
         
         // Filtro por búsqueda de texto (número de documento o cliente)
         if ($request->has('search') && $request->search != '') {
@@ -314,17 +318,21 @@ class VentaController extends Controller
     {
         \Log::info('Datos recibidos en guardarVenta:', $r->all());
         
-        $data = $r->validate([
+            $data = $r->validate([
             'id_cliente' => 'required|integer',
             'tipo_comprobante' => 'required', // Puede ser ID o string para compatibilidad
-            'moneda' => 'required|string',
+            'moneda' => 'nullable|string',
             'serie' => 'required|string',
             'incluir_igv' => 'nullable|boolean', // Campo opcional para IGV
+                'tipo_cambio' => 'nullable|numeric|min:0.0001', // TC opcional desde el frontend
+            'total' => 'nullable|numeric|min:0', // Permitir total enviado por frontend
             // 'numero' se auto-genera, no requerido en el request
             'detalle' => 'required|array|min:1',
             'detalle.*.id_producto' => 'required|integer',
             'detalle.*.cantidad' => 'required|numeric|min:0.01',
             'detalle.*.precio_unitario' => 'required|numeric|min:0',
+                // Moneda del precio unitario enviado por el frontend: 'USD' o 'PEN'
+                'detalle.*.moneda_precio' => 'nullable|string|in:USD,PEN',
             'detalle.*.descuento_porcentaje' => 'nullable|numeric|min:0|max:100',
         ]);
 
@@ -333,18 +341,51 @@ class VentaController extends Controller
             $igv_rate = 0.18;
             $subtotal = 0;
 
+            // Determinar moneda según selección del frontend
+            $monedaSeleccionada = strtoupper($data['moneda'] ?? 'USD');
+            $id_moneda = ($monedaSeleccionada === 'PEN') ? 1 : 2; // 1=PEN, 2=USD
+            // Usar TC enviado por el frontend si llega y es válido; si no, obtenerlo
+            $tipoCambio = null;
+            if (isset($data['tipo_cambio']) && is_numeric($data['tipo_cambio']) && (float)$data['tipo_cambio'] > 0) {
+                $tipoCambio = (float) $data['tipo_cambio'];
+                \Log::info('[TC] Usando tipo de cambio provisto por frontend', ['tc' => $tipoCambio]);
+            } else {
+                $tipoCambio = $this->obtenerTipoCambio();
+                \Log::info('[TC] Usando tipo de cambio del backend', ['tc' => $tipoCambio]);
+            }
+
             foreach ($data['detalle'] as $d) {
-                $precio_final = $d['precio_unitario'] * (1 - ($d['descuento_porcentaje'] ?? 0) / 100);
+                // Convertir solo si la moneda del precio del producto difiere de la moneda del comprobante
+                $precioUnit = $d['precio_unitario'];
+                $monedaPrecio = strtoupper($d['moneda_precio'] ?? 'PEN'); // por defecto asumimos PEN del catálogo
+                if ($id_moneda === 2) { // comprobante en USD
+                    if ($monedaPrecio === 'PEN' && $tipoCambio && $tipoCambio > 0) {
+                        // PEN -> USD
+                        $precioUnit = round($precioUnit / $tipoCambio, 6);
+                    } // si ya está en USD, no convertir
+                } else { // comprobante en PEN
+                    if ($monedaPrecio === 'USD' && $tipoCambio && $tipoCambio > 0) {
+                        // USD -> PEN
+                        $precioUnit = round($precioUnit * $tipoCambio, 6);
+                    } // si ya está en PEN, no convertir
+                }
+
+                $precio_final = $precioUnit * (1 - ($d['descuento_porcentaje'] ?? 0) / 100);
                 $subtotal += $precio_final * $d['cantidad'];
             }
 
-            // Calcular IGV solo si está marcado (por defecto true para compatibilidad)
-            $incluir_igv = $data['incluir_igv'] ?? true;
-            $igv = $incluir_igv ? round($subtotal * $igv_rate, 2) : 0;
-            $total = round($subtotal + $igv, 2);
+            // Calcular IGV según la selección del frontend y persistir correctamente
+            // Default to including IGV for all ventas when not explicitly provided
+            $incluir_igv = filter_var($data['incluir_igv'] ?? true, FILTER_VALIDATE_BOOLEAN);
+            if ($incluir_igv) {
+                $igv = round($subtotal * $igv_rate, 2);
+                $total = round($subtotal + $igv, 2);
+            } else {
+                $igv = 0.00;
+                $total = round($subtotal, 2);
+            }
 
-            // Mapear valores del formulario a IDs de base de datos
-            $id_moneda = $data['moneda'] === 'PEN' ? 1 : 2; // 1=PEN, 2=USD
+            // Moneda: usar selección del frontend (PEN o USD)
             
             // Determinar ID del tipo de comprobante
             if (is_numeric($data['tipo_comprobante'])) {
@@ -409,7 +450,8 @@ class VentaController extends Controller
 
             $venta = Venta::create([
                 'id_cliente' => $data['id_cliente'],
-                'id_vendedor' => auth()->user()->id_usuario, // Asignar el vendedor logueado
+                // Vendedor: si no hay sesión, usar null (o un usuario sistema)
+                'id_vendedor' => optional(auth()->user())->id_usuario ?? null,
                 'id_moneda' => $id_moneda,
                 'id_tipo_comprobante' => $id_tipo_comprobante,
                 'serie' => $data['serie'],
@@ -462,16 +504,46 @@ class VentaController extends Controller
             }
 
             foreach ($data['detalle'] as $d) {
-                $precio_final = $d['precio_unitario'] * (1 - ($d['descuento_porcentaje'] ?? 0) / 100);
+                // Conversión por línea basada en la moneda del precio del producto
+                \Log::info('[VENTA] Línea recibida', [
+                    'producto_id' => $d['id_producto'] ?? null,
+                    'cantidad' => $d['cantidad'] ?? null,
+                    'precio_unitario_enviado' => $d['precio_unitario'] ?? null,
+                    'moneda_precio' => $d['moneda_precio'] ?? null,
+                    'moneda_comprobante' => ($id_moneda === 2 ? 'USD' : 'PEN'),
+                    'tipo_cambio' => $tipoCambio
+                ]);
+                $precioUnit = $d['precio_unitario'];
+                $monedaPrecio = strtoupper($d['moneda_precio'] ?? 'PEN');
+                if ($id_moneda === 2) {
+                    if ($monedaPrecio === 'PEN' && isset($tipoCambio) && $tipoCambio > 0) {
+                        $precioUnit = round($precioUnit / $tipoCambio, 6);
+                        \Log::info('[VENTA] Conversión PEN->USD', ['precio_convertido' => $precioUnit]);
+                    }
+                } else {
+                    if ($monedaPrecio === 'USD' && isset($tipoCambio) && $tipoCambio > 0) {
+                        $precioUnit = round($precioUnit * $tipoCambio, 6);
+                        \Log::info('[VENTA] Conversión USD->PEN', ['precio_convertido' => $precioUnit]);
+                    }
+                }
+                $precio_final = $precioUnit * (1 - ($d['descuento_porcentaje'] ?? 0) / 100);
                 $subtotal_linea = $precio_final * $d['cantidad'];
-                $igv_linea = $subtotal_linea * $igv_rate;
-                $total_linea = $subtotal_linea + $igv_linea;
+                // No agregar IGV por línea; respetar total enviado y evitar incrementos
+                $igv_linea = 0;
+                $total_linea = $subtotal_linea;
+
+                \Log::info('[VENTA] Línea calculada', [
+                    'precio_final' => $precio_final,
+                    'subtotal_linea' => $subtotal_linea,
+                    'igv_linea' => $igv_linea,
+                    'total_linea' => $total_linea
+                ]);
 
                 DetalleVenta::create([
                     'id_venta' => $venta->id_venta,
                     'id_producto' => $d['id_producto'],
                     'cantidad' => $d['cantidad'],
-                    'precio_unitario' => $d['precio_unitario'],
+                    'precio_unitario' => $precioUnit,
                     'descuento_porcentaje' => $d['descuento_porcentaje'] ?? 0,
                     'precio_final' => $precio_final,
                     'subtotal' => $subtotal_linea,
@@ -532,7 +604,15 @@ class VentaController extends Controller
                 'total' => $total,
                 'numero_comprobante' => $numero_formateado,
                 'serie' => $data['serie'],
+                // Exponer el tipo de cambio utilizado para mayor claridad en el frontend
+                'tipo_cambio' => $tipoCambio,
                 'stocks_actualizados' => $stocks_actualizados
+                ,
+                'moneda' => [
+                    'simbolo' => $id_moneda === 2 ? '$' : 'S/',
+                    'codigo_iso' => $id_moneda === 2 ? 'USD' : 'PEN',
+                    'nombre' => $id_moneda === 2 ? 'Dólar Americano' : 'Sol Peruano'
+                ]
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -555,7 +635,7 @@ class VentaController extends Controller
     // Mostrar formulario de edición
     public function edit($id)
     {
-        $venta = Venta::with(['cliente', 'vendedor', 'detalleVentas.producto'])->findOrFail($id);
+        $venta = Venta::with(['cliente', 'vendedor', 'detalleVentas.producto', 'moneda'])->findOrFail($id);
         
         // Obtener todos los clientes (sin filtro de activo por si no existe el campo)
         try {
@@ -571,7 +651,9 @@ class VentaController extends Controller
             $productos = Producto::all();
         }
         
-        return view('ventas.edit', compact('venta', 'clientes', 'productos'));
+        // Obtener tipo de cambio actual para conversiones en la UI de edición
+        $tipoCambio = $this->obtenerTipoCambio();
+        return view('ventas.edit', compact('venta', 'clientes', 'productos', 'tipoCambio'));
     }
 
     // Actualizar venta
@@ -581,11 +663,21 @@ class VentaController extends Controller
         
         $venta = Venta::with(['detalleVentas', 'comprobanteElectronico'])->findOrFail($id);
         
-        // Solo permitir edición si la venta está en estado PENDIENTE
-        if ($venta->xml_estado !== 'PENDIENTE') {
-            \Log::warning('Intento de editar venta no pendiente', ['id' => $id, 'estado' => $venta->xml_estado]);
+        // Permitir edición si:
+        // - La venta está en estado PENDIENTE, o
+        // - Es una cotización y NO está ANULADO
+        $esCotizacion = ($venta->id_tipo_comprobante == 8 ||
+            (isset($venta->tipoComprobante) &&
+             (stripos($venta->tipoComprobante->descripcion, 'cotiz') !== false ||
+              stripos($venta->tipoComprobante->codigo_sunat ?? '', 'CT') !== false)) ||
+            stripos($venta->serie, 'COT') !== false);
+
+        $editable = ($venta->xml_estado === 'PENDIENTE') || ($esCotizacion && $venta->xml_estado !== 'ANULADO');
+
+        if (!$editable) {
+            \Log::warning('Intento de editar venta no permitida por estado', ['id' => $id, 'estado' => $venta->xml_estado, 'esCotizacion' => $esCotizacion]);
             return redirect()->route('ventas.show', $id)
-                ->with('error', 'Solo se pueden editar ventas en estado PENDIENTE');
+                ->with('error', 'Solo se pueden editar ventas PENDIENTES o cotizaciones en cualquier estado excepto ANULADO');
         }
 
         try {
@@ -749,6 +841,7 @@ class VentaController extends Controller
             'detalle.*.cantidad' => 'required|numeric|min:0.01',
             'detalle.*.precio_unitario' => 'required|numeric|min:0',
             'detalle.*.descuento_porcentaje' => 'nullable|numeric|min:0|max:100',
+            'total' => 'nullable|numeric|min:0', // Permitir total enviado por frontend
         ]);
 
         DB::beginTransaction();
@@ -759,8 +852,16 @@ class VentaController extends Controller
                 $precio_final = $d['precio_unitario'] * (1 - ($d['descuento_porcentaje'] ?? 0) / 100);
                 $subtotal += $precio_final * $d['cantidad'];
             }
-            $igv = round($subtotal * $igv_rate, 2);
-            $total = round($subtotal + $igv, 2);
+            // Confiar en el total del frontend si viene; no agregar IGV ni extras
+            if ($request->has('total')) {
+                $total = round(floatval($request->input('total')), 2);
+                $igv = 0;
+                $subtotal = $total;
+            } else {
+                // Precios finales recibidos del formulario se consideran con IGV incluido
+                $igv = 0;
+                $total = round($subtotal, 2);
+            }
             $id_moneda = $data['moneda'] === 'PEN' ? 1 : 2;
             if (is_numeric($data['tipo_comprobante'])) {
                 $id_tipo_comprobante = (int) $data['tipo_comprobante'];
@@ -845,8 +946,9 @@ class VentaController extends Controller
             foreach ($data['detalle'] as $d) {
                 $precio_final = $d['precio_unitario'] * (1 - ($d['descuento_porcentaje'] ?? 0) / 100);
                 $subtotal_linea = $precio_final * $d['cantidad'];
-                $igv_linea = $subtotal_linea * $igv_rate;
-                $total_linea = $subtotal_linea + $igv_linea;
+                // No agregar IGV adicional en líneas (precios finales ya incluyen impuestos)
+                $igv_linea = 0;
+                $total_linea = $subtotal_linea;
                 \App\Models\DetalleVenta::create([
                     'id_venta' => $venta->id_venta,
                     'id_producto' => $d['id_producto'],
@@ -888,7 +990,7 @@ class VentaController extends Controller
                 'id_venta' => $venta->id_venta,
                 'id_tipo_comprobante' => $id_tipo_comprobante,
                 'serie' => $data['serie'],
-                'numero' => $nuevo_numero, // Solo el número correlativo (entero)
+                'numero' => $nuevo_correlativo, // Solo el número correlativo (entero)
                 'fecha_emision' => now(),
                 'monto_subtotal' => $subtotal,
                 'monto_igv' => $igv,
@@ -898,6 +1000,23 @@ class VentaController extends Controller
             ]);
 
             DB::commit();
+            if ($r->expectsJson() || $r->is('api/*')) {
+                return response()->json([
+                    'ok' => true,
+                    'id_venta' => $venta->id_venta,
+                    'serie' => $data['serie'],
+                    'numero_comprobante' => $nuevo_correlativo,
+                    'numero' => $numero_formateado,
+                    'total' => round($total, 2),
+                    'subtotal' => round($subtotal, 2),
+                    'igv' => round($igv, 2),
+                    'moneda' => [
+                        'simbolo' => $moneda->simbolo ?? ($id_moneda == 2 ? '$' : 'S/'),
+                        'codigo_iso' => strtoupper($moneda->codigo_iso ?? ($id_moneda == 2 ? 'USD' : 'PEN')),
+                        'nombre' => $moneda->nombre ?? ($id_moneda == 2 ? 'Dólar Americano' : 'Sol Peruano'),
+                    ],
+                ], 201);
+            }
             return redirect()->route('ventas.show', $venta->id_venta)
                 ->with('success', 'Venta registrada correctamente. Número de comprobante: ' . $numero_formateado);
         } catch (\Throwable $e) {
@@ -911,7 +1030,7 @@ class VentaController extends Controller
     {
         try {
             // Cargar venta con todas sus relaciones
-            $venta = Venta::with(['cliente', 'detalleVentas.producto', 'comprobanteElectronico', 'vendedor'])
+            $venta = Venta::with(['cliente', 'detalleVentas.producto', 'comprobanteElectronico', 'vendedor', 'moneda'])
                          ->findOrFail($id);
 
             // Determinar el tipo de comprobante basado en el ID
@@ -924,9 +1043,15 @@ class VentaController extends Controller
             
             $tipoComprobante = $tiposComprobante[$venta->id_tipo_comprobante] ?? 'Comprobante';
             
-            // Obtener tipo de cambio actual
-            $tipoCambio = $this->obtenerTipoCambio();
+            // Obtener y validar tipo de cambio (prioriza el ingresado en la venta)
+            $tipoCambioRaw = $venta->tipo_cambio ?? null;
+            $tipoCambio = $this->validarTipoCambio($tipoCambioRaw) ?? $this->obtenerTipoCambio();
             
+            // Determinar moneda de la venta
+            $codigoIso = strtoupper(optional($venta->moneda)->codigo_iso ?? 'PEN');
+            $simbolo = optional($venta->moneda)->simbolo ?? ($codigoIso === 'USD' ? '$' : 'S/');
+            $descripcionMoneda = optional($venta->moneda)->nombre ?? ($codigoIso === 'USD' ? 'Dólares Americanos' : 'Soles Peruanos');
+
             // Preparar datos para el PDF
             $data = [
                 'venta' => $venta,
@@ -938,12 +1063,13 @@ class VentaController extends Controller
                     'tipo' => $tipoComprobante
                 ],
                 'moneda' => (object) [
-                    'simbolo' => 'S/.',
-                    'descripcion' => 'Soles'
+                    'simbolo' => $simbolo,
+                    'codigo_iso' => $codigoIso,
+                    'descripcion' => $descripcionMoneda
                 ],
                 'tipoCambio' => $tipoCambio,
                 'descuentoTotal' => $venta->detalleVentas->sum('descuento_monto') ?? 0,
-                'totalEnLetras' => $this->numeroALetras($venta->total ?? 0)
+                'totalEnLetras' => $this->numeroALetrasConMoneda($venta->total ?? 0, $codigoIso)
             ];
 
             // Seleccionar la vista según el tipo de comprobante
@@ -1006,6 +1132,32 @@ class VentaController extends Controller
         }
         
         return strtoupper(number_format($enteros)) . ' CON ' . sprintf('%02d', $decimales) . '/100 SOLES';
+    }
+
+    // Variante que agrega la moneda (SOLES / DÓLARES) según código ISO
+    private function numeroALetrasConMoneda($numero, $codigoIso = 'PEN')
+    {
+        $base = $this->numeroALetras($numero);
+        $codigoIso = strtoupper($codigoIso ?? 'PEN');
+        if ($codigoIso === 'USD') {
+            // Reemplazar sufijo por DÓLARES si la original dice SOLES
+            $base = preg_replace('/SOLES$/', 'DÓLARES', $base);
+        }
+        return $base;
+    }
+
+    // Valida y normaliza el tipo de cambio manual ingresado
+    private function validarTipoCambio($tipoCambio)
+    {
+        if ($tipoCambio === null) return null;
+        if (!is_numeric($tipoCambio)) return null;
+        $tc = (float) $tipoCambio;
+        // Debe ser positivo y en un rango razonable para USD/PEN
+        if ($tc <= 0) return null;
+        if ($tc < 2.0) return null;   // evita valores improbables
+        if ($tc > 10.0) return null;  // evita valores fuera de rango
+        // Redondear a 4 decimales para consistencia
+        return round($tc, 4);
     }
 
     // Confirmar cancelación de venta
@@ -1591,5 +1743,14 @@ class VentaController extends Controller
                 'error' => 'Error interno del servidor'
             ], 500);
         }
+    }
+
+    public function pago($id)
+    {
+        $venta = Venta::findOrFail($id);
+
+        return view('ventas.pago', [
+            'venta' => $venta
+        ]);
     }
 }

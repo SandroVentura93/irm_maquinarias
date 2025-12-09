@@ -128,7 +128,7 @@
                         $marcaSeleccionada = $marcas->firstWhere('id_marca', request('marca_id'));
                     @endphp
                     <span class="filter-tag">
-                        <i class="fas fa-copyright"></i> Marca: <strong>{{ $marcaSeleccionada->descripcion ?? 'N/A' }}</strong>
+                        <i class="fas fa-copyright"></i> Marca: <strong>{{ $marcaSeleccionada->nombre ?? 'N/A' }}</strong>
                     </span>
                     @endif
                     @if(request('stock_status'))
@@ -175,7 +175,7 @@
                             <option value="">🏭 Todas las marcas</option>
                             @foreach($marcas as $marca)
                                 <option value="{{ $marca->id_marca }}" {{ request('marca_id') == $marca->id_marca ? 'selected' : '' }}>
-                                    {{ $marca->descripcion }}
+                                    {{ $marca->nombre }}
                                 </option>
                             @endforeach
                         </select>
@@ -213,6 +213,12 @@
                     </a>
                 </div>
             </form>
+
+            <!-- Tipo de Cambio Manual -->
+            <div class="form-group mt-4">
+                <label for="tipoCambioManual">Tipo de Cambio Manual:</label>
+                <input type="number" step="0.01" class="form-control" id="tipoCambioManual" name="tipoCambioManual" placeholder="Ingrese el tipo de cambio">
+            </div>
         </div>
     </div>
 
@@ -267,7 +273,7 @@
                                 <td>
                                     <span class="brand-tag">
                                         <i class="fas fa-copyright me-1"></i>
-                                        {{ $producto->marca->descripcion ?? 'Sin marca' }}
+                                        {{ $producto->marca->nombre ?? 'Sin marca' }}
                                     </span>
                                 </td>
                                 <td>

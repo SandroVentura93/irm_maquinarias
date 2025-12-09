@@ -19,9 +19,9 @@ echo "\n=== VERIFICACIÓN DE STOCK EN COTIZACIONES ===\n\n";
 
 // 1. Verificar que existe el tipo de comprobante "Cotización"
 echo "1. Verificando tipos de comprobante...\n";
-$cotizacion = TipoComprobante::where('codigo_sunat', 'CT')->first();
+$cotizacion = TipoComprobante::where('descripcion', 'Cotización')->first();
 if ($cotizacion) {
-    echo "   ✓ Cotización encontrada: ID {$cotizacion->id_tipo_comprobante}, Código: {$cotizacion->codigo_sunat}\n";
+    echo "   ✓ Cotización encontrada: ID {$cotizacion->id_tipo_comprobante}\n";
 } else {
     echo "   ✗ ERROR: No se encontró el tipo de comprobante Cotización\n";
     exit(1);
@@ -72,21 +72,21 @@ if ($cotizaciones_recientes->count() > 0) {
 
 // 4. Verificar la lógica en el código
 echo "\n4. Verificando lógica de descuento de stock...\n";
-$factura = TipoComprobante::where('codigo_sunat', '01')->first();
-$boleta = TipoComprobante::where('codigo_sunat', '03')->first();
-$ticket = TipoComprobante::where('codigo_sunat', '12')->first();
+$factura = TipoComprobante::where('descripcion', 'Factura')->first();
+$boleta = TipoComprobante::where('descripcion', 'Boleta')->first();
+$ticket = TipoComprobante::where('descripcion', 'Ticket')->first();
 
 echo "   Comprobantes que SÍ descuentan stock:\n";
-if ($factura) echo "   ✓ Factura (código: {$factura->codigo_sunat})\n";
-if ($boleta) echo "   ✓ Boleta (código: {$boleta->codigo_sunat})\n";
-if ($ticket) echo "   ✓ Ticket (código: {$ticket->codigo_sunat})\n";
+if ($factura) echo "   ✓ Factura (código: {$factura->descripcion})\n";
+if ($boleta) echo "   ✓ Boleta (código: {$boleta->descripcion})\n";
+if ($ticket) echo "   ✓ Ticket (código: {$ticket->descripcion})\n";
 
 echo "\n   Comprobantes que NO descuentan stock:\n";
-echo "   ✓ Cotización (código: {$cotizacion->codigo_sunat})\n";
+echo "   ✓ Cotización (código: {$cotizacion->descripcion})\n";
 
-$otros = TipoComprobante::whereNotIn('codigo_sunat', ['01', '03', '12', 'CT'])->get();
+$otros = TipoComprobante::whereNotIn('descripcion', ['Factura', 'Boleta', 'Ticket', 'Cotización'])->get();
 foreach ($otros as $otro) {
-    echo "   ✓ {$otro->descripcion} (código: {$otro->codigo_sunat})\n";
+    echo "   ✓ {$otro->descripcion}\n";
 }
 
 // 5. Resumen de conversiones de cotizaciones

@@ -497,6 +497,11 @@
     @endphp
     
     <div class="stats-summary">
+        @php
+            $simbolo = $compra->moneda->simbolo ?? 'S/';
+            $codigoIso = $compra->moneda->codigo_iso ?? 'PEN';
+            $icono = $codigoIso === 'USD' ? 'fas fa-dollar-sign' : 'fas fa-money-bill-wave';
+        @endphp
         <div class="stat-card">
             <div class="stat-icon productos">
                 <i class="fas fa-boxes"></i>
@@ -517,8 +522,8 @@
             <div class="stat-icon promedio">
                 <i class="fas fa-calculator"></i>
             </div>
-            <div class="stat-label">Precio Promedio</div>
-            <div class="stat-value">S/ {{ number_format($promedioPrecio, 2) }}</div>
+            <div class="stat-label">Precio Promedio <span class="badge bg-secondary">{{ $codigoIso }}</span></div>
+            <div class="stat-value"><i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($promedioPrecio, 2) }}</div>
         </div>
     </div>
 
@@ -555,10 +560,10 @@
                             <td class="text-center">
                                 <span class="quantity-badge">{{ $detalle->cantidad }}</span>
                             </td>
-                            <td class="text-end price-cell">S/ {{ number_format($detalle->precio_unitario, 2) }}</td>
-                            <td class="text-end price-cell">S/ {{ number_format($detalle->subtotal, 2) }}</td>
-                            <td class="text-end price-cell">S/ {{ number_format($detalle->igv, 2) }}</td>
-                            <td class="text-end total-cell">S/ {{ number_format($detalle->total, 2) }}</td>
+                            <td class="text-end price-cell"><i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($detalle->precio_unitario, 2) }}</td>
+                            <td class="text-end price-cell"><i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($detalle->subtotal, 2) }}</td>
+                            <td class="text-end price-cell"><i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($detalle->igv, 2) }}</td>
+                            <td class="text-end total-cell"><i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($detalle->total, 2) }}</td>
                         </tr>
                         @empty
                         <tr>
@@ -587,7 +592,7 @@
                         <i class="fas fa-file-invoice-dollar"></i>
                         Subtotal:
                     </span>
-                    <span class="total-value" style="font-size: 1.25rem;">S/ {{ number_format($compra->subtotal, 2) }}</span>
+                    <span class="total-value" style="font-size: 1.25rem;"><i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($compra->subtotal, 2) }}</span>
                 </div>
                 
                 <div class="total-row">
@@ -595,7 +600,7 @@
                         <i class="fas fa-percentage"></i>
                         IGV (18%):
                     </span>
-                    <span class="total-value" style="font-size: 1.25rem;">S/ {{ number_format($compra->igv, 2) }}</span>
+                    <span class="total-value" style="font-size: 1.25rem;"><i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($compra->igv, 2) }}</span>
                 </div>
                 
                 <div class="total-row">
@@ -603,7 +608,7 @@
                         <i class="fas fa-money-bill-wave"></i>
                         TOTAL:
                     </span>
-                    <span class="total-value">S/ {{ number_format($compra->total, 2) }}</span>
+                    <span class="total-value"><i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($compra->total, 2) }}</span>
                 </div>
             </div>
         </div>

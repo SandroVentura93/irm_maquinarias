@@ -94,256 +94,6 @@
         </div>
     @endif
 
-    <!-- Modal de Pago (Mejorado visualmente con saldo incluido) -->
-    <div class="modal fade" id="modalPago" tabindex="-1" aria-labelledby="modalPagoLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="modalPagoLabel">Registrar Pago</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <!-- Información del saldo en ambas monedas -->
-                    <div class="alert alert-info mb-3">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6 class="mb-0">
-                                    <i class="fas fa-flag-pe me-2"></i>
-                                    <strong>Soles:</strong> <span id="saldoPendienteSoles" class="fw-bold fs-5">S/ 0.00</span>
-                                </h6>
-                            </div>
-                            <div class="col-md-6">
-                                <h6 class="mb-0">
-                                    <i class="fas fa-flag-usa me-2"></i>
-                                    <strong>Dólares:</strong> <span id="saldoPendienteDolares" class="fw-bold fs-5">$ 0.00</span>
-                                </h6>
-                            </div>
-                        </div>
-                        <div class="mt-2 text-muted small d-flex align-items-center justify-content-between">
-                            <span>
-                                <i class="fas fa-exchange-alt me-1"></i>
-                                Tipo de cambio: S/ <span id="tipoCambioDisplay" class="fw-bold" title="Obtenido desde SUNAT">...</span> por USD
-                            </span>
-                            <span class="badge bg-info" id="fuenteTipoCambio">
-                                <i class="fas fa-sync-alt"></i> Cargando...
-                            </span>
-                        </div>
-                    </div>
-
-                    <form id="formPago" method="POST" action="{{ route('ventas.pago') }}">
-                        @csrf
-                        <input type="hidden" name="id_venta" id="pago_id_venta">
-                        <div class="mb-3">
-                            <label for="pago_monto" class="form-label">Monto a Pagar</label>
-                            <input type="number" step="0.01" class="form-control" id="pago_monto" name="monto" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="pago_metodo" class="form-label">Método de Pago</label>
-                            <select class="form-select" id="pago_metodo" name="metodo" required>
-                                <option value="">Seleccione</option>
-                                <option value="Efectivo">Efectivo</option>
-                                <option value="Tarjeta">Tarjeta</option>
-                                <option value="Transferencia">Transferencia</option>
-                                <option value="Yape">Yape</option>
-                                <option value="Plin">Plin</option>
-                            </select>
-                        </div>
-                        <div class="text-end">
-                            <button type="submit" class="btn btn-success">Registrar Pago</button>
-                        </div>
-                    </form>
-
-                    <!-- Historial de Pagos -->
-                    <div class="mt-4">
-                        <h6>Historial de Pagos</h6>
-                        <ul id="historialPagos" class="list-group">
-                            <!-- Los pagos se cargarán dinámicamente aquí -->
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <style>
-    /* Estilos mejorados para el modal */
-    #modalPago .modal-content {
-        background-color: #f8f9fa; /* Fondo elegante */
-        border-radius: 12px; /* Bordes redondeados */
-        box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.2); /* Sombra elegante */
-    }
-    #modalPago .modal-header {
-        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    }
-    #modalPago .modal-body {
-        padding: 2rem; /* Espaciado interno */
-    }
-    .alert-info {
-        background-color: #e9f7fd; /* Fondo azul claro */
-        border: 1px solid #bce8f1; /* Borde azul */
-        color: #31708f; /* Texto azul oscuro */
-        border-radius: 8px; /* Bordes redondeados */
-    }
-    .list-group-item {
-        border: none; /* Sin bordes */
-        border-bottom: 1px solid rgba(0, 0, 0, 0.1); /* Línea divisoria */
-    }
-    .list-group-item:last-child {
-        border-bottom: none; /* Eliminar línea divisoria del último elemento */
-    }
-    </style>
-
-    <script>
-    // Configuración del modal mejorado
-    console.log('Inicializando funcionalidad del modalPago...');
-
-    document.addEventListener('DOMContentLoaded', function () {
-        const modalPago = document.getElementById('modalPago');
-
-        if (!modalPago) {
-            console.error('No se encontró el elemento #modalPago');
-            return;
-        }
-
-        modalPago.addEventListener('show.bs.modal', async function (event) {
-            const button = event.relatedTarget;
-
-            if (!button) {
-                console.error('No se encontró el botón que disparó el modal');
-                return;
-            }
-
-            const idVenta = button.getAttribute('data-id');
-            const saldo = button.getAttribute('data-saldo');
-            const pagos = button.getAttribute('data-pagos');
-
-            if (!idVenta || !saldo) {
-                console.error('Faltan atributos de datos en el botón que disparó el modal');
-                return;
-            }
-
-            console.log('Cargando datos en el modal:', { idVenta, saldo, pagos });
-
-            // Obtener tipo de cambio desde múltiples fuentes (SOLO desde SUNAT)
-            let tipoCambio = null;
-            let fuenteTipoCambio = 'Obteniendo...';
-            
-            // Intentar obtener el tipo de cambio actualizado desde la API interna
-            try {
-                const responseTipoCambio = await fetch('/ventas/tipo-cambio');
-                const contentType = responseTipoCambio.headers.get('content-type');
-                
-                // Verificar si la respuesta es JSON
-                if (contentType && contentType.includes('application/json')) {
-                    const dataTipoCambio = await responseTipoCambio.json();
-                    
-                    if (dataTipoCambio.success && dataTipoCambio.tipo_cambio) {
-                        tipoCambio = dataTipoCambio.tipo_cambio;
-                        fuenteTipoCambio = dataTipoCambio.fuente || 'API Externa';
-                        console.log('✓ Tipo de cambio obtenido de API interna:', tipoCambio, 'Fuente:', fuenteTipoCambio);
-                    }
-                } else {
-                    console.warn('API interna no disponible, intentando SUNAT directamente...');
-                    throw new Error('Respuesta no es JSON');
-                }
-            } catch (error) {
-                console.warn('Error con API interna, intentando SUNAT directamente:', error);
-                
-                // Fallback: Consultar directamente a SUNAT
-                try {
-                    const fecha = new Date().toISOString().split('T')[0];
-                    const responseSunat = await fetch(`https://api.apis.net.pe/v1/tipo-cambio-sunat?fecha=${fecha}`);
-                    const dataSunat = await responseSunat.json();
-                    
-                    if (dataSunat && dataSunat.compra) {
-                        tipoCambio = parseFloat(dataSunat.compra);
-                        fuenteTipoCambio = 'SUNAT (compra)';
-                        console.log('✓ Tipo de cambio obtenido de SUNAT directo:', tipoCambio);
-                    } else if (dataSunat && dataSunat.venta) {
-                        tipoCambio = parseFloat(dataSunat.venta);
-                        fuenteTipoCambio = 'SUNAT (venta)';
-                        console.log('⚠ Tipo de cambio obtenido de SUNAT (venta):', tipoCambio);
-                    }
-                } catch (errorSunat) {
-                    console.error('Error al obtener tipo de cambio de SUNAT:', errorSunat);
-                    // Si falla todo, usar 3.38 como último recurso
-                    tipoCambio = 3.38;
-                    fuenteTipoCambio = 'Fallback';
-                }
-            }
-            
-            // Validar que tenemos un tipo de cambio válido
-            if (!tipoCambio || tipoCambio <= 0) {
-                tipoCambio = 3.38; // Último recurso
-                fuenteTipoCambio = 'Fallback';
-                console.warn('⚠ Usando tipo de cambio de fallback:', tipoCambio);
-            }
-            
-            // Calcular montos en ambas monedas
-            const saldoNumerico = parseFloat(saldo);
-            const saldoSoles = saldoNumerico;
-            const saldoDolares = saldoNumerico / tipoCambio;
-
-            document.getElementById('pago_id_venta').value = idVenta;
-            document.getElementById('pago_monto').value = saldo;
-            
-            // Actualizar displays de monedas con información de fuente
-            document.getElementById('saldoPendienteSoles').textContent = `S/ ${saldoSoles.toFixed(2)}`;
-            document.getElementById('saldoPendienteDolares').textContent = `$ ${saldoDolares.toFixed(2)}`;
-            
-            // Mostrar tipo de cambio con fuente
-            const tipoCambioElement = document.getElementById('tipoCambioDisplay');
-            tipoCambioElement.textContent = tipoCambio.toFixed(4);
-            tipoCambioElement.title = `Fuente: ${fuenteTipoCambio}`;
-            
-            // Actualizar badge de fuente
-            const fuenteBadge = document.getElementById('fuenteTipoCambio');
-            if (fuenteBadge) {
-                fuenteBadge.innerHTML = `<i class="fas fa-check-circle"></i> ${fuenteTipoCambio}`;
-                fuenteBadge.className = fuenteTipoCambio.includes('SUNAT') ? 'badge bg-success' : 'badge bg-info';
-            }
-            
-            console.log(`💱 Usando tipo de cambio: S/ ${tipoCambio.toFixed(4)} (${fuenteTipoCambio})`);
-
-            // Cargar historial de pagos
-            const historialPagos = document.getElementById('historialPagos');
-            historialPagos.innerHTML = ''; // Limpiar historial previo
-
-            if (pagos) {
-                try {
-                    const pagosData = JSON.parse(pagos);
-                    pagosData.forEach(pago => {
-                        const montoSoles = parseFloat(pago.monto);
-                        const montoDolares = montoSoles / tipoCambio;
-                        
-                        const listItem = document.createElement('li');
-                        listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
-                        listItem.innerHTML = `
-                            <div>
-                                <strong>${pago.metodo}</strong> - ${pago.fecha}
-                            </div>
-                            <div class="text-end">
-                                <span class="badge bg-success me-2">S/ ${montoSoles.toFixed(2)}</span>
-                                <span class="badge bg-primary">$ ${montoDolares.toFixed(2)}</span>
-                            </div>
-                        `;
-                        historialPagos.appendChild(listItem);
-                    });
-                } catch (error) {
-                    console.error('Error al procesar el historial de pagos:', error);
-                }
-            } else {
-                const listItem = document.createElement('li');
-                listItem.className = 'list-group-item text-muted';
-                listItem.textContent = 'No hay pagos registrados.';
-                historialPagos.appendChild(listItem);
-            }
-        });
-
-        console.log('Funcionalidad del modalPago inicializada.');
-    });
-    </script>
-
     <!-- Filtros Avanzados -->
     <div class="card modern-card mb-4">
         <div class="card-header">
@@ -445,7 +195,16 @@
                                 <li><a class="dropdown-item" href="#" onclick="filterByStatus('ACEPTADO')">Aceptados</a></li>
                                 <li><a class="dropdown-item" href="#" onclick="filterByStatus('PENDIENTE')">Pendientes</a></li>
                                 <li><a class="dropdown-item" href="#" onclick="filterByStatus('ANULADO')">Anulados</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li class="dropdown-header">Moneda</li>
+                                <li><a class="dropdown-item" href="#" onclick="filterByCurrency('all')">Todas</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="filterByCurrency('PEN')">Solo PEN</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="filterByCurrency('USD')">Solo USD</a></li>
                             </ul>
+                        </div>
+                        <div class="input-group input-group-sm ms-2" style="width: 200px;">
+                            <span class="input-group-text">TC USD</span>
+                            <input type="number" step="0.0001" min="0" class="form-control" id="tipoCambioManualLista" placeholder="3.8000">
                         </div>
                     </div>
                 </div>
@@ -482,6 +241,11 @@
                                 Total <i class="fas fa-sort"></i>
                             </div>
                         </th>
+                        <th class="sortable" data-sort="moneda" style="width: 100px;">
+                            <div class="th-content">
+                                Moneda <i class="fas fa-sort"></i>
+                            </div>
+                        </th>
                         <th>Estado</th>
                         <th class="text-center" style="width: 200px;">Acciones</th>
                     </tr>
@@ -503,8 +267,7 @@
                                 @php
                                     $esCotizacion = ($venta->id_tipo_comprobante == 8 || 
                                                    (isset($venta->tipoComprobante) && 
-                                                    (stripos($venta->tipoComprobante->descripcion, 'cotiz') !== false ||
-                                                     stripos($venta->tipoComprobante->codigo_sunat, 'CT') !== false)) ||
+                                                    (stripos($venta->tipoComprobante->descripcion, 'cotiz') !== false)) ||
                                                    stripos($venta->serie, 'COT') !== false);
                                 @endphp
                                 @if($esCotizacion)
@@ -526,10 +289,23 @@
                                 </div>
                             </td>
                             <td>
+                                @php
+                                    $codigoMoneda = optional($venta->moneda)->codigo_iso;
+                                    $simboloMoneda = optional($venta->moneda)->simbolo;
+                                @endphp
                                 <div class="amount-info">
-                                    <div class="amount-pen">S/ {{ number_format($venta->total, 2) }}</div>
-                                    <div class="amount-usd text-muted">${{ number_format($venta->total / $tipoCambio, 2) }}</div>
+                                    @if($codigoMoneda === 'USD')
+                                        <div class="amount-single">{{ $simboloMoneda ?? '$' }} {{ number_format($venta->total, 2) }} <span class="badge bg-light text-dark ms-1">USD</span></div>
+                                    @else
+                                        <div class="amount-single">{{ $simboloMoneda ?? 'S/' }} {{ number_format($venta->total, 2) }} <span class="badge bg-light text-dark ms-1">PEN</span></div>
+                                    @endif
                                 </div>
+                            </td>
+                            <td>
+                                @php
+                                    $codigoMoneda = $codigoMoneda ?? 'PEN';
+                                @endphp
+                                <span class="badge bg-secondary">{{ $codigoMoneda }}</span>
                             </td>
                             <td>
                                 <span class="status-badge status-{{ strtolower($venta->xml_estado) }}">
@@ -537,7 +313,11 @@
                                     {{ $venta->xml_estado }}
                                 </span>
                                 @if($venta->xml_estado === 'PENDIENTE')
-                                    <div class="text-danger small mt-1">Saldo pendiente: <b>S/ {{ number_format($venta->saldo, 2) }}</b></div>
+                                    @php
+                                        $codigoMoneda = optional($venta->moneda)->codigo_iso ?? 'PEN';
+                                        $simboloMoneda = optional($venta->moneda)->simbolo ?? ($codigoMoneda === 'USD' ? '$' : 'S/');
+                                    @endphp
+                                    <div class="text-danger small mt-1">Saldo pendiente: <b>{{ $simboloMoneda }} {{ number_format($venta->saldo, 2) }}</b> <span class="badge bg-light text-dark ms-1">{{ $codigoMoneda }}</span></div>
                                 @endif
                             </td>
                             <td>
@@ -553,9 +333,9 @@
                                     <!-- Botón de pago -->
 
                                     @if($venta->xml_estado === 'PENDIENTE')
-                                    <button class="btn btn-action btn-pay" title="Registrar Pago" data-bs-toggle="modal" data-bs-target="#modalPago" data-id="{{ $venta->id_venta }}" data-total="{{ $venta->total }}" data-saldo="{{ $venta->saldo ?? $venta->total }}" data-pagos='@json($venta->pagos)'>
+                                    <a href="{{ route('ventas.mostrar_pago', $venta) }}" class="btn btn-action btn-pay" title="Registrar Pago">
                                         <i class="fas fa-credit-card"></i>
-                                    </button>
+                                    </a>
                                     @endif
 
                                     @if($esCotizacion && in_array($venta->xml_estado, ['PENDIENTE', 'ENVIADO']))
@@ -590,7 +370,7 @@
                                     </div>
                                     @endif
                                     
-                                    @if($venta->xml_estado === 'PENDIENTE')
+                                    @if($venta->xml_estado === 'PENDIENTE' || ($esCotizacion && $venta->xml_estado !== 'ANULADO'))
                                     <a href="{{ route('ventas.edit', $venta) }}" class="btn btn-action btn-edit" title="Editar">
                                         <i class="fas fa-edit"></i>
                                     </a>
@@ -1109,192 +889,5 @@
 .stats-card:nth-child(4) { animation-delay: 0.4s; }
 .modern-card { animation-delay: 0.5s; }
 </style>
-
-<script>
-console.log('📜 Script de ventas cargando...');
-
-// Esperar a que el DOM esté listo
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('✅ DOM listo, inicializando funcionalidades...');
-    
-    // Filter functionality
-    window.filterByStatus = function(status) {
-        const rows = document.querySelectorAll('.table-row');
-        rows.forEach(row => {
-            if (status === 'all' || row.dataset.status === status) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-    };
-
-    // Sort functionality
-    document.querySelectorAll('.sortable').forEach(header => {
-        header.addEventListener('click', function() {
-            const sortBy = this.dataset.sort;
-            console.log('Sorting by:', sortBy);
-        });
-    });
-
-    // ============================================
-    // SISTEMA DE CONVERSIONES
-    // ============================================
-    console.log('🚀 Inicializando sistema de conversiones...');
-    
-    // Event delegation para clicks en enlaces de conversión
-    document.addEventListener('click', function(e) {
-        const conversionLink = e.target.closest('.conversion-link');
-        
-        if (conversionLink) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const idVenta = conversionLink.getAttribute('data-venta-id');
-            const tipoDestino = conversionLink.getAttribute('data-tipo');
-            
-            console.log('🔄 Click detectado en conversión:', { idVenta, tipoDestino });
-            
-            if (!idVenta || !tipoDestino) {
-                console.error('❌ Faltan datos:', { idVenta, tipoDestino });
-                alert('Error: Datos de conversión incompletos');
-                return;
-            }
-            
-            convertirCotizacion(idVenta, tipoDestino, conversionLink);
-        }
-    });
-    
-    // Verificar que hay enlaces de conversión en la página
-    const conversionLinks = document.querySelectorAll('.conversion-link');
-    console.log('📊 Enlaces de conversión encontrados:', conversionLinks.length);
-    
-    console.log('✅ Sistema de conversiones inicializado');
-});
-
-// Función de conversión (global para poder ser llamada desde cualquier lugar)
-function convertirCotizacion(idVenta, tipoDestino, targetLink) {
-    console.log('🔧 Ejecutando convertirCotizacion:', { idVenta, tipoDestino });
-    
-    const tipoNormalizado = tipoDestino.toUpperCase();
-    const nombreTipo = tipoNormalizado === 'FACTURA' ? 'Factura' : 
-                       tipoNormalizado === 'BOLETA' ? 'Boleta' : 
-                       tipoNormalizado === 'TICKET' ? 'Ticket' : tipoDestino;
-    
-    const mensaje = `¿Está seguro que desea convertir esta cotización a ${nombreTipo}?
-
-Esta acción:
-• Cambiará el tipo de comprobante
-• Generará una nueva serie y número  
-• Descontará el stock de los productos
-• No se puede deshacer
-
-¿Desea continuar?`;
-    
-    if (!confirm(mensaje)) {
-        console.log('❌ Usuario canceló la conversión');
-        return;
-    }
-
-    let originalHTML = '';
-    if (targetLink) {
-        originalHTML = targetLink.innerHTML;
-        targetLink.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Convirtiendo...';
-        targetLink.classList.add('disabled');
-        targetLink.style.pointerEvents = 'none';
-    }
-
-    console.log('⏳ Procesando conversión a:', tipoNormalizado);
-
-    if (tipoNormalizado === 'FACTURA') {
-        console.log('➡️ Redirigiendo a convertir-factura');
-        window.location.href = `/ventas/${idVenta}/convertir-factura`;
-    } else if (tipoNormalizado === 'BOLETA') {
-        console.log('➡️ Redirigiendo a convertir-boleta');
-        window.location.href = `/ventas/${idVenta}/convertir-boleta`;
-    } else if (tipoNormalizado === 'TICKET') {
-        console.log('📤 Enviando POST para Ticket');
-        
-        fetch(`/ventas/${idVenta}/convertir`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            body: JSON.stringify({ tipo_destino: 'Ticket' })
-        })
-        .then(response => {
-            console.log('📥 Respuesta recibida:', response.status);
-            return response.json();
-        })
-        .then(data => {
-            console.log('📦 Datos:', data);
-            if (data.success) {
-                alert('✅ ' + data.message);
-                console.log('✅ Conversión exitosa, recargando...');
-                window.location.reload();
-            } else {
-                console.error('❌ Error:', data.error);
-                alert('❌ Error: ' + (data.error || 'No se pudo convertir.'));
-                if (targetLink) {
-                    targetLink.innerHTML = originalHTML;
-                    targetLink.classList.remove('disabled');
-                    targetLink.style.pointerEvents = 'auto';
-                }
-            }
-        })
-        .catch(error => {
-            console.error('❌ Error de red:', error);
-            alert('❌ Error de red: ' + error.message);
-            if (targetLink) {
-                targetLink.innerHTML = originalHTML;
-                targetLink.classList.remove('disabled');
-                targetLink.style.pointerEvents = 'auto';
-            }
-        });
-    } else {
-        console.error('❌ Tipo no válido:', tipoDestino);
-        alert('❌ Tipo de conversión no válido: ' + tipoDestino);
-        if (targetLink) {
-            targetLink.innerHTML = originalHTML;
-            targetLink.classList.remove('disabled');
-            targetLink.style.pointerEvents = 'auto';
-        }
-    }
-}
-
-console.log('📜 Script de ventas cargado completamente');
-
-            targetLink.innerHTML = originalHTML;
-            targetLink.classList.remove('disabled');
-            targetLink.style.pointerEvents = 'auto';
-        }
-    }
-}
-
-// Filtrado automático al cambiar selects
-document.addEventListener('DOMContentLoaded', function() {
-    const tipoComprobanteFilter = document.getElementById('tipoComprobanteFilter');
-    const estadoFilter = document.getElementById('estadoFilter');
-    const filterForm = document.getElementById('filterForm');
-    
-    if (tipoComprobanteFilter) {
-        tipoComprobanteFilter.addEventListener('change', function() {
-            console.log('Filtro tipo comprobante cambiado, enviando formulario...');
-            filterForm.submit();
-        });
-    }
-    
-    if (estadoFilter) {
-        estadoFilter.addEventListener('change', function() {
-            console.log('Filtro estado cambiado, enviando formulario...');
-            filterForm.submit();
-        });
-    }
-    
-    console.log('✅ Filtros automáticos activados');
-});
-
-</script>
 
 @endsection

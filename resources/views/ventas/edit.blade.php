@@ -6,12 +6,31 @@
         <div class="col-md-12">
             <div class="card">
                 <div class="card-header">
-                    <h4><i class="fas fa-edit"></i> Editar Venta #{{ $venta->serie }}-{{ $venta->numero }}</h4>
+                    @php
+                        $esCotizacion = ($venta->id_tipo_comprobante == 8 ||
+                            (isset($venta->tipoComprobante) &&
+                             (stripos($venta->tipoComprobante->descripcion, 'cotiz') !== false ||
+                              stripos($venta->tipoComprobante->codigo_sunat ?? '', 'CT') !== false)) ||
+                            stripos($venta->serie, 'COT') !== false);
+                    @endphp
+                    <h4>
+                        <i class="fas fa-edit"></i>
+                        {{ $esCotizacion ? 'Editar Cotización' : 'Editar Venta' }} #{{ $venta->serie }}-{{ $venta->numero }}
+                    </h4>
                 </div>
                 <div class="card-body">
-                    @if($venta->xml_estado !== 'PENDIENTE')
+                    @php
+                        $esCotizacion = ($venta->id_tipo_comprobante == 8 ||
+                            (isset($venta->tipoComprobante) &&
+                             (stripos($venta->tipoComprobante->descripcion, 'cotiz') !== false ||
+                              stripos($venta->tipoComprobante->codigo_sunat ?? '', 'CT') !== false)) ||
+                            stripos($venta->serie, 'COT') !== false);
+                        $editablePorEstado = $venta->xml_estado === 'PENDIENTE' || ($esCotizacion && $venta->xml_estado !== 'ANULADO');
+                    @endphp
+                    @if(!$editablePorEstado)
                     <div class="alert alert-warning">
-                        <strong>Advertencia:</strong> Esta venta tiene estado "{{ $venta->xml_estado }}". Solo se pueden editar ventas en estado "PENDIENTE".
+                        <strong>Advertencia:</strong> Esta venta tiene estado "{{ $venta->xml_estado }}" y no es editable.
+                        Solo se pueden editar ventas en estado "PENDIENTE" o cotizaciones en cualquier estado excepto "ANULADO".
                     </div>
                     <div class="text-center">
                         <a href="{{ route('ventas.index') }}" class="btn btn-secondary">
@@ -94,10 +113,15 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label for="moneda">Moneda</label>
+                                    @php
+                                        // Resolver ISO desde relación u origen string
+                                        $codigoIsoSelect = is_object($venta->moneda) ? ($venta->moneda->codigo_iso ?? 'PEN') : ($venta->moneda ?? 'PEN');
+                                    @endphp
                                     <select class="form-control" id="moneda" name="moneda" required>
-                                        <option value="PEN" {{ $venta->moneda === 'PEN' ? 'selected' : '' }}>Soles (PEN)</option>
-                                        <option value="USD" {{ $venta->moneda === 'USD' ? 'selected' : '' }}>Dólares (USD)</option>
+                                        <option value="PEN" {{ $codigoIsoSelect === 'PEN' ? 'selected' : '' }}>Soles (PEN)</option>
+                                        <option value="USD" {{ $codigoIsoSelect === 'USD' ? 'selected' : '' }}>Dólares (USD)</option>
                                     </select>
+                                    <input type="hidden" id="tipoCambio" value="{{ number_format($tipoCambio ?? 3.75, 4, '.', '') }}">
                                 </div>
                             </div>
                         </div>
@@ -133,9 +157,15 @@
                                             </div>
                                             <div class="col-md-2">
                                                 <label>Precio Unit.</label>
-                                                <input type="number" class="form-control precio-input" 
-                                                       name="detalle[{{ $index }}][precio_unitario]" 
-                                                       value="{{ $detalle->precio_unitario }}" step="0.01" readonly>
+                                                <div class="input-group input-group-sm">
+                                                    @php
+                                                        $codigoIso = is_object($venta->moneda) ? ($venta->moneda->codigo_iso ?? 'PEN') : ($venta->moneda ?? 'PEN');
+                                                    @endphp
+                                                    <span class="input-group-text" id="simboloDetalle{{ $index }}">{{ $codigoIso === 'USD' ? '$' : 'S/' }}</span>
+                                                    <input type="number" class="form-control precio-input" 
+                                                           name="detalle[{{ $index }}][precio_unitario]" 
+                                                           value="{{ $detalle->precio_unitario }}" step="0.01" readonly>
+                                                </div>
                                             </div>
                                             <div class="col-md-2">
                                                 <label>Desc. %</label>
@@ -171,22 +201,27 @@
                                         <h5>Resumen de la Venta</h5>
                                     </div>
                                     <div class="col-md-4">
+                                        @php
+                                            $codigoIso = is_object($venta->moneda) ? ($venta->moneda->codigo_iso ?? 'PEN') : ($venta->moneda ?? 'PEN');
+                                            $simboloMoneda = is_object($venta->moneda) ? ($venta->moneda->simbolo ?? 'S/') : ($codigoIso === 'USD' ? '$' : 'S/');
+                                            $icono = $codigoIso === 'USD' ? 'fas fa-dollar-sign' : 'fas fa-money-bill-wave';
+                                        @endphp
                                         <table class="table">
                                             <tr>
-                                                <td><strong>Subtotal:</strong></td>
-                                                <td class="text-right"><span id="subtotal-display">S/ 0.00</span></td>
+                                                <td><strong>Subtotal:</strong> <span class="badge bg-secondary" id="ventaMonedaBadge">{{ $codigoIso }}</span></td>
+                                                <td class="text-right"><span id="subtotal-display"><i class="{{ $icono }} me-1"></i>{{ $simboloMoneda }} 0.00</span></td>
                                             </tr>
                                             <tr>
                                                 <td><strong>IGV (18%):</strong></td>
                                                 <td class="text-right">
-                                                    <span id="igv-display">S/ 0.00</span>
+                                                    <span id="igv-display"><i class="{{ $icono }} me-1"></i>{{ $simboloMoneda }} 0.00</span>
                                                     <input class="form-check-input ml-2" type="checkbox" id="igv-checkbox" checked>
                                                     <label class="form-check-label" for="igv-checkbox">Aplicar</label>
                                                 </td>
                                             </tr>
                                             <tr class="table-active">
                                                 <td><strong>Total:</strong></td>
-                                                <td class="text-right"><strong><span id="total-display">S/ 0.00</span></strong></td>
+                                                <td class="text-right"><strong><span id="total-display"><i class="{{ $icono }} me-1"></i>{{ $simboloMoneda }} 0.00</span></strong></td>
                                             </tr>
                                         </table>
                                         
@@ -218,6 +253,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     let productoIndex = {{ $venta->detalleVentas->count() }};
+    const TIPO_CAMBIO = parseFloat(document.getElementById('tipoCambio')?.value || '3.75');
     
     // Manejar envío del formulario
     document.getElementById('ventaForm').addEventListener('submit', function(e) {
@@ -266,9 +302,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const total = subtotal + igv;
         
         // Actualizar displays
-        document.getElementById('subtotal-display').textContent = 'S/ ' + subtotal.toFixed(2);
-        document.getElementById('igv-display').textContent = 'S/ ' + igv.toFixed(2);
-        document.getElementById('total-display').textContent = 'S/ ' + total.toFixed(2);
+        const monedaSel = document.getElementById('moneda');
+        const codigoIso = monedaSel ? monedaSel.value : '{{ is_object($venta->moneda) ? ($venta->moneda->codigo_iso ?? 'PEN') : ($venta->moneda ?? 'PEN') }}';
+        const simbolo = codigoIso === 'USD' ? '$' : 'S/';
+        const icono = codigoIso === 'USD' ? 'fas fa-dollar-sign' : 'fas fa-money-bill-wave';
+        document.getElementById('ventaMonedaBadge').textContent = codigoIso;
+        document.getElementById('subtotal-display').innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${subtotal.toFixed(2)}`;
+        document.getElementById('igv-display').innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${igv.toFixed(2)}`;
+        document.getElementById('total-display').innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${total.toFixed(2)}`;
         
         // Actualizar campos ocultos para el formulario
         document.getElementById('subtotal-input').value = subtotal.toFixed(2);
@@ -293,8 +334,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         productoSelect.addEventListener('change', function() {
             const selectedOption = this.options[this.selectedIndex];
-            const precio = selectedOption.getAttribute('data-precio') || 0;
-            row.querySelector('.precio-input').value = precio;
+            const precioCatalogoPen = parseFloat(selectedOption.getAttribute('data-precio') || '0');
+            const monedaVenta = document.getElementById('moneda')?.value || 'PEN';
+            // Convertir precio de catálogo (PEN) a moneda de la venta
+            const precioUnit = monedaVenta === 'USD' ? (precioCatalogoPen / TIPO_CAMBIO) : precioCatalogoPen;
+            row.querySelector('.precio-input').value = precioUnit.toFixed(2);
             calcularPrecioFinal(row);
         });
         
@@ -338,7 +382,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="col-md-2">
                     <label>Precio Unit.</label>
-                    <input type="number" class="form-control precio-input" name="detalle[${productoIndex}][precio_unitario]" step="0.01" readonly>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text" id="simboloDetalle${productoIndex}">S/</span>
+                        <input type="number" class="form-control precio-input" name="detalle[${productoIndex}][precio_unitario]" step="0.01" readonly>
+                    </div>
                 </div>
                 <div class="col-md-2">
                     <label>Desc. %</label>
@@ -360,11 +407,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const productoSelect = newRow.querySelector('.producto-select');
         const cantidadInput = newRow.querySelector('.cantidad-input');
         const descuentoInput = newRow.querySelector('.descuento-input');
+        // Ajustar símbolo inicial según moneda actual
+        const monedaActual = document.getElementById('moneda')?.value || 'PEN';
+        const simboloInicial = monedaActual === 'USD' ? '$' : 'S/';
+        const simboloSpan = newRow.querySelector(`#simboloDetalle${productoIndex}`);
+        if (simboloSpan) simboloSpan.textContent = simboloInicial;
         
         productoSelect.addEventListener('change', function() {
             const selectedOption = this.options[this.selectedIndex];
-            const precio = selectedOption.getAttribute('data-precio') || 0;
-            newRow.querySelector('.precio-input').value = precio;
+            const precioCatalogoPen = parseFloat(selectedOption.getAttribute('data-precio') || '0');
+            const monedaVenta = document.getElementById('moneda')?.value || 'PEN';
+            const precioUnit = monedaVenta === 'USD' ? (precioCatalogoPen / TIPO_CAMBIO) : precioCatalogoPen;
+            newRow.querySelector('.precio-input').value = precioUnit.toFixed(2);
             calcularPrecioFinal(newRow);
         });
         
@@ -390,6 +444,33 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Calcular totales iniciales
     calcularTotales();
+    // Actualizar símbolos cuando cambia la moneda
+    const monedaSel = document.getElementById('moneda');
+    if (monedaSel) {
+        monedaSel.addEventListener('change', function() {
+            const codigoIso = this.value;
+            const simboloChar = codigoIso === 'USD' ? '$' : 'S/';
+            document.getElementById('ventaMonedaBadge').textContent = codigoIso;
+            document.querySelectorAll('[id^="simboloDetalle"]').forEach(function(span){
+                span.textContent = simboloChar;
+            });
+            // Reconvertir todos los precios unitarios a la moneda de la venta
+            document.querySelectorAll('.producto-row').forEach(function(row) {
+                const select = row.querySelector('.producto-select');
+                if (!select) return;
+                const selectedOption = select.options[select.selectedIndex];
+                const precioCatalogoPen = parseFloat(selectedOption.getAttribute('data-precio') || '0');
+                const precioUnit = codigoIso === 'USD' ? (precioCatalogoPen / TIPO_CAMBIO) : precioCatalogoPen;
+                row.querySelector('.precio-input').value = precioUnit.toFixed(2);
+                // Recalcular precio final para cada fila
+                const descuentoInput = row.querySelector('.descuento-input');
+                const descuento = parseFloat(descuentoInput?.value || '0');
+                const precioFinal = precioUnit * (1 - (descuento / 100));
+                row.querySelector('.precio-final-input').value = precioFinal.toFixed(2);
+            });
+            calcularTotales();
+        });
+    }
 });
 </script>
 
@@ -420,9 +501,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const total = subtotal + igv;
 
         // Actualizar displays
-        document.getElementById('subtotal-display').textContent = 'S/ ' + subtotal.toFixed(2);
-        document.getElementById('igv-display').textContent = 'S/ ' + igv.toFixed(2);
-        document.getElementById('total-display').textContent = 'S/ ' + total.toFixed(2);
+        const monedaSel = document.getElementById('moneda');
+        const codigoIso = monedaSel ? monedaSel.value : 'PEN';
+        const simbolo = codigoIso === 'USD' ? '$' : 'S/';
+        const icono = codigoIso === 'USD' ? 'fas fa-dollar-sign' : 'fas fa-money-bill-wave';
+        document.getElementById('ventaMonedaBadge').textContent = codigoIso;
+        document.getElementById('subtotal-display').innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${subtotal.toFixed(2)}`;
+        document.getElementById('igv-display').innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${igv.toFixed(2)}`;
+        document.getElementById('total-display').innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${total.toFixed(2)}`;
 
         // Actualizar campos ocultos para el formulario
         document.getElementById('subtotal-input').value = subtotal.toFixed(2);

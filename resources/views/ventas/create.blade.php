@@ -61,10 +61,11 @@
               <i class="fas fa-coins me-1"></i>
               Moneda
             </label>
-            <select id="moneda" class="form-select modern-select" style="font-weight: 600;" onchange="actualizarVisualizacionMoneda()">
-              <option value="PEN" selected style="background-color: #d4edda; font-weight: bold; color: #155724;">S/ Sol Peruano (PEN)</option>
-              <option value="USD" style="color: #004085;">$ Dólar (USD)</option>
+            <select id="moneda" class="form-select modern-select" style="font-weight: 600;" onchange="calcularTotales();">
+              <option value="USD" selected style="background-color: #d4edda; font-weight: bold; color: #155724;">$ Dólar (USD)</option>
+              <option value="PEN" style="background-color: #fff3cd; font-weight: bold; color: #856404;">S/ Sol (PEN)</option>
             </select>
+            <input type="hidden" id="monedaHidden" value="USD">
           </div>
           <div class="col-md-2">
             <label class="modern-label">
@@ -87,23 +88,11 @@
           <div class="d-flex align-items-center justify-content-between">
             <div class="tipo-cambio-display">
               <i class="fas fa-exchange-alt text-warning me-2"></i>
-              <strong class="text-dark">Tipo de Cambio:</strong> 
-              <span class="tipo-cambio-value">S/ <span id="tipoCambioDisplay">{{ number_format($tipoCambio, 2) }}</span></span>
+              <strong class="text-dark">Tipo de Cambio Manual:</strong>
+              <input type="number" step="0.01" class="form-control d-inline-block w-auto" id="tipoCambioManual" name="tipoCambioManual" placeholder="Ingrese el tipo de cambio">
               <span class="text-muted ms-1">por USD</span>
-              <small class="text-info ms-3">Los precios se muestran en ambas monedas</small>
-            </div>
-            <div class="tipo-cambio-actions">
-              <button type="button" class="btn btn-outline-info btn-sm modern-btn-sm" onclick="actualizarTipoCambio()" id="btnActualizarTC">
-                <i class="fas fa-sync-alt me-1"></i> Actualizar
-              </button>
-              <button type="button" class="btn btn-outline-warning btn-sm modern-btn-sm ms-1" onclick="forzarActualizarTipoCambio()" id="btnForzarTC">
-              <i class="fas fa-bolt me-1"></i> Forzar
-            </button>
             </div>
           </div>
-          <small id="infoTipoCambio" class="text-muted mt-2 d-block">
-            <span id="fuenteTC"></span> • Última actualización: <span id="fechaTC">{{ now()->format('d/m/Y H:i:s') }}</span>
-          </small>
         </div>
       </div>
     </div>
@@ -180,7 +169,10 @@
               <i class="fas fa-tag me-1"></i>
               Precio Unit.
             </label>
-            <input id="precio" class="form-control modern-input readonly-input" readonly>
+            <div class="input-group">
+              <span class="input-group-text" id="precioSimbolo">S/</span>
+              <input id="precio" class="form-control modern-input" type="number" step="0.01" placeholder="Ingrese el precio">
+            </div>
           </div>
           <div class="col-md-2">
             <label class="modern-label">
@@ -218,7 +210,7 @@
                   <i class="fas fa-sort-numeric-up me-1"></i> Cantidad
                 </th>
                 <th style="width: 25%;" class="text-center">
-                  <i class="fas fa-tag me-1"></i> Precio Unitario (PEN/USD)
+                  <i class="fas fa-tag me-1"></i> <span id="colPrecioLabel">Precio Unitario (S/)</span>
                 </th>
                 <th style="width: 10%;" class="text-center">
                   <i class="fas fa-percent me-1"></i> Desc%
@@ -226,9 +218,11 @@
                 <th style="width: 15%;" class="text-end">
                   <i class="fas fa-calculator me-1"></i> Subtotal
                 </th>
+                <th style="width: 5%;" class="text-center">
+                  <i class="fas fa-edit me-1"></i> Editar
+                </th>
               </tr>
             </thead>
-            <tbody class="table-body"></tbody>
           </table>
           
           <!-- Empty State -->
@@ -244,7 +238,7 @@
           <div class="col-md-6">
             <div class="summary-info p-3 bg-light rounded">
               <i class="fas fa-info-circle text-info me-2"></i>
-              <span class="text-muted">Los precios se calculan automáticamente en ambas monedas</span>
+              <span class="text-muted" id="mensajeMoneda">Los precios se muestran en la moneda seleccionada</span>
             </div>
           </div>
           <div class="col-md-6">
@@ -254,8 +248,7 @@
                   <i class="fas fa-calculator me-1 text-info"></i> Subtotal:
                 </span>
                 <div class="summary-amounts">
-                  <span class="amount-pen">S/ <span id="subTotal">0.00</span></span>
-                  <small class="amount-usd">$<span id="subTotalUSD">0.00</span></small>
+                  <span class="amount-display" id="subtotalDisplay" style="font-size: 1.2em; font-weight: 600; color: #333;"></span>
                 </div>
               </div>
               
@@ -268,21 +261,29 @@
                   </div>
                 </span>
                 <div class="summary-amounts">
-                  <span class="amount-pen">S/ <span id="igv">0.00</span></span>
-                  <small class="amount-usd">$<span id="igvUSD">0.00</span></small>
+                  <span class="amount-display" id="igvDisplay" style="font-size: 1.2em; font-weight: 600; color: #333;"></span>
                 </div>
               </div>
               
               <hr class="my-2">
               
               <div class="summary-row total-row">
-                <span class="summary-label fw-bold">
+                <span class="summary-label fw-bold" style="font-size: 1.1em;">
                   <i class="fas fa-money-bill-wave me-1 text-success"></i> TOTAL:
                 </span>
                 <div class="summary-amounts">
-                  <span class="amount-pen-total">S/ <span id="total">0.00</span></span>
-                  <small class="amount-usd">$<span id="totalUSD">0.00</span></small>
+                  <span class="amount-display" id="totalDisplay" style="font-size: 1.8em; font-weight: bold; color: #28a745; text-shadow: 1px 1px 2px rgba(0,0,0,0.1);"></span>
                 </div>
+              </div>
+              
+              <!-- Hidden fields for calculations -->
+              <div style="display: none;">
+                <span id="subTotal">0.00</span>
+                <span id="subTotalUSD">0.00</span>
+                <span id="igv">0.00</span>
+                <span id="igvUSD">0.00</span>
+                <span id="total">0.00</span>
+                <span id="totalUSD">0.00</span>
               </div>
             </div>
           </div>
@@ -361,24 +362,96 @@
   </div>
 </div>
 
+<!-- Modal para edición de cotización -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalLabel">Editar Cotización</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="editProducto" class="form-label">Producto</label>
+                        <input type="text" class="form-control" id="editProducto" readonly>
+                      </div>
+                      <div class="mb-3">
+                        <label for="editCantidad" class="form-label">Cantidad</label>
+                        <input type="number" class="form-control" id="editCantidad">
+                      </div>
+                      <div class="mb-3">
+                        <label for="editPrecioUnitario" class="form-label">Precio Unitario</label>
+                        <input type="number" class="form-control" id="editPrecioUnitario">
+                      </div>
+                      <div class="mb-3">
+                        <label for="editDescuento" class="form-label">Descuento</label>
+                        <input type="number" class="form-control" id="editDescuento">
+                      </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="saveEdit">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ajustar estilo del ícono de edición para asegurar visibilidad -->
+<style>
+  .edit-icon {
+    cursor: pointer;
+    color: #007bff;
+    font-size: 1.2em;
+  }
+</style>
+
 <script>
+  // Inicializaciones seguras
+  window.detalle = Array.isArray(window.detalle) ? window.detalle : [];
+  window.productoSeleccionado = window.productoSeleccionado || null;
 // === VARIABLES ===
 const IGV = 0.18;
-let TIPO_CAMBIO = {{ $tipoCambio }};
+let TIPO_CAMBIO = 3.80;
 let detalle = [];
 let productoSeleccionado = null;
 let clienteSeleccionado = null;
 
-// === FUNCIONES DE CONVERSIÓN DE MONEDA ===
-function formatearPrecio(precio, mostrarDolares = true) {
-  const precioSoles = parseFloat(precio);
-  const precioDolares = precioSoles / TIPO_CAMBIO;
-  
-  if (mostrarDolares) {
-    return `S/ ${precioSoles.toFixed(2)} - $${precioDolares.toFixed(2)}`;
-  } else {
-    return `S/ ${precioSoles.toFixed(2)}`;
+// === VALIDACIÓN DE COMPATIBILIDAD COMPROBANTE/CLIENTE (GLOBAL) ===
+// Evita ReferenceError y agrega reglas básicas según documento y tipo
+function validarCompatibilidadComprobanteCliente() {
+  const tipo = document.getElementById('tipo_comprobante')?.value || '';
+  const cliente = clienteSeleccionado;
+  if (!tipo) {
+    return { valido: false, advertencia: false, mensaje: 'Seleccione el tipo de comprobante.' };
   }
+  if (!cliente) {
+    return { valido: false, advertencia: false, mensaje: 'Debe seleccionar un cliente antes de registrar.' };
+  }
+  // Reglas comunes en Perú: Factura requiere RUC (11 dígitos), Boleta permite DNI
+  const doc = (cliente.numero_documento || cliente.documento || '').toString();
+  const esRUC = /^\d{11}$/.test(doc);
+  const esDNI = /^\d{8}$/.test(doc);
+  if (tipo === 'Factura' && !esRUC) {
+    return { valido: false, advertencia: false, mensaje: 'Para Factura, el cliente debe tener RUC (11 dígitos).' };
+  }
+  if (tipo === 'Boleta de Venta' && !esDNI && !esRUC) {
+    return { valido: true, advertencia: true, mensaje: 'Boleta sin DNI/RUC detectado. Se continuará, pero verifique el documento.' };
+  }
+  // Cotización y Ticket, no restricción estricta
+  return { valido: true, advertencia: false, mensaje: '' };
+}
+
+// === FUNCIONES DE CONVERSIÓN DE MONEDA ===
+function formatearPrecio(precio) {
+  const precioSoles = parseFloat(precio);
+  const monedaSeleccionada = document.getElementById('moneda')?.value || 'USD';
+  if (monedaSeleccionada === 'USD') {
+    const precioDolares = precioSoles / TIPO_CAMBIO;
+    return `$ ${precioDolares.toFixed(2)}`;
+  }
+  return `S/ ${precioSoles.toFixed(2)}`;
 }
 
 function convertirSolesADolares(soles) {
@@ -389,120 +462,6 @@ function convertirDolaresASoles(dolares) {
   return parseFloat(dolares) * TIPO_CAMBIO;
 }
 
-// === FUNCIÓN PARA ACTUALIZAR TIPO DE CAMBIO ===
-async function actualizarTipoCambio() {
-  const btn = document.getElementById('btnActualizarTC');
-  const originalText = btn.innerHTML;
-  
-  try {
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualizando...';
-    btn.disabled = true;
-    
-    const response = await fetch('/ventas/tipo-cambio');
-    const data = await response.json();
-    
-    if (data.success) {
-      // Actualizar la variable global
-      TIPO_CAMBIO = data.tipo_cambio;
-      
-      // Actualizar el display
-      document.getElementById('tipoCambioDisplay').textContent = data.tipo_cambio.toFixed(2);
-      document.getElementById('fechaTC').textContent = data.fecha_actualizacion;
-      document.getElementById('fuenteTC').textContent = data.fuente || 'API Externa';
-      
-      // Actualizar los precios mostrados si hay productos en la lista
-      const productosItems = document.querySelectorAll('.prod-item');
-      productosItems.forEach(item => {
-        const precio = parseFloat(item.dataset.precio);
-        const precioContainer = item.querySelector('.fs-6');
-        if (precioContainer) {
-          precioContainer.innerHTML = formatearPrecio(precio);
-        }
-      });
-      
-      // Recalcular totales si hay detalles
-      if (detalle.length > 0) {
-        actualizarTabla();
-      }
-      
-      // Mostrar mensaje de éxito con información adicional
-      const cacheInfo = data.cache_hit ? ' (desde caché)' : ' (recién actualizado)';
-      mostrarAlerta('success', `Tipo de cambio actualizado: S/ ${data.tipo_cambio.toFixed(2)} - Fuente: ${data.fuente}${cacheInfo}`);
-      
-    } else {
-      mostrarAlerta('error', 'Error al actualizar tipo de cambio: ' + (data.message || 'Error desconocido'));
-    }
-    
-  } catch (error) {
-    console.error('Error:', error);
-    mostrarAlerta('error', 'Error de conexión al actualizar tipo de cambio');
-  } finally {
-    btn.innerHTML = originalText;
-    btn.disabled = false;
-  }
-}
-
-// === FUNCIÓN PARA FORZAR ACTUALIZACIÓN DEL TIPO DE CAMBIO ===
-async function forzarActualizarTipoCambio() {
-  const btn = document.getElementById('btnForzarTC');
-  const originalText = btn.innerHTML;
-  
-  if (!confirm('¿Estás seguro de forzar la actualización del tipo de cambio? Esto puede tomar unos segundos.')) {
-    return;
-  }
-  
-  try {
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Forzando...';
-    btn.disabled = true;
-    
-    const response = await fetch('/ventas/tipo-cambio/forzar', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-      }
-    });
-    
-    const data = await response.json();
-    
-    if (data.success) {
-      // Actualizar la variable global
-      TIPO_CAMBIO = data.tipo_cambio;
-      
-      // Actualizar el display
-      document.getElementById('tipoCambioDisplay').textContent = data.tipo_cambio.toFixed(2);
-      document.getElementById('fechaTC').textContent = data.fecha_actualizacion;
-      document.getElementById('fuenteTC').textContent = 'Recién actualizado';
-      
-      // Actualizar los precios mostrados
-      const productosItems = document.querySelectorAll('.prod-item');
-      productosItems.forEach(item => {
-        const precio = parseFloat(item.dataset.precio);
-        const precioContainer = item.querySelector('.fs-6');
-        if (precioContainer) {
-          precioContainer.innerHTML = formatearPrecio(precio);
-        }
-      });
-      
-      // Recalcular totales
-      if (detalle.length > 0) {
-        actualizarTabla();
-      }
-      
-      mostrarAlerta('success', `Tipo de cambio forzado: S/ ${data.tipo_cambio.toFixed(2)} - ${data.mensaje}`);
-      
-    } else {
-      mostrarAlerta('error', 'Error al forzar actualización: ' + (data.message || 'Error desconocido'));
-    }
-    
-  } catch (error) {
-    console.error('Error:', error);
-    mostrarAlerta('error', 'Error de conexión al forzar actualización del tipo de cambio');
-  } finally {
-    btn.innerHTML = originalText;
-    btn.disabled = false;
-  }
-}
 
 // Función auxiliar para mostrar alertas
 function mostrarAlerta(tipo, mensaje) {
@@ -588,111 +547,42 @@ const configSeries = {
 
 // === NO HAY SUGERENCIAS AUTOMÁTICAS - SOLO LO QUE EL USUARIO ELIJE ===
 
-// === FUNCIÓN ELIMINADA - NO MÁS MENSAJES DE SUGERENCIAS ===
-
-// === ACTUALIZAR VISUALIZACIÓN AL CAMBIAR MONEDA MANUALMENTE ===
-function actualizarVisualizacionMoneda() {
-  const monedaSelect = document.getElementById('moneda');
-  const monedaSeleccionada = monedaSelect.value;
-  
-  // Reordenar opciones con la seleccionada primero y resaltada
-  // SIEMPRE mantener PEN como prioritario visualmente
-  if (monedaSeleccionada === 'USD') {
-    monedaSelect.innerHTML = `
-      <option value="USD" selected style="background-color: #e3f2fd; font-weight: bold; font-size: 1.05em; color: #004085;">$ Dólar (USD)</option>
-      <option value="PEN" style="font-size: 0.95em; color: #155724;">S/ Sol Peruano (PEN)</option>
-    `;
-  } else {
-    monedaSelect.innerHTML = `
-      <option value="PEN" selected style="background-color: #d4edda; font-weight: bold; font-size: 1.05em; color: #155724;">S/ Sol Peruano (PEN)</option>
-      <option value="USD" style="font-size: 0.95em; color: #004085;">$ Dólar (USD)</option>
-    `;
-  }
-  monedaSelect.value = monedaSeleccionada;
-}
-
-// === VALIDACIÓN Y AJUSTE DE MONEDA SEGÚN TIPO DE COMPROBANTE ===
-function validarCambioTipoComprobante() {
-  const tipoComprobante = document.getElementById('tipo_comprobante').value;
-  const monedaSelect = document.getElementById('moneda');
-  
-  // Configurar orden y resaltado de opciones según tipo de comprobante
-  // SIEMPRE priorizar SOLES (PEN) para todos los tipos de comprobante
-  if (tipoComprobante === 'Factura' || tipoComprobante === 'Boleta de Venta' || tipoComprobante === 'Ticket de Máquina Registradora') {
-    // Para comprobantes oficiales, priorizar SOLES
-    monedaSelect.innerHTML = `
-      <option value="PEN" selected style="background-color: #d4edda; font-weight: bold; font-size: 1.05em; color: #155724;">S/ Sol Peruano (PEN)</option>
-      <option value="USD" style="font-size: 0.95em; color: #004085;">$ Dólar (USD)</option>
-    `;
-    monedaSelect.value = 'PEN';
-  } else if (tipoComprobante === 'Cotización') {
-    // Para cotizaciones, TAMBIÉN priorizar SOLES
-    monedaSelect.innerHTML = `
-      <option value="PEN" selected style="background-color: #d4edda; font-weight: bold; font-size: 1.05em; color: #155724;">S/ Sol Peruano (PEN)</option>
-      <option value="USD" style="font-size: 0.95em; color: #004085;">$ Dólar (USD)</option>
-    `;
-    monedaSelect.value = 'PEN';
-  }
-  
-  actualizarSerie(); // Solo actualizar la serie
-}
-
-// === VALIDACIÓN MÍNIMA - SOLO ERRORES CRÍTICOS ===
-function validarCompatibilidadComprobanteCliente() {
-  const tipoComprobante = document.getElementById('tipo_comprobante').value;
-  
-  if (!clienteSeleccionado) {
-    return { valido: false, mensaje: 'Debe seleccionar un cliente' };
-  }
-  
-  // Solo validar que tenga tipo de comprobante seleccionado
-  if (!tipoComprobante) {
-    return { valido: false, mensaje: 'Debe seleccionar un tipo de comprobante' };
-  }
-  
-  return { valido: true, mensaje: '' };
-}
-
-// === FUNCIÓN PARA ACTUALIZAR SERIE SEGÚN TIPO DE COMPROBANTE ===
-async function actualizarSerie() {
-  const tipoComprobante = document.getElementById('tipo_comprobante').value;
-  const serieInput = document.getElementById('serie');
-  const numeroInput = document.getElementById('numero');
-
-  if (!tipoComprobante) {
-    serieInput.value = '';
-    numeroInput.value = 'Seleccione tipo';
-    return;
-  }
-
-  const config = configSeries[tipoComprobante];
-  if (!config) return;
-
-  // Actualizar serie
-  serieInput.value = config.serie;
-
-  try {
-    // Mostrar cargando
-    numeroInput.value = 'Cargando...';
-
-    // Obtener el siguiente número para esta serie y tipo
-    const response = await fetch(`/api/ventas/siguiente-numero?tipo=${encodeURIComponent(tipoComprobante)}&serie=${encodeURIComponent(config.serie)}`);
-
-    if (!response.ok) {
-      throw new Error('Error al obtener siguiente número');
+// === TIPO DE CAMBIO MANUAL ===
+function aplicarTipoCambioManual() {
+  const input = document.getElementById('tipoCambioManual');
+  const valor = parseFloat(input?.value);
+  if (!isNaN(valor) && valor > 0) {
+    TIPO_CAMBIO = valor;
+    mostrarAlerta('success', `Tipo de cambio aplicado manualmente: S/ ${valor.toFixed(4)} por USD`);
+    // Recalcular precios mostrados en la lista de productos
+    const productosItems = document.querySelectorAll('.prod-item');
+    productosItems.forEach(item => {
+      const precio = parseFloat(item.dataset.precio);
+      const precioContainer = item.querySelector('.fs-6');
+      if (precioContainer) {
+        precioContainer.innerHTML = formatearPrecio(precio);
+      }
+    });
+    // Recalcular totales si hay detalles
+    if (detalle.length > 0) {
+      actualizarTabla();
     }
+  }
+}
 
-    const data = await response.json();
-
-    // Mostrar el siguiente número con formato
-    const numeroFormateado = String(data.siguiente_numero).padStart(8, '0');
-    numeroInput.value = `${config.serie}-${numeroFormateado}`;
-
-    console.log(`Serie actualizada: ${config.serie}, Próximo número: ${numeroFormateado}`);
-
-  } catch (error) {
-    console.error('Error al obtener siguiente número:', error);
-    numeroInput.value = 'Error al cargar';
+document.addEventListener('DOMContentLoaded', () => {
+  const inputTC = document.getElementById('tipoCambioManual');
+  if (inputTC) {
+    inputTC.addEventListener('input', aplicarTipoCambioManual);
+    if (!inputTC.value) {
+      inputTC.value = (typeof TIPO_CAMBIO !== 'undefined' && TIPO_CAMBIO > 0) ? TIPO_CAMBIO : 3.80;
+    }
+  }
+});
+// Función de compatibilidad llamada desde el atributo onchange del select
+function validarCambioTipoComprobante() {
+  if (typeof actualizarSerie === 'function') {
+    actualizarSerie();
   }
 }
 
@@ -881,7 +771,13 @@ inputProd.addEventListener('input', async () => {
           ].filter(Boolean).join(' - ');
           
           inputProd.value = textoCompleto;
-          document.getElementById('precio').value = productoSeleccionado.precio;
+          // Ajustar el precio al valor visible según la moneda seleccionada
+          (function(){
+            const monedaUI = document.getElementById('moneda')?.value || 'USD';
+            const valor = parseFloat(productoSeleccionado.precio) || 0;
+            const valorUI = (monedaUI === 'USD') ? (valor / TIPO_CAMBIO) : valor;
+            document.getElementById('precio').value = Number(valorUI).toFixed(2);
+          })();
           lista.style.display = 'none';
           
           // Focus en cantidad
@@ -905,21 +801,60 @@ inputProd.addEventListener('input', async () => {
 
 // === AGREGAR PRODUCTO ===
 document.getElementById('agregar').addEventListener('click',()=>{
-  if(!productoSeleccionado) return alert('Seleccione un producto');
   const cant = parseFloat(document.getElementById('cantidad').value);
   const desc = parseFloat(document.getElementById('descuento').value);
-  const precio = productoSeleccionado.precio;
-  const precioFinal = precio*(1-desc/100);
-  const subtotal = precioFinal*cant;
+  const precioIngresado = parseFloat(document.getElementById('precio').value);
+  const textoProducto = document.getElementById('buscaProducto').value.trim();
+
+  console.log('[AGREGAR] Datos capturados', { textoProducto, productoSeleccionado, cant, desc, precioIngresado });
+
+  if (!textoProducto && !productoSeleccionado) {
+    alert('Ingrese o seleccione un producto');
+    return;
+  }
+
+  // Determinar datos del producto: seleccionado desde la lista o ingresado manualmente
+  const idProd = productoSeleccionado ? productoSeleccionado.id : null;
+  const descProd = productoSeleccionado ? productoSeleccionado.desc : textoProducto;
+  const precioBase = productoSeleccionado ? productoSeleccionado.precio : 0; // Precio base asumido en PEN (catálogo)
+  // Detectar moneda del precio mostrado en la UI: según símbolo de la columna o selección global
+  const simboloActual = document.getElementById('precioSimbolo')?.textContent?.trim() || 'S/';
+  const monedaPrecio = simboloActual.includes('$') ? 'USD' : 'PEN';
+  // Si no se ingresó un precio manual, convertir el precio base del catálogo a la moneda visible
+  let precio = !isNaN(precioIngresado) ? precioIngresado : precioBase;
+  if (isNaN(precioIngresado)) {
+    precio = (monedaPrecio === 'USD') ? (precioBase / TIPO_CAMBIO) : precioBase;
+  }
+  console.log('[AGREGAR] Producto resuelto', { idProd, descProd, precioBase, precio });
+
+  if (isNaN(cant) || cant <= 0) {
+    alert('Ingrese una cantidad válida');
+    return;
+  }
+  if (isNaN(precio) || precio < 0) {
+    alert('Ingrese un precio válido');
+    return;
+  }
+
+  // Calcular equivalentes en PEN para mantener un único origen de verdad
+  const descuento = isNaN(desc) ? 0 : desc;
+  const precioUnitPen = (monedaPrecio === 'USD') ? (precio * TIPO_CAMBIO) : precio;
+  const subtotalPen = precioUnitPen * (1 - (descuento / 100)) * cant;
 
   detalle.push({
-    id_producto: productoSeleccionado.id,
-    descripcion: productoSeleccionado.desc,
+    id_producto: idProd,
+    descripcion: descProd,
     cantidad: cant,
+    // Precio ingresado y su moneda original (para el backend)
     precio_unitario: precio,
-    descuento_porcentaje: desc,
-    subtotal
+    moneda_precio: monedaPrecio,
+    descuento_porcentaje: descuento,
+    // Campos calculados en PEN para totales/visualización coherente
+    precio_unitario_pen: precioUnitPen,
+    subtotal_pen: subtotalPen
   });
+  console.log('[AGREGAR] Detalle actualizado', detalle);
+
   renderTabla();
   productoSeleccionado=null;
   inputProd.value='';
@@ -929,48 +864,133 @@ document.getElementById('agregar').addEventListener('click',()=>{
 });
 
 // === RENDERIZAR DETALLE ===
+// Agregar ícono de edición en cada fila al renderizar la tabla
 function renderTabla(){
-  const tbody = document.querySelector('#tablaDetalle tbody');
+  const table = document.getElementById('tablaDetalle');
+  if (!table) {
+    console.error('No se encontró la tabla con id "tablaDetalle"');
+    return;
+  }
+  let tbody = table.querySelector('tbody');
+  if (!tbody) {
+    console.warn('No había tbody; creando uno nuevo');
+    tbody = document.createElement('tbody');
+    tbody.className = 'table-body';
+    table.appendChild(tbody);
+  }
   tbody.innerHTML='';
-  let subtotal=0;
+  let subtotalPen=0;
+  const monedaSeleccionada = document.getElementById('moneda')?.value || 'USD';
   detalle.forEach((d,i)=>{
-    subtotal+=d.subtotal;
+    const precioPen = (typeof d.precio_unitario_pen === 'number') ? d.precio_unitario_pen : ((d.moneda_precio === 'USD') ? d.precio_unitario * TIPO_CAMBIO : d.precio_unitario);
+    const subPen = (typeof d.subtotal_pen === 'number') ? d.subtotal_pen : (precioPen * (1 - (Number(d.descuento_porcentaje||0)/100)) * d.cantidad);
+    subtotalPen += subPen;
     const tr=document.createElement('tr');
-    const precioConMonedas = `S/ ${d.precio_unitario} ($${(d.precio_unitario / TIPO_CAMBIO).toFixed(2)})`;
-    tr.innerHTML=`<td>${d.descripcion}</td><td>${d.cantidad}</td><td>${precioConMonedas}</td><td>${d.descuento_porcentaje}%</td><td>S/ ${d.subtotal.toFixed(2)}</td>`;
+    const precioUSD = (precioPen / TIPO_CAMBIO).toFixed(2);
+    const subtotalUSD = (subPen / TIPO_CAMBIO).toFixed(2);
+    const precioDisplay = monedaSeleccionada === 'USD' ? `$ ${precioUSD}` : `S/ ${precioPen.toFixed(2)}`;
+    const subtotalDisplay = monedaSeleccionada === 'USD' ? `$ ${subtotalUSD}` : `S/ ${subPen.toFixed(2)}`;
+    tr.innerHTML=`
+      <td>${d.descripcion}</td>
+      <td>${d.cantidad}</td>
+      <td class="precio-unitario" data-pen="${precioPen.toFixed(2)}" data-usd="${precioUSD}">${precioDisplay}</td>
+      <td>${d.descuento_porcentaje}%</td>
+      <td class="subtotal" data-pen="${subPen.toFixed(2)}" data-usd="${subtotalUSD}">${subtotalDisplay}</td>
+      <td class="text-center">
+        <i class="fas fa-edit edit-icon" style="cursor: pointer; color: #007bff;"></i>
+      </td>`;
     tbody.appendChild(tr);
   });
   
   calcularTotales();
+
+  // Ocultar/mostrar estado vacío
+  const emptyState = document.getElementById('emptyTableState');
+  if (emptyState) {
+    emptyState.style.display = detalle.length > 0 ? 'none' : '';
+  }
 }
 
 // === CALCULAR TOTALES (con IGV opcional) ===
 function calcularTotales() {
   const tbody = document.querySelector('#tablaDetalle tbody');
-  let subtotal = 0;
-  
+  let subtotalPen = 0;
   detalle.forEach((d) => {
-    subtotal += d.subtotal;
+    const precioPen = (typeof d.precio_unitario_pen === 'number') ? d.precio_unitario_pen : ((d.moneda_precio === 'USD') ? d.precio_unitario * TIPO_CAMBIO : d.precio_unitario);
+    const subPen = (typeof d.subtotal_pen === 'number') ? d.subtotal_pen : (precioPen * (1 - (Number(d.descuento_porcentaje||0)/100)) * d.cantidad);
+    subtotalPen += subPen;
   });
   
   // Verificar si el checkbox de IGV está marcado
   const incluirIGV = document.getElementById('incluirIGV').checked;
-  const igv = incluirIGV ? subtotal * IGV : 0;
-  const total = subtotal + igv;
+  const igv = incluirIGV ? subtotalPen * IGV : 0;
+  const total = subtotalPen + igv;
   
-  // Actualizar totales en soles
-  document.getElementById('subTotal').textContent = subtotal.toFixed(2);
+  // Actualizar totales en soles (campos ocultos)
+  document.getElementById('subTotal').textContent = subtotalPen.toFixed(2);
   document.getElementById('igv').textContent = igv.toFixed(2);
   document.getElementById('total').textContent = total.toFixed(2);
   
-  // Actualizar totales en dólares
-  document.getElementById('subTotalUSD').textContent = (subtotal / TIPO_CAMBIO).toFixed(2);
+  // Actualizar totales en dólares (campos ocultos)
+  document.getElementById('subTotalUSD').textContent = (subtotalPen / TIPO_CAMBIO).toFixed(2);
   document.getElementById('igvUSD').textContent = (igv / TIPO_CAMBIO).toFixed(2);
   document.getElementById('totalUSD').textContent = (total / TIPO_CAMBIO).toFixed(2);
+  
+  // Actualizar displays visibles según la moneda seleccionada
+  const monedaSeleccionada = document.getElementById('moneda').value;
+  
+  if (monedaSeleccionada === 'USD') {
+    // Mostrar en dólares
+    document.getElementById('subtotalDisplay').textContent = '$ ' + (subtotalPen / TIPO_CAMBIO).toFixed(2);
+    document.getElementById('igvDisplay').textContent = '$ ' + (igv / TIPO_CAMBIO).toFixed(2);
+    document.getElementById('totalDisplay').textContent = '$ ' + (total / TIPO_CAMBIO).toFixed(2);
+  } else {
+    // Mostrar en soles
+    document.getElementById('subtotalDisplay').textContent = 'S/ ' + subtotalPen.toFixed(2);
+    document.getElementById('igvDisplay').textContent = 'S/ ' + igv.toFixed(2);
+    document.getElementById('totalDisplay').textContent = 'S/ ' + total.toFixed(2);
+  }
+
+}
+
+// === ACTUALIZAR VISUALIZACIÓN SEGÚN MONEDA SELECCIONADA (GLOBAL) ===
+function actualizarVisualizacionMoneda() {
+  const monedaSeleccionada = document.getElementById('moneda').value;
+  document.querySelectorAll('#tablaDetalle tbody tr').forEach(tr => {
+    const precioCell = tr.querySelector('.precio-unitario');
+    const subtotalCell = tr.querySelector('.subtotal');
+    if (!precioCell || !subtotalCell) return;
+
+    const penPrecio = parseFloat(precioCell.getAttribute('data-pen'));
+    const usdPrecio = parseFloat(precioCell.getAttribute('data-usd'));
+    const penSubtotal = parseFloat(subtotalCell.getAttribute('data-pen'));
+    const usdSubtotal = parseFloat(subtotalCell.getAttribute('data-usd'));
+
+    if (monedaSeleccionada === 'USD') {
+      precioCell.textContent = `$ ${isNaN(usdPrecio) ? (penPrecio / TIPO_CAMBIO).toFixed(2) : usdPrecio}`;
+      subtotalCell.textContent = `$ ${isNaN(usdSubtotal) ? (penSubtotal / TIPO_CAMBIO).toFixed(2) : usdSubtotal}`;
+    } else {
+      precioCell.textContent = `S/ ${isNaN(penPrecio) ? (usdPrecio * TIPO_CAMBIO).toFixed(2) : penPrecio}`;
+      subtotalCell.textContent = `S/ ${isNaN(penSubtotal) ? (usdSubtotal * TIPO_CAMBIO).toFixed(2) : penSubtotal}`;
+    }
+  });
+
+  // Recalcular totales para sincronizar displays
+  calcularTotales();
 }
 
 // === GUARDAR VENTA ===
 document.getElementById('btnGuardar').addEventListener('click', async ()=>{
+  const btn = document.getElementById('btnGuardar');
+  if (!btn) return;
+  // evitar múltiples envíos
+  if (btn.dataset.loading === 'true') return;
+  btn.dataset.loading = 'true';
+  const original = btn.innerHTML;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Registrando...';
+  btn.disabled = true;
+
+  console.log('[VENTA] Click en Registrar Venta');
   if(!clienteSeleccionado) return alert('Debe buscar y seleccionar un cliente');
   if(detalle.length === 0) return alert('Debe agregar al menos un producto');
   
@@ -994,22 +1014,111 @@ document.getElementById('btnGuardar').addEventListener('click', async ()=>{
     moneda: document.getElementById('moneda').value,
     serie: document.getElementById('serie').value,
     incluir_igv: document.getElementById('incluirIGV').checked, // Agregar estado del checkbox
+    // Enviar el tipo de cambio que se está usando en la UI para sincronizar
+    tipo_cambio: Number(TIPO_CAMBIO),
     // numero se auto-genera en el servidor
-    detalle: detalle
+    detalle: detalle,
+    // Enviar el TOTAL visible según moneda y estado de IGV
+    total: (()=>{
+      const monedaSeleccionada = document.getElementById('moneda').value;
+      const incluirIGV = document.getElementById('incluirIGV').checked;
+      // Usar totales ya calculados
+      const subtotal = parseFloat(document.getElementById('subTotal').textContent) || 0;
+      const igv = incluirIGV ? (subtotal * IGV) : 0;
+      const totalCalc = subtotal + igv;
+      if (monedaSeleccionada === 'USD') {
+        return Number((totalCalc / TIPO_CAMBIO).toFixed(2));
+      }
+      return Number(totalCalc.toFixed(2));
+    })()
   };
 
-  const res = await fetch('/api/ventas/guardar',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'},
-    body: JSON.stringify(payload)
-  });
-  const data = await res.json();
+  let data;
+  try {
+    const res = await fetch('/api/ventas/guardar',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'},
+      body: JSON.stringify(payload)
+    });
+    console.log('[VENTA] Respuesta HTTP:', res.status, res.statusText);
+    data = await res.json().catch(()=>({ ok:false, message:'Respuesta no válida del servidor'}));
+  } catch (e) {
+    console.error('[VENTA] Error de red:', e);
+    data = { ok:false, message:`No se pudo conectar al servidor: ${e.message}` };
+  }
   if(data.ok){
-    alert(`Venta registrada correctamente!\nComprobante: ${data.serie}-${String(data.numero_comprobante).padStart(8, '0')}\nTotal: S/ ${data.total}`);
+    const simbolo = (data.moneda && data.moneda.simbolo) ? data.moneda.simbolo : ('$');
+    const iso = (data.moneda && data.moneda.codigo_iso) ? data.moneda.codigo_iso : ('USD');
+    const numeroCompleto = (data.numero_comprobante || '').toString(); // ya viene con SERIE-########
+    const totalStr = (typeof data.total === 'number') ? data.total.toFixed(2) : Number(data.total || 0).toFixed(2);
+    const lineaTC = (typeof data.tipo_cambio === 'number' && iso === 'USD') ? `\nTipo de cambio: ${Number(data.tipo_cambio).toFixed(2)}` : '';
+    alert(`Venta registrada correctamente!\nComprobante: ${numeroCompleto}\nTotal: ${simbolo} ${totalStr} ${iso}${lineaTC}`);
     location.reload();
   } else {
-    alert('Error: '+data.error);
+    // Mostrar error amigable en la parte superior del formulario
+    const container = document.querySelector('.modern-container') || document.body;
+    const err = typeof data.error === 'string' ? data.error : (data.message || 'Ocurrió un error al registrar la venta');
+    const alertHtml = `
+      <div class="alert alert-danger alert-dismissible fade show" role="alert" style="position:sticky; top:0; z-index:9999;">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        <strong>Error al registrar venta:</strong> ${err}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>`;
+    container.insertAdjacentHTML('afterbegin', alertHtml);
+
+    // Limpiar estados previos
+    ['tipo_comprobante','docCliente','buscaProducto','cantidad','precio','descuento','serie','numero'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('is-invalid');
+    });
+
+    // Mostrar errores de validación por campo si existen
+    if (data.errors && typeof data.errors === 'object') {
+      const fieldMap = {
+        'tipo_comprobante': 'tipo_comprobante',
+        'serie': 'serie',
+        'detalle.0.cantidad': 'cantidad',
+        'detalle.0.precio_unitario': 'precio',
+        'detalle.0.descuento_porcentaje': 'descuento'
+      };
+      // Marcar campos conocidos
+      Object.keys(data.errors).forEach(key => {
+        const id = fieldMap[key];
+        if (id) {
+          const el = document.getElementById(id);
+          if (el) {
+            el.classList.add('is-invalid');
+            // Insertar feedback si no existe
+            if (!el.nextElementSibling || !el.nextElementSibling.classList.contains('invalid-feedback')) {
+              const fb = document.createElement('div');
+              fb.className = 'invalid-feedback';
+              fb.textContent = Array.isArray(data.errors[key]) ? data.errors[key][0] : String(data.errors[key]);
+              el.parentNode.appendChild(fb);
+            } else {
+              el.nextElementSibling.textContent = Array.isArray(data.errors[key]) ? data.errors[key][0] : String(data.errors[key]);
+            }
+          }
+        }
+      });
+
+      // Lista consolidada de errores
+      const list = document.createElement('div');
+      list.className = 'alert alert-warning mt-2';
+      list.innerHTML = '<strong>Detalles de validación:</strong><ul class="mb-0"></ul>';
+      const ul = list.querySelector('ul');
+      Object.values(data.errors).forEach(msgs => {
+        const msg = Array.isArray(msgs) ? msgs[0] : String(msgs);
+        const li = document.createElement('li');
+        li.textContent = msg;
+        ul.appendChild(li);
+      });
+      container.insertAdjacentElement('afterbegin', list);
+    }
   }
+  // restaurar botón
+  btn.dataset.loading = 'false';
+  btn.innerHTML = original;
+  btn.disabled = false;
 });
 
 // Mostrar modal para registrar cliente si no se encuentra
@@ -1084,6 +1193,138 @@ document.addEventListener('click', function(e) {
     lista.style.display = 'none';
   }
 });
+
+// === ACTUALIZAR TIPO DE CAMBIO MANUAL ===
+document.getElementById('tipoCambioManual').addEventListener('input', function() {
+  const tipoCambio = parseFloat(this.value);
+  if (!isNaN(tipoCambio) && tipoCambio > 0) {
+    TIPO_CAMBIO = tipoCambio;
+    // Recalcular representación de totales y filas con el nuevo TC
+    if (typeof actualizarVisualizacionMoneda === 'function') {
+      actualizarVisualizacionMoneda();
+    } else {
+      calcularTotales();
+    }
+  }
+});
+
+// Eliminados handlers obsoletos de precio manual para evitar errores de referencia
+
+  // (Eliminado) Segundo handler de "agregar" con fila fija; usamos el handler principal arriba
+
+  // === AUTOINCREMENTO DE SERIE Y NÚMERO ===
+  async function actualizarSerie() {
+    const tipoSelect = document.getElementById('tipo_comprobante');
+    const serieInput = document.getElementById('serie');
+    const numeroInput = document.getElementById('numero');
+    if (!tipoSelect || !serieInput || !numeroInput) return;
+
+    const tipo = tipoSelect.value;
+    const config = configSeries[tipo];
+    if (!config) {
+      numeroInput.value = 'Seleccione tipo';
+      return;
+    }
+    // Setear serie sugerida por tipo
+    serieInput.value = config.serie;
+
+    try {
+      const numeroFormateado = await obtenerSiguienteNumero(tipo, serieInput.value, config.prefijo);
+      numeroInput.value = numeroFormateado;
+      console.log(`Serie ${config.serie} → Próximo ${numeroFormateado}`);
+    } catch (err) {
+      console.error('Error al obtener siguiente número:', err);
+      // Fallback local si la API falla
+      numeroInput.value = `${config.prefijo}${String(1).padStart(8, '0')}`;
+    }
+  }
+
+  // Obtener siguiente número via API dado tipo y serie
+  async function obtenerSiguienteNumero(tipo, serie, prefijo) {
+    const url = `/api/ventas/siguiente-numero?tipo=${encodeURIComponent(tipo)}&serie=${encodeURIComponent(serie)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const next = parseInt(
+      data.siguiente_numero ?? data.siguiente ?? data.next ?? data.numero ?? data.correlativo ?? 1,
+      10
+    );
+    const padded = String(isNaN(next) ? 1 : next).padStart(8, '0');
+    return `${prefijo}${padded}`;
+  }
+
+  // Recalcular número cuando el usuario edita la serie manualmente
+  const serieInputEl = document.getElementById('serie');
+  const tipoSelectEl = document.getElementById('tipo_comprobante');
+  const numeroInputEl = document.getElementById('numero');
+  if (serieInputEl && tipoSelectEl && numeroInputEl) {
+    serieInputEl.addEventListener('input', async () => {
+      const tipo = tipoSelectEl.value;
+      const cfg = configSeries[tipo];
+      if (!cfg) return;
+      try {
+        const numeroFormateado = await obtenerSiguienteNumero(tipo, serieInputEl.value, cfg.prefijo);
+        numeroInputEl.value = numeroFormateado;
+      } catch (e) {
+        console.warn('Fallo al recalcular correlativo para serie manual:', e);
+      }
+    });
+  }
+
+  // Función para habilitar o deshabilitar el tipo de cambio manual según la moneda seleccionada
+  document.getElementById('moneda').addEventListener('change', function() {
+    const tipoCambioInput = document.getElementById('tipoCambioManual');
+    const simboloSpan = document.getElementById('precioSimbolo');
+    const colPrecioLabel = document.getElementById('colPrecioLabel');
+    if (this.value === 'PEN') {
+      tipoCambioInput.disabled = true; // Bloquear tipo de cambio manual
+      tipoCambioInput.value = ''; // Limpiar el valor del tipo de cambio
+      if (simboloSpan) simboloSpan.textContent = 'S/';
+      if (colPrecioLabel) colPrecioLabel.textContent = 'Precio Unitario (S/)';
+      const hidden = document.getElementById('monedaHidden');
+      if (hidden) hidden.value = 'PEN';
+    } else {
+      tipoCambioInput.disabled = false; // Habilitar tipo de cambio manual
+      if (simboloSpan) simboloSpan.textContent = '$';
+      if (colPrecioLabel) colPrecioLabel.textContent = 'Precio Unitario ($)';
+      const hidden = document.getElementById('monedaHidden');
+      if (hidden) hidden.value = 'USD';
+    }
+
+    // Actualizar detalle visual a la moneda elegida
+    if (typeof actualizarVisualizacionMoneda === 'function') {
+      actualizarVisualizacionMoneda();
+    }
+  });
+
+  // Inicializar estado del tipo de cambio manual
+  const monedaInicial = document.getElementById('moneda').value;
+  const tipoCambioInput = document.getElementById('tipoCambioManual');
+  if (monedaInicial === 'PEN') {
+    tipoCambioInput.disabled = true;
+    const simboloSpan = document.getElementById('precioSimbolo');
+    if (simboloSpan) simboloSpan.textContent = 'S/';
+    const colPrecioLabel = document.getElementById('colPrecioLabel');
+    if (colPrecioLabel) colPrecioLabel.textContent = 'Precio Unitario (S/)';
+  } else {
+    const simboloSpan = document.getElementById('precioSimbolo');
+    if (simboloSpan) simboloSpan.textContent = '$';
+    const colPrecioLabel = document.getElementById('colPrecioLabel');
+    if (colPrecioLabel) colPrecioLabel.textContent = 'Precio Unitario ($)';
+  }
+  // Inicializar serie y número al cargar
+  if (typeof actualizarSerie === 'function') {
+    try { actualizarSerie(); } catch (e) { console.warn('No se pudo inicializar serie/numero:', e); }
+  }
+  // Asegurar que el cambio de tipo dispare el autoincremento incluso si falla el atributo inline
+  const tipoSelectHook = document.getElementById('tipo_comprobante');
+  if (tipoSelectHook) {
+    tipoSelectHook.addEventListener('change', () => {
+      if (typeof actualizarSerie === 'function') {
+        actualizarSerie();
+      }
+    });
+  }
 </script>
 
 <style>

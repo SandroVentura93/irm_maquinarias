@@ -70,7 +70,7 @@
                                                    id="nombre" 
                                                    class="form-control-modern" 
                                                    value="{{ old('nombre', $moneda->nombre) }}"
-                                                   placeholder="Ej: Sol Peruano"
+                                                   placeholder="Ej: Dólar Americano"
                                                    required>
                                         </div>
                                         <small class="form-help">Nombre completo de la moneda</small>
@@ -89,7 +89,7 @@
                                                    id="simbolo" 
                                                    class="form-control-modern" 
                                                    value="{{ old('simbolo', $moneda->simbolo) }}"
-                                                   placeholder="Ej: S/"
+                                                   placeholder="Ej: $"
                                                    maxlength="5"
                                                    required>
                                         </div>
@@ -109,7 +109,7 @@
                                                    id="codigo_iso" 
                                                    class="form-control-modern" 
                                                    value="{{ old('codigo_iso', $moneda->codigo_iso) }}"
-                                                   placeholder="Ej: PEN"
+                                                   placeholder="Ej: USD"
                                                    maxlength="3"
                                                    style="text-transform: uppercase;"
                                                    required>
@@ -806,36 +806,5 @@
     }
 </style>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const nombreInput = document.getElementById('nombre');
-        const simboloInput = document.getElementById('simbolo');
-        const codigoInput = document.getElementById('codigo_iso');
-        
-        const previewNombre = document.getElementById('preview-nombre');
-        const previewSimbolo = document.getElementById('preview-simbolo');
-        const previewCodigo = document.getElementById('preview-codigo');
-
-        // Actualizar vista previa en tiempo real
-        nombreInput.addEventListener('input', function() {
-            previewNombre.textContent = this.value || '{{ $moneda->nombre }}';
-        });
-
-        simboloInput.addEventListener('input', function() {
-            previewSimbolo.textContent = this.value || '{{ $moneda->simbolo }}';
-        });
-
-        codigoInput.addEventListener('input', function() {
-            this.value = this.value.toUpperCase();
-            previewCodigo.textContent = this.value || '{{ $moneda->codigo_iso }}';
-        });
-
-        // Validar longitud del código ISO
-        codigoInput.addEventListener('input', function() {
-            if (this.value.length > 3) {
-                this.value = this.value.substring(0, 3);
-            }
-        });
-    });
-</script>
+<script src="{{ asset('js/monedas_edit.js') }}" defer></script>
 @endsection

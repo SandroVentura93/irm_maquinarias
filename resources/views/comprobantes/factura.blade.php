@@ -222,7 +222,7 @@
                 <!-- <div class="document-number">{{ $venta->serie }}-{{ $venta->numero }}</div> -->
                 <div class="document-number">{{ $venta->numero }}</div>
                 <p><strong>Fecha:</strong> {{ date('d/m/Y', strtotime($venta->fecha)) }}</p>
-                <p><strong>Moneda:</strong> {{ $moneda->descripcion }}</p>
+                <p><strong>Moneda:</strong> {{ $moneda->descripcion }} <span style="display:inline-block; padding:2px 6px; background:#28a745; color:white; border-radius:4px; font-size:10px;">{{ $moneda->codigo_iso ?? 'PEN' }}</span></p>
             </div>
         </div>
 
@@ -241,6 +241,11 @@
             </div>
         </div>
 
+        @php
+            $codigoIso = $moneda->codigo_iso ?? 'PEN';
+            $simbolo = $codigoIso === 'USD' ? '$' : 'S/';
+        @endphp
+
         <!-- Detalle de productos/servicios -->
         <table class="details-table">
             <thead>
@@ -248,9 +253,9 @@
                     <th style="width: 8%;">ITEM</th>
                     <th style="width: 45%;">DESCRIPCIÓN</th>
                     <th style="width: 8%;">CANT.</th>
-                    <th style="width: 17%;">VALOR UNIT. (PEN/USD)</th>
+                    <th style="width: 17%;">VALOR UNIT.</th>
                     <th style="width: 8%;">DESC. %</th>
-                    <th style="width: 19%;">VALOR VENTA (PEN/USD)</th>
+                    <th style="width: 19%;">VALOR VENTA</th>
                 </tr>
             </thead>
             <tbody>
@@ -271,16 +276,14 @@
                     </td>
                     <td>{{ number_format($detalle->cantidad, 2) }}</td>
                     <td>
-                        S/ {{ number_format($detalle->precio_unitario, 2) }}<br>
-                        <small style="color: #666;">${{ number_format($detalle->precio_unitario / $tipoCambio, 2) }}</small>
+                        {{ $simbolo }} {{ number_format($detalle->precio_unitario, 2) }}
                     </td>
                     <td>{{ $detalle->descuento_porcentaje ?? 0 }}%</td>
                     <td>
                         @php
                             $valorVenta = $detalle->cantidad * $detalle->precio_unitario * (1 - ($detalle->descuento_porcentaje ?? 0)/100);
                         @endphp
-                        S/ {{ number_format($valorVenta, 2) }}<br>
-                        <small style="color: #666;">${{ number_format($valorVenta / $tipoCambio, 2) }}</small>
+                        {{ $simbolo }} {{ number_format($valorVenta, 2) }}
                     </td>
                 </tr>
                 @endforeach
@@ -291,8 +294,8 @@
         <div class="tax-info">
             <h5>INFORMACIÓN TRIBUTARIA</h5>
             <p><strong>Tipo de Operación:</strong> Venta interna</p>
-            <p><strong>Base Imponible:</strong> {{ $moneda->simbolo }} {{ number_format($venta->subtotal, 2) }}</p>
-            <p><strong>IGV (18%):</strong> {{ $moneda->simbolo }} {{ number_format($venta->igv, 2) }}</p>
+            <p><strong>Base Imponible:</strong> {{ $simbolo }} {{ number_format($venta->subtotal, 2) }}</p>
+            <p><strong>IGV (18%):</strong> {{ $simbolo }} {{ number_format(($venta->total - $venta->subtotal), 2) }}</p>
         </div>
 
         <!-- Importe en palabras -->
@@ -305,29 +308,22 @@
             <table>
                 <tr>
                     <td class="total-label">SUB TOTAL:</td>
-                    <td>
-                        S/ {{ number_format($venta->subtotal, 2) }}<br>
-                        <small style="color: #666;">${{ number_format($venta->subtotal / $tipoCambio, 2) }}</small>
-                    </td>
+                    <td>{{ $simbolo }} {{ number_format($venta->subtotal, 2) }}</td>
                 </tr>
                 <tr>
                     <td class="total-label">IGV (18%):</td>
-                    <td>
-                        S/ {{ number_format($venta->igv, 2) }}<br>
-                        <small style="color: #666;">${{ number_format($venta->igv / $tipoCambio, 2) }}</small>
-                    </td>
+                    <td>{{ $simbolo }} {{ number_format(($venta->total - $venta->subtotal), 2) }}</td>
                 </tr>
                 <tr class="total-final">
                     <td>TOTAL A PAGAR:</td>
-                    <td>
-                        S/ {{ number_format($venta->total, 2) }}<br>
-                        <small style="color: #666;">${{ number_format($venta->total / $tipoCambio, 2) }}</small>
-                    </td>
+                    <td>{{ $simbolo }} {{ number_format($venta->total, 2) }}</td>
                 </tr>
             </table>
+            @if(($moneda->codigo_iso ?? 'PEN') === 'USD')
             <p style="margin-top: 10px; font-size: 10px; color: #666;">
-                <strong>Tipo de Cambio:</strong> S/ {{ number_format($tipoCambio, 2) }} por USD
+                <strong>Tipo de Cambio (referencial):</strong> S/ {{ number_format($tipoCambio, 2) }} por USD
             </p>
+            @endif
         </div>
 
         <!-- Información legal -->
@@ -346,7 +342,7 @@
             @endif
             <p>Estado del Comprobante: {{ $venta->xml_estado }}</p>
             @if(strtoupper($venta->xml_estado) === 'PENDIENTE')
-                <p style="color: #d9534f; font-weight: bold;">Saldo pendiente: S/ {{ number_format($venta->saldo, 2) }}</p>
+                <p style="color: #d9534f; font-weight: bold;">Saldo pendiente: {{ $simbolo }} {{ number_format($venta->saldo, 2) }}</p>
             @endif
             <p>Sistema de Gestión IRM Maquinarias - Generado el {{ now()->format('d/m/Y H:i:s') }}</p>
         </div>

@@ -32,27 +32,55 @@ class CompraController extends Controller
             'id_moneda' => 'required|exists:monedas,id_moneda',
             'fecha' => 'required|date',
             'incluir_igv' => 'nullable|boolean',
-            'subtotal' => 'required|numeric',
-            'igv' => 'required|numeric',
-            'total' => 'required|numeric',
+            'tipo_cambio_manual' => 'required|numeric|min:0.0001',
+            'moneda_codigo' => 'nullable|string',
             'detalles' => 'required|array',
             'detalles.*.id_producto' => 'required|exists:productos,id_producto',
             'detalles.*.cantidad' => 'required|integer|min:1',
             'detalles.*.precio_unitario' => 'required|numeric',
         ]);
 
-        $compra = Compra::create($data);
-        
+        // Verificar coherencia entre id_moneda y moneda_codigo (si se envía)
+        if (!empty($data['moneda_codigo'])) {
+            $moneda = Moneda::find($data['id_moneda']);
+            if ($moneda && strtoupper($data['moneda_codigo']) !== strtoupper($moneda->codigo_iso)) {
+                return back()->withErrors(['id_moneda' => 'La moneda seleccionada no coincide con el código enviado.'])->withInput();
+            }
+        }
         // Determinar si se debe calcular IGV
-        $incluir_igv = $data['incluir_igv'] ?? true;
-        
-        foreach ($data['detalles'] as $detalle) {
-            $detalle['id_compra'] = $compra->id_compra;
+        $incluir_igv = $data['incluir_igv'] ?? false;
+
+        // Calcular totales de la compra en la moneda seleccionada
+        $subtotal = 0;
+        $igv = 0;
+        $total = 0;
+        foreach ($data['detalles'] as &$detalle) {
             $detalle['subtotal'] = $detalle['cantidad'] * $detalle['precio_unitario'];
             $detalle['igv'] = $incluir_igv ? $detalle['subtotal'] * 0.18 : 0;
             $detalle['total'] = $detalle['subtotal'] + $detalle['igv'];
+            $subtotal += $detalle['subtotal'];
+            $igv += $detalle['igv'];
+            $total += $detalle['total'];
+        }
+
+        // Crear compra con totales y tipo de cambio manual
+        $compra = new Compra();
+        $compra->id_proveedor = $data['id_proveedor'];
+        $compra->id_moneda = $data['id_moneda'];
+        $compra->fecha = $data['fecha'];
+        // Nota: algunas bases no tienen columna incluir_igv; no asignar si no existe
+        $compra->subtotal = $subtotal;
+        $compra->igv = $igv;
+        $compra->total = $total;
+        // Nota: No asignar tipo_cambio si la columna no existe en la tabla compras
+        $compra->save();
+
+        // Guardar detalles
+        foreach ($data['detalles'] as $detalle) {
+            $detalle['id_compra'] = $compra->id_compra;
             DetalleCompra::create($detalle);
         }
+
         return redirect()->route('compras.index')->with('success', 'Compra registrada correctamente');
     }
 
@@ -104,12 +132,14 @@ class CompraController extends Controller
             $igv += $detalle['igv'];
             $total += $detalle['total'];
         }
-        $data['subtotal'] = $subtotal;
-        $data['igv'] = $igv;
-        $data['total'] = $total;
-        $data['incluir_igv'] = $incluir_igv; // Guardar el estado del checkbox
-
-        $compra->update($data);
+        // Asignar campos manualmente evitando columnas inexistentes
+        $compra->id_proveedor = $data['id_proveedor'];
+        $compra->id_moneda = $data['id_moneda'];
+        $compra->fecha = $data['fecha'];
+        $compra->subtotal = $subtotal;
+        $compra->igv = $igv;
+        $compra->total = $total;
+        $compra->save();
         $compra->detalles()->delete();
         foreach ($data['detalles'] as $detalle) {
             $detalle['id_compra'] = $compra->id_compra;

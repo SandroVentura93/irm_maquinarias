@@ -238,9 +238,9 @@
                     <th style="width: 8%;">ITEM</th>
                     <th style="width: 40%;">DESCRIPCIÓN</th>
                     <th style="width: 8%;">CANT.</th>
-                    <th style="width: 17%;">PRECIO UNIT. (PEN/USD)</th>
+                    <th style="width: 17%;">PRECIO UNIT.</th>
                     <th style="width: 8%;">DESC. %</th>
-                    <th style="width: 19%;">IMPORTE (PEN/USD)</th>
+                    <th style="width: 19%;">IMPORTE</th>
                 </tr>
             </thead>
             <tbody>
@@ -257,17 +257,22 @@
                         @endif
                     </td>
                     <td>{{ number_format($detalle->cantidad, 2) }}</td>
+                    @php
+                        // Prioritize injected datos['moneda'] from controller; fallback to related venta->moneda or legacy $moneda
+                        $codigoIso = isset($datos['moneda']['iso']) ? $datos['moneda']['iso']
+                            : (optional($venta->moneda)->codigo_iso ?? (isset($moneda->codigo_iso) ? $moneda->codigo_iso : 'PEN'));
+                        $simbolo = isset($datos['moneda']['simbolo']) ? $datos['moneda']['simbolo']
+                            : ($codigoIso === 'USD' ? '$' : 'S/');
+                    @endphp
                     <td>
-                        S/ {{ number_format($detalle->precio_unitario, 2) }}<br>
-                        <small style="color: #666;">${{ number_format($detalle->precio_unitario / $tipoCambio, 2) }}</small>
+                        {{ $simbolo }} {{ number_format($detalle->precio_unitario, 2) }}
                     </td>
                     <td>{{ $detalle->descuento_porcentaje ?? 0 }}%</td>
                     <td>
                         @php
                             $importe = $detalle->cantidad * $detalle->precio_unitario * (1 - ($detalle->descuento_porcentaje ?? 0)/100);
                         @endphp
-                        S/ {{ number_format($importe, 2) }}<br>
-                        <small style="color: #666;">${{ number_format($importe / $tipoCambio, 2) }}</small>
+                        {{ $simbolo }} {{ number_format($importe, 2) }}
                     </td>
                 </tr>
                 @endforeach
@@ -280,22 +285,25 @@
                 <tr>
                     <td class="total-label">SUBTOTAL:</td>
                     <td>
-                        S/ {{ number_format($venta->subtotal, 2) }}<br>
-                        <small style="color: #666;">${{ number_format($venta->subtotal / $tipoCambio, 2) }}</small>
+                        {{ $simbolo }} {{ number_format($venta->subtotal, 2) }}
                     </td>
                 </tr>
                 <tr>
                     <td class="total-label">IGV (18%):</td>
                     <td>
-                        S/ {{ number_format($venta->igv, 2) }}<br>
-                        <small style="color: #666;">${{ number_format($venta->igv / $tipoCambio, 2) }}</small>
+                        {{ $simbolo }} {{ number_format(($venta->total - $venta->subtotal), 2) }}
                     </td>
                 </tr>
                 <tr class="total-final">
                     <td>TOTAL:</td>
                     <td>
-                        S/ {{ number_format($venta->total, 2) }}<br>
-                        <small style="color: #666;">${{ number_format($venta->total / $tipoCambio, 2) }}</small>
+                        {{ $simbolo }} {{ number_format($venta->total, 2) }}
+                    </td>
+                </tr>
+                <tr>
+                    <td class="total-label">Son:</td>
+                    <td>
+                        {{ $datos['total_en_letras'] ?? ($total_en_letras ?? '') }}
                     </td>
                 </tr>
             </table>
@@ -309,8 +317,13 @@
                 <li><strong>Tiempo de Entrega:</strong> 15 a 30 días hábiles según disponibilidad</li>
                 <li><strong>Garantía:</strong> 12 meses por defectos de fabricación</li>
                 <li><strong>Validez de Precios:</strong> 30 días calendario</li>
-                <li><strong>Moneda:</strong> {{ $moneda->descripcion }}</li>
-                <li><strong>Tipo de Cambio:</strong> S/ {{ number_format($tipoCambio, 2) }} por USD</li>
+                @php
+                    $descripcionMoneda = ($codigoIso === 'USD') ? 'Dólares Americanos' : 'Soles Peruanos';
+                @endphp
+                <li><strong>Moneda:</strong> {{ $descripcionMoneda }} <span style="display:inline-block; padding:2px 6px; background:#2c5aa0; color:white; border-radius:4px; font-size:10px;">{{ $codigoIso }}</span></li>
+                @if(($codigoIso ?? 'PEN') === 'USD' && isset($tipoCambio))
+                    <li><strong>Tipo de Cambio (referencial):</strong> S/ {{ number_format($tipoCambio, 2) }} por USD</li>
+                @endif
                 <li><strong>Incluye:</strong> IGV, instalación básica y capacitación de uso</li>
                 <li><strong>No Incluye:</strong> Flete, seguros, obras civiles</li>
             </ul>

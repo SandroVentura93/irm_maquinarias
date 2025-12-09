@@ -54,5 +54,10 @@ Route::post('/clientes', [ClienteController::class, 'storePublic']);
 // Guardar nueva venta desde formulario
 Route::post('/ventas/guardar', [VentaController::class, 'guardarVenta']);
 
+// Ruta de prueba (GET) para verificación rápida sin afectar la real
+Route::get('/ventas/guardar-test', function () {
+    return response()->json(['ok' => true, 'route' => 'ventas/guardar-test', 'method' => 'GET']);
+});
+
 // Obtener siguiente número de comprobante
 Route::get('/ventas/siguiente-numero', [VentaController::class, 'siguienteNumero']);

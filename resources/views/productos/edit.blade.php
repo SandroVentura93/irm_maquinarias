@@ -296,7 +296,7 @@
                                             @foreach ($marcas as $marca)
                                                 <option value="{{ $marca->id_marca }}" 
                                                         {{ old('id_marca', $producto->marca_id ?? $producto->id_marca) == $marca->id_marca ? 'selected' : '' }}>
-                                                    {{ $marca->descripcion }}
+                                                    {{ $marca->nombre }}
                                                 </option>
                                             @endforeach
                                         </select>

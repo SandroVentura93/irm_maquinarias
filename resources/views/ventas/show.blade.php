@@ -221,6 +221,11 @@
                     </h5>
                 </div>
                 <div class="card-body">
+                    @php
+                        $simbolo = $venta->moneda->simbolo ?? 'S/';
+                        $codigoIso = $venta->moneda->codigo_iso ?? 'PEN';
+                        $icono = $codigoIso === 'USD' ? 'fas fa-dollar-sign' : 'fas fa-money-bill-wave';
+                    @endphp
                     <div class="financial-summary">
                         <div class="summary-row">
                             <span class="summary-label">
@@ -228,8 +233,7 @@
                                 Subtotal:
                             </span>
                             <div class="summary-amounts">
-                                <span class="amount-pen">S/ {{ number_format($venta->subtotal, 2) }}</span>
-                                <small class="amount-usd">${{ number_format($venta->subtotal / $tipoCambio, 2) }}</small>
+                                <span class="amount-pen"><i class="{{ $icono }} me-1"></i>{{ $simbolo }} {{ number_format($venta->subtotal, 2) }}</span>
                             </div>
                         </div>
                         
@@ -239,8 +243,7 @@
                                 IGV (18%):
                             </span>
                             <div class="summary-amounts">
-                                <span class="amount-pen">S/ {{ number_format($venta->igv, 2) }}</span>
-                                <small class="amount-usd">${{ number_format($venta->igv / $tipoCambio, 2) }}</small>
+                                <span class="amount-pen"><i class="{{ $icono }} me-1"></i>{{ $simbolo }} {{ number_format($venta->igv, 2) }}</span>
                             </div>
                         </div>
                         
@@ -252,17 +255,13 @@
                                 TOTAL:
                             </span>
                             <div class="summary-amounts">
-                                <span class="amount-pen-total">S/ {{ number_format($venta->total, 2) }}</span>
-                                <small class="amount-usd">${{ number_format($venta->total / $tipoCambio, 2) }}</small>
+                                <span class="amount-pen-total"><i class="{{ $icono }} me-1"></i>{{ $simbolo }} {{ number_format($venta->total, 2) }}</span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="mt-4">
-                        <div class="tipo-cambio-info text-center">
-                            <i class="fas fa-exchange-alt text-warning me-2"></i>
-                            <small class="text-muted">Tipo de Cambio: S/ {{ number_format($tipoCambio, 2) }} por USD</small>
-                        </div>
+                    <div class="mt-3 text-center">
+                        <span class="badge bg-primary">{{ $codigoIso }}</span>
                     </div>
                 </div>
             </div>
@@ -323,6 +322,26 @@
         </div>
     </div>
     @endif
+
+    <!-- Tipo de Cambio Manual -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card modern-card">
+                <div class="card-header modern-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-exchange-alt me-2 text-warning"></i>
+                        Tipo de Cambio Manual
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="tipoCambioManual">Ingrese el tipo de cambio:</label>
+                        <input type="number" step="0.01" class="form-control" id="tipoCambioManual" name="tipoCambioManual" placeholder="Ingrese el tipo de cambio">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 <style>
 /* Variables CSS para diseño moderno */

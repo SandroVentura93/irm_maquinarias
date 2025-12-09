@@ -437,9 +437,9 @@
                         <select name="id_moneda" id="id_moneda" class="form-select" required>
                             <option value="">Seleccione una moneda</option>
                             @foreach($monedas as $moneda)
-                                <option value="{{ $moneda->id_moneda }}" 
-                                    {{ ($moneda->codigo_iso == 'PEN' || $moneda->id_moneda == 1) ? 'selected' : '' }}
-                                    style="{{ ($moneda->codigo_iso == 'PEN' || $moneda->id_moneda == 1) ? 'background-color: #e8f5e9; font-weight: bold;' : '' }}">
+                                <option value="{{ $moneda->id_moneda }}"
+                                    {{ ($moneda->codigo_iso == 'USD') ? 'selected' : '' }}
+                                    style="{{ ($moneda->codigo_iso == 'USD') ? 'background-color: #e8f5e9; font-weight: bold;' : '' }}">
                                     {{ $moneda->simbolo }} {{ $moneda->nombre }}
                                 </option>
                             @endforeach
@@ -454,13 +454,12 @@
                     </div>
                 </div>
 
-                <!-- Información de Tipo de Cambio -->
+                <!-- Tipo de Cambio (Manual) -->
                 <div class="tipo-cambio-info mt-3">
                     <i class="fas fa-exchange-alt"></i>
-                    <span id="tipo-cambio-info">Consultando tipo de cambio...</span>
-                    <button type="button" class="btn btn-sm btn-outline-info ms-2" onclick="actualizarTipoCambioCompras()" id="btnActualizarTC">
-                        <i class="fas fa-sync-alt"></i> Actualizar
-                    </button>
+                    <span class="me-2">Tipo de cambio manual:</span>
+                    <input type="number" step="0.0001" min="0" id="tipoCambioManualCompras" name="tipo_cambio_manual" class="form-control form-control-sm d-inline-block" style="width: 140px;" placeholder="S/ 3.8000">
+                    <span class="ms-2 text-muted" title="Valor ingresado manualmente">(Manual)</span>
                 </div>
             </div>
         </div>
@@ -492,7 +491,7 @@
                             <tr>
                                 <th style="width: 40%;">Producto</th>
                                 <th style="width: 20%;">Cantidad</th>
-                                <th style="width: 30%;">Precio Unitario</th>
+                                <th style="width: 30%;">Precio Unitario <span id="detalleMonedaBadgeHeader" class="badge bg-secondary">USD</span></th>
                                 <th style="width: 10%;"></th>
                             </tr>
                         </thead>
@@ -507,7 +506,10 @@
                                     <input type="number" name="detalles[0][cantidad]" class="form-control form-control-sm" min="1" value="1" required>
                                 </td>
                                 <td>
-                                    <input type="number" step="0.01" name="detalles[0][precio_unitario]" class="form-control form-control-sm" value="0" required>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text" id="simboloDetalle0">$</span>
+                                        <input type="number" step="0.01" name="detalles[0][precio_unitario]" class="form-control form-control-sm" value="0" required>
+                                    </div>
                                 </td>
                                 <td class="text-center">
                                     <button type="button" class="btn-remove-row" onclick="this.closest('tr').remove(); calcularTotales();" title="Eliminar">
@@ -539,6 +541,8 @@
                     <div class="totals-title">
                         <i class="fas fa-receipt"></i>
                         Resumen de Compra
+                        <span id="tc-indicador" class="ms-2 text-muted" style="font-weight:600;"></span>
+                        <span id="badge-moneda" class="badge bg-primary ms-2">USD</span>
                     </div>
                     
                     <div class="total-item">
@@ -567,6 +571,35 @@
                         <span class="total-value">
                             <input type="text" name="total" id="total" class="form-control text-end" readonly 
                                    style="display: inline-block; width: 180px; border: none; background: transparent; font-weight: 700; color: #dc2626; font-size: 1.5rem;">
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Conversión a Soles cuando la moneda es USD -->
+                <div id="totales-soles" style="display:none;" class="mt-3">
+                    <div class="totals-title">
+                        <i class="fas fa-money-bill-wave"></i>
+                        Conversión a Soles (TC manual)
+                    </div>
+                    <div class="total-item">
+                        <span class="total-label">Subtotal (S/):</span>
+                        <span class="total-value">
+                            <input type="text" id="subtotal_pen" class="form-control form-control-sm text-end" readonly 
+                                   style="display: inline-block; width: 150px; border: none; background: transparent; font-weight: 700; color: #dc2626;">
+                        </span>
+                    </div>
+                    <div class="total-item">
+                        <span class="total-label">IGV (S/):</span>
+                        <span class="total-value">
+                            <input type="text" id="igv_pen" class="form-control form-control-sm text-end" readonly 
+                                   style="display: inline-block; width: 150px; border: none; background: transparent; font-weight: 700; color: #dc2626;">
+                        </span>
+                    </div>
+                    <div class="total-item">
+                        <span class="total-label">Total (S/):</span>
+                        <span class="total-value">
+                            <input type="text" id="total_pen" class="form-control text-end" readonly 
+                                   style="display: inline-block; width: 180px; border: none; background: transparent; font-weight: 800; color: #dc2626; font-size: 1.25rem;">
                         </span>
                     </div>
                 </div>
@@ -604,6 +637,9 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Campo oculto para enviar el código de moneda seleccionado -->
+                <input type="hidden" name="moneda_codigo" id="moneda_codigo" value="USD">
             </div>
         </div>
 
@@ -625,82 +661,26 @@
 </div>
 
 <script>
-let TIPO_CAMBIO = null; // Se obtendrá desde SUNAT
+let TIPO_CAMBIO = 3.80; // Valor inicial sugerido; editable por el usuario
 
-// Función para obtener tipo de cambio desde la API interna primero, luego externa
-async function obtenerTipoCambio() {
-    console.log('Iniciando consulta de tipo de cambio...');
-    
-    // Intentar primero con la API interna
-    try {
-        const response = await fetch('/ventas/tipo-cambio');
-        const contentType = response.headers.get('content-type');
-        
-        // Verificar si la respuesta es JSON
-        if (contentType && contentType.includes('application/json')) {
-            const data = await response.json();
-            console.log('Respuesta de API interna:', data);
-            
-            if (data && data.success && data.tipo_cambio) {
-                TIPO_CAMBIO = parseFloat(data.tipo_cambio);
-                const fuente = data.fuente || 'API Externa';
-                const cacheInfo = data.cache_hit ? ' (en caché)' : ' (actualizado)';
-                document.getElementById('tipo-cambio-info').innerHTML = 
-                    `<i class="fas fa-check-circle text-success"></i> Tipo de cambio ${fuente}: S/ ${TIPO_CAMBIO.toFixed(4)}${cacheInfo}`;
-                calcularTotales();
-                console.log(`✓ Tipo de cambio obtenido: ${TIPO_CAMBIO} de ${fuente}`);
-                return;
-            }
-        }
-        
-        console.warn('API interna no disponible o respuesta no válida, intentando API externa...');
-    } catch (error) {
-        console.warn('Error con API interna:', error);
+// Aplicar el tipo de cambio ingresado manualmente
+function aplicarTipoCambioManualCompras() {
+    const inputTC = document.getElementById('tipoCambioManualCompras');
+    const val = parseFloat(inputTC.value);
+    if (!isNaN(val) && val > 0) {
+        TIPO_CAMBIO = val;
+        console.log('Tipo de cambio manual aplicado:', TIPO_CAMBIO.toFixed(4));
+        calcularTotales();
     }
-    
-    // Si falla la API interna, intentar directamente con SUNAT
-    try {
-        const fecha = new Date().toISOString().split('T')[0];
-        const response = await fetch(`https://api.apis.net.pe/v1/tipo-cambio-sunat?fecha=${fecha}`);
-        const data = await response.json();
-        
-        console.log('Respuesta de API SUNAT:', data);
-        
-        if (data && data.compra) {
-            // Usar precio de COMPRA (cuántos soles por dólar)
-            TIPO_CAMBIO = parseFloat(data.compra);
-            document.getElementById('tipo-cambio-info').innerHTML = 
-                `<i class="fas fa-check-circle text-success"></i> Tipo de cambio SUNAT (compra): S/ ${TIPO_CAMBIO.toFixed(4)} (directo)`;
-            calcularTotales();
-            console.log(`✓ Tipo de cambio COMPRA obtenido de SUNAT: ${TIPO_CAMBIO}`);
-            return;
-        } else if (data && data.venta) {
-            // Fallback a venta si compra no está disponible
-            TIPO_CAMBIO = parseFloat(data.venta);
-            document.getElementById('tipo-cambio-info').innerHTML = 
-                `<i class="fas fa-exclamation-triangle text-warning"></i> Tipo de cambio SUNAT (venta): S/ ${TIPO_CAMBIO.toFixed(4)} (directo)`;
-            calcularTotales();
-            console.log(`⚠ Tipo de cambio VENTA obtenido de SUNAT: ${TIPO_CAMBIO}`);
-            return;
-        }
-    } catch (error) {
-        console.error('Error con API SUNAT:', error);
-    }
-    
-    // Si todo falla, usar 3.38 como fallback
-    if (!TIPO_CAMBIO || TIPO_CAMBIO <= 0) {
-        TIPO_CAMBIO = 3.38;
-        console.warn('⚠ Usando tipo de cambio de fallback:', TIPO_CAMBIO);
-    }
-    
-    document.getElementById('tipo-cambio-info').innerHTML = 
-        `<i class="fas fa-exclamation-triangle text-warning"></i> No se pudo obtener el tipo de cambio. Usando S/ ${TIPO_CAMBIO.toFixed(4)} (fallback)`;
-    calcularTotales();
 }
 
-// Llamar al cargar la página
+// Inicializar al cargar
 document.addEventListener('DOMContentLoaded', function() {
-    obtenerTipoCambio();
+    const inputTC = document.getElementById('tipoCambioManualCompras');
+    if (inputTC) {
+        inputTC.value = TIPO_CAMBIO.toFixed(4);
+        inputTC.addEventListener('input', aplicarTipoCambioManualCompras);
+    }
 
     // Configurar el filtro de productos por proveedor
     const proveedorSelect = document.getElementById('id_proveedor');
@@ -745,27 +725,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     calcularTotales();
+    // Inicializar detalles con el símbolo de moneda seleccionado
+    actualizarDetallesMonedaVisual();
 });
-
-// Función para actualizar el tipo de cambio manualmente
-async function actualizarTipoCambioCompras() {
-    const btn = document.getElementById('btnActualizarTC');
-    const originalHTML = btn.innerHTML;
-    
-    try {
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualizando...';
-        btn.disabled = true;
-        
-        await obtenerTipoCambio();
-        
-    } catch (error) {
-        console.error('Error al actualizar tipo de cambio:', error);
-        alert('❌ Error al actualizar el tipo de cambio.');
-    } finally {
-        btn.innerHTML = originalHTML;
-        btn.disabled = false;
-    }
-}
 
 function calcularTotales() {
     // Validar que tenemos un tipo de cambio válido
@@ -793,17 +755,30 @@ function calcularTotales() {
     document.getElementById('igv').value = igv.toFixed(2);
     document.getElementById('total').value = total.toFixed(2);
 
-    // Si la moneda es dólares, mostrar conversión a USD
+    // Moneda base según selección; todo el detalle se mantiene en la moneda seleccionada
     const monedaSelect = document.getElementById('id_moneda');
     const selectedMoneda = monedaSelect.options[monedaSelect.selectedIndex]?.text?.toLowerCase() || '';
-    if (selectedMoneda.includes('dólar') || selectedMoneda.includes('usd') || selectedMoneda.includes('dolar')) {
-        document.getElementById('totales-dolares').style.display = 'block';
-        document.getElementById('subtotal_usd').value = (subtotal / TIPO_CAMBIO).toFixed(2);
-        document.getElementById('igv_usd').value = (igv / TIPO_CAMBIO).toFixed(2);
-        document.getElementById('total_usd').value = (total / TIPO_CAMBIO).toFixed(2);
-    } else {
-        document.getElementById('totales-dolares').style.display = 'none';
-    }
+    // Actualizar indicador de TC y moneda base
+    const tcIndicador = document.getElementById('tc-indicador');
+    const simboloBase = (selectedMoneda.includes('dólar') || selectedMoneda.includes('usd') || selectedMoneda.includes('dolar')) ? 'USD' : 'PEN';
+    tcIndicador.textContent = `(Moneda base: ${simboloBase} • TC manual: S/ ${TIPO_CAMBIO.toFixed(4)})`;
+    // Actualizar etiquetas de totales con la moneda base
+    const labelBase = document.getElementById('label-moneda-base');
+    const labelBaseIgv = document.getElementById('label-moneda-base-igv');
+    const labelBaseTotal = document.getElementById('label-moneda-base-total');
+    if (labelBase) labelBase.textContent = `(${simboloBase})`;
+    if (labelBaseIgv) labelBaseIgv.textContent = `(${simboloBase})`;
+    if (labelBaseTotal) labelBaseTotal.textContent = `(${simboloBase})`;
+    // Actualizar badge y campo oculto con la moneda seleccionada
+    const badgeMoneda = document.getElementById('badge-moneda');
+    const hiddenCodigo = document.getElementById('moneda_codigo');
+    if (badgeMoneda) badgeMoneda.textContent = simboloBase;
+    if (hiddenCodigo) hiddenCodigo.value = simboloBase;
+    // Ocultar secciones de conversión; todo se muestra solo en la moneda seleccionada
+    const totUSD = document.getElementById('totales-dolares');
+    const totPEN = document.getElementById('totales-soles');
+    if (totUSD) totUSD.style.display = 'none';
+    if (totPEN) totPEN.style.display = 'none';
 }
 
 // Recalcular al cambiar valores en la tabla
@@ -814,7 +789,29 @@ document.getElementById('productos-table').addEventListener('input', function(e)
 });
 
 // Recalcular al cambiar moneda
-document.getElementById('id_moneda').addEventListener('change', calcularTotales);
+document.getElementById('id_moneda').addEventListener('change', function(){
+    actualizarDetallesMonedaVisual();
+    calcularTotales();
+});
+
+function actualizarDetallesMonedaVisual() {
+    const monedaSelect = document.getElementById('id_moneda');
+    const selectedMoneda = monedaSelect.options[monedaSelect.selectedIndex]?.text?.toLowerCase() || '';
+    const simboloISO = (selectedMoneda.includes('dólar') || selectedMoneda.includes('usd') || selectedMoneda.includes('dolar')) ? 'USD' : 'PEN';
+    const simboloChar = simboloISO === 'USD' ? '$' : 'S/';
+    // Actualizar placeholder/sufijo de precio unitario en todas las filas
+    document.querySelectorAll('#productos-table tbody tr input[name$="[precio_unitario]"]').forEach(function(input){
+        input.placeholder = `${simboloChar} 0.00`;
+        // Opcional: ajustar style para indicar visualmente la moneda
+        input.setAttribute('data-moneda', simboloISO);
+    });
+    // Actualizar badge del encabezado y símbolos visibles en cada fila
+    const badgeHeader = document.getElementById('detalleMonedaBadgeHeader');
+    if (badgeHeader) badgeHeader.textContent = simboloISO;
+    document.querySelectorAll('#productos-table tbody tr [id^="simboloDetalle"]').forEach(function(span){
+        span.textContent = simboloChar;
+    });
+}
 
 function agregarProductoRow() {
     const tbody = document.querySelector('#productos-table tbody');
@@ -844,7 +841,10 @@ function agregarProductoRow() {
             <input type="number" name="detalles[${index}][cantidad]" class="form-control form-control-sm" min="1" value="1" required>
         </td>
         <td>
-            <input type="number" step="0.01" name="detalles[${index}][precio_unitario]" class="form-control form-control-sm" value="0" required>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text" id="simboloDetalle${index}">$</span>
+                <input type="number" step="0.01" name="detalles[${index}][precio_unitario]" class="form-control form-control-sm" value="0" required>
+            </div>
         </td>
         <td class="text-center">
             <button type="button" class="btn-remove-row" onclick="this.closest('tr').remove(); calcularTotales();" title="Eliminar">

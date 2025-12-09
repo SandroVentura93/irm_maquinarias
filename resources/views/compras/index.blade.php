@@ -416,9 +416,19 @@
                                         {{ Carbon\Carbon::parse($compra->fecha)->format('d/m/Y') }}
                                     </span>
                                 </td>
-                                <td class="text-end amount-cell">S/ {{ number_format($compra->subtotal, 2) }}</td>
-                                <td class="text-end amount-cell">S/ {{ number_format($compra->igv, 2) }}</td>
-                                <td class="text-end total-cell">S/ {{ number_format($compra->total, 2) }}</td>
+                                @php
+                                    $simbolo = $compra->moneda->simbolo ?? 'S/';
+                                    $icono = ($compra->moneda->codigo_iso ?? 'PEN') === 'USD' ? 'fas fa-dollar-sign' : 'fas fa-money-bill-wave';
+                                @endphp
+                                <td class="text-end amount-cell">
+                                    <i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($compra->subtotal, 2) }}
+                                </td>
+                                <td class="text-end amount-cell">
+                                    <i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($compra->igv, 2) }}
+                                </td>
+                                <td class="text-end total-cell">
+                                    <i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($compra->total, 2) }}
+                                </td>
                                 <td>
                                     <div class="action-buttons">
                                         <a href="{{ route('compras.show', $compra->id_compra) }}" 

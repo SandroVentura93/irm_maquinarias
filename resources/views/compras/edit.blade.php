@@ -429,7 +429,7 @@
                             <tr>
                                 <th style="width: 30%;">Producto</th>
                                 <th style="width: 12%;">Cantidad</th>
-                                <th style="width: 14%;">Precio Unit.</th>
+                                <th style="width: 14%;">Precio Unit. <span id="detalleMonedaBadgeHeader" class="badge bg-secondary">{{ $compra->moneda->codigo_iso ?? 'PEN' }}</span></th>
                                 <th style="width: 14%;">Subtotal</th>
                                 <th style="width: 12%;">IGV (18%)</th>
                                 <th style="width: 14%;">Total</th>
@@ -454,9 +454,12 @@
                                            min="1" value="{{ $detalle->cantidad }}" required oninput="calcularFila(this)">
                                 </td>
                                 <td>
-                                    <input type="number" step="0.01" name="detalles[{{ $i }}][precio_unitario]" 
-                                           class="form-control form-control-sm" value="{{ $detalle->precio_unitario }}" 
-                                           required oninput="calcularFila(this)">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text" id="simboloDetalle{{ $i }}">{{ ($compra->moneda->codigo_iso ?? 'PEN') === 'USD' ? '$' : 'S/' }}</span>
+                                        <input type="number" step="0.01" name="detalles[{{ $i }}][precio_unitario]" 
+                                               class="form-control form-control-sm" value="{{ $detalle->precio_unitario }}" 
+                                               required oninput="calcularFila(this)">
+                                    </div>
                                 </td>
                                 <td>
                                     <input type="number" step="0.01" name="detalles[{{ $i }}][subtotal]" 
@@ -504,11 +507,18 @@
                     <div class="totals-title">
                         <i class="fas fa-receipt"></i>
                         Resumen de Compra
+                        @php
+                            $simbolo = $compra->moneda->simbolo ?? 'S/';
+                            $codigoIso = $compra->moneda->codigo_iso ?? 'PEN';
+                            $icono = $codigoIso === 'USD' ? 'fas fa-dollar-sign' : 'fas fa-money-bill-wave';
+                        @endphp
+                        <span class="badge bg-primary ms-2">{{ $codigoIso }}</span>
                     </div>
                     
                     <div class="total-item">
                         <span class="total-label">Subtotal:</span>
                         <span class="total-value" style="font-size: 1rem;">
+                            <i class="{{ $icono }} me-1"></i>
                             <input type="number" step="0.01" name="subtotal" id="subtotal" 
                                    class="form-control form-control-sm text-end" 
                                    value="{{ $compra->subtotal }}" required readonly 
@@ -524,6 +534,7 @@
                             IGV (18%):
                         </span>
                         <span class="total-value" style="font-size: 1rem;">
+                            <i class="{{ $icono }} me-1"></i>
                             <input type="number" step="0.01" name="igv" id="igv" 
                                    class="form-control form-control-sm text-end" 
                                    value="{{ $compra->igv }}" required readonly 
@@ -534,6 +545,7 @@
                     <div class="total-item">
                         <span class="total-label" style="font-size: 1.125rem;">TOTAL:</span>
                         <span class="total-value">
+                            <i class="{{ $icono }} me-1"></i>
                             <input type="number" step="0.01" name="total" id="total" 
                                    class="form-control text-end" 
                                    value="{{ $compra->total }}" required readonly 
@@ -659,6 +671,19 @@ function calcularTotales() {
 // Inicializar tooltips
 document.addEventListener('DOMContentLoaded', function() {
     calcularTotales();
+});
+
+// Actualizar símbolos y badge de moneda cuando cambie la selección
+document.getElementById('id_moneda').addEventListener('change', function() {
+    const select = this;
+    const texto = select.options[select.selectedIndex]?.text?.toLowerCase() || '';
+    const codigoIso = (texto.includes('dólar') || texto.includes('usd') || texto.includes('dolar')) ? 'USD' : 'PEN';
+    const simboloChar = codigoIso === 'USD' ? '$' : 'S/';
+    const badgeHeader = document.getElementById('detalleMonedaBadgeHeader');
+    if (badgeHeader) badgeHeader.textContent = codigoIso;
+    document.querySelectorAll('[id^="simboloDetalle"]').forEach(function(span){
+        span.textContent = simboloChar;
+    });
 });
 </script>
 

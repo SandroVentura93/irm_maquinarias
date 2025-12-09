@@ -252,8 +252,14 @@
                 <p><strong>Hora:</strong> {{ $venta->fecha->format('H:i:s') }}</p>
             </div>
             <div style="display: table-cell; width: 33.33%; padding: 5px;">
-                <p><strong>Moneda:</strong> {{ $venta->moneda == 'PEN' ? 'Soles Peruanos' : 'Dólares Americanos' }}</p>
-                <p><strong>Tipo de Cambio:</strong> S/ {{ number_format($venta->tipo_cambio ?? 3.75, 2) }}</p>
+                @php
+                    $codigoIso = is_object($venta->moneda) ? ($venta->moneda->codigo_iso ?? 'PEN') : ($venta->moneda ?? 'PEN');
+                    $simbolo = $codigoIso === 'USD' ? '$' : 'S/';
+                @endphp
+                <p><strong>Moneda:</strong> {{ $codigoIso === 'USD' ? 'Dólares Americanos' : 'Soles Peruanos' }} <span style="display:inline-block; padding:2px 6px; background:#2c5aa0; color:white; border-radius:4px; font-size:10px;">{{ $codigoIso }}</span></p>
+                @if($codigoIso === 'USD')
+                    <p><strong>Tipo de Cambio (referencial):</strong> S/ {{ number_format($venta->tipo_cambio ?? 3.75, 2) }} por USD</p>
+                @endif
             </div>
             <div style="display: table-cell; width: 33.33%; padding: 5px;">
                 <p><strong>Usuario:</strong> {{ auth()->user()->name ?? 'Sistema' }}</p>
@@ -281,12 +287,12 @@
                         <small style="color: #fd7e14;">💰 CARGO ADICIONAL: Por servicios extras</small>
                     </td>
                     <td style="color: #fd7e14; font-weight: bold;">+{{ number_format($detalle->cantidad, 2) }}</td>
-                    <td class="text-right">{{ $venta->moneda }} {{ number_format($detalle->precio_unitario, 2) }}</td>
+                    <td class="text-right">{{ $simbolo }} {{ number_format($detalle->precio_unitario, 2) }}</td>
                     <td class="amount">
                         @php
                             $subtotal_item = $detalle->cantidad * $detalle->precio_unitario * (1 - $detalle->descuento_porcentaje/100);
                         @endphp
-                        +{{ $venta->moneda }} {{ number_format($subtotal_item, 2) }}
+                        +{{ $simbolo }} {{ number_format($subtotal_item, 2) }}
                     </td>
                 </tr>
                 @endforeach
@@ -314,15 +320,15 @@
                 <table class="totals-table">
                     <tr>
                         <td class="label">Operación Gravada:</td>
-                        <td class="value">+{{ $venta->moneda }} {{ number_format($datos['base_imponible'] ?? 0, 2) }}</td>
+                        <td class="value">+{{ $simbolo }} {{ number_format($datos['base_imponible'] ?? 0, 2) }}</td>
                     </tr>
                     <tr>
                         <td class="label">IGV (18%):</td>
-                        <td class="value">+{{ $venta->moneda }} {{ number_format($datos['igv'] ?? 0, 2) }}</td>
+                        <td class="value">+{{ $simbolo }} {{ number_format($datos['igv'] ?? 0, 2) }}</td>
                     </tr>
                     <tr class="total">
                         <td class="total">TOTAL NOTA DÉBITO:</td>
-                        <td class="total">+{{ $venta->moneda }} {{ number_format($datos['total'] ?? 0, 2) }}</td>
+                        <td class="total">+{{ $simbolo }} {{ number_format($datos['total'] ?? 0, 2) }}</td>
                     </tr>
                 </table>
             </div>

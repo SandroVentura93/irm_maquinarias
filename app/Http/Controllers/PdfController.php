@@ -263,8 +263,9 @@ class PdfController extends Controller
                 return Venta::with([
                     'cliente',
                     'detalles.producto.categoria',
-                    'detalles.producto.marca',
-                    'tipoComprobante'
+                    'detalles.producto.marca', 
+                    'tipoComprobante',
+                    'moneda'
                 ])->findOrFail($ventaId);
             });
 
@@ -281,9 +282,19 @@ class PdfController extends Controller
             });
 
             $datos = $this->prepararDatosComprobante($venta, $tipoConfig);
+            // Añadir info de moneda para las vistas (símbolo e ISO)
+            $datos['moneda'] = [
+                'iso' => strtoupper($venta->moneda->codigo_iso ?? 'USD'),
+                'simbolo' => $venta->moneda->simbolo ?? '$',
+                'nombre' => $venta->moneda->nombre ?? 'Dólar Americano'
+            ];
+            // Validar tipo de cambio manual
+            $tipoCambioRaw = $venta->tipo_cambio ?? null;
+            $tipoCambio = $this->validarTipoCambio($tipoCambioRaw) ?? (config('app.tipo_cambio') ?? 3.75);
 
             // ⚡ Configuración optimizada de DomPDF
-            $pdf = PDF::loadView('comprobantes.' . $tipoConfig['template'], compact('venta', 'datos', 'empresa', 'tipoConfig'))
+            $moneda = $venta->moneda; // Pasar objeto Moneda para vistas existentes
+            $pdf = PDF::loadView('comprobantes.' . $tipoConfig['template'], compact('venta', 'datos', 'empresa', 'tipoConfig', 'tipoCambio', 'moneda'))
                 ->setPaper('a4', 'portrait')
                 ->setOptions([
                     'isHtml5ParserEnabled' => true,
@@ -360,9 +371,13 @@ class PdfController extends Controller
             });
             
             $datos = $this->prepararDatosComprobante($venta, $tipoConfig);
+            // Añadir info de moneda y tipo de cambio para vistas
+            $moneda = $venta->moneda ?? null;
+            $tipoCambioRaw = $venta->tipo_cambio ?? null;
+            $tipoCambio = $this->validarTipoCambio($tipoCambioRaw) ?? (config('app.tipo_cambio') ?? 3.75);
 
             // ⚡ Optimizaciones de DomPDF
-            $pdf = PDF::loadView('comprobantes.' . $tipoConfig['template'], compact('venta', 'datos', 'empresa', 'tipoConfig'))
+            $pdf = PDF::loadView('comprobantes.' . $tipoConfig['template'], compact('venta', 'datos', 'empresa', 'tipoConfig', 'moneda', 'tipoCambio'))
                 ->setPaper('a4', 'portrait')
                 ->setOptions([
                     'isHtml5ParserEnabled' => true,
@@ -432,7 +447,8 @@ class PdfController extends Controller
         }
 
         $datos['total'] = $datos['base_imponible'] + $datos['igv'];
-        $datos['total_en_letras'] = $this->numeroALetras($datos['total']);
+        // Usar la moneda de la venta para construir el texto correcto (USD/PEN)
+        $datos['total_en_letras'] = $this->numeroALetrasConMoneda($datos['total'], $venta);
 
         // Configuraciones específicas por tipo
         switch ($venta->tipo_comprobante) {
@@ -642,7 +658,7 @@ class PdfController extends Controller
         $decimales = intval(($numero - $entero) * 100);
         
         // Por simplicidad, retorno básico
-        return "SON: " . strtoupper($this->convertirNumeroALetras($entero)) . " CON {$decimales}/100 SOLES";
+        return "SON: " . strtoupper($this->convertirNumeroALetras($entero)) . " CON {$decimales}/100";
     }
 
     /**
@@ -668,6 +684,36 @@ class PdfController extends Controller
         
         // Para números más grandes, implementar lógica completa
         return "NÚMERO MAYOR";
+    }
+
+    /**
+     * Convertir número a letras incluyendo la moneda según la venta
+     */
+    private function numeroALetrasConMoneda($numero, $venta)
+    {
+        $entero = intval($numero);
+        $decimales = intval(round(($numero - $entero) * 100));
+        $base = "SON: " . strtoupper($this->convertirNumeroALetras($entero)) . " CON {$decimales}/100";
+
+        // Determinar nombre de moneda a partir de la relación
+        $codigoIso = strtoupper($venta->moneda->codigo_iso ?? 'USD');
+        // Mapear nombre formal
+        $nombre = $codigoIso === 'PEN' ? 'SOLES' : ($codigoIso === 'USD' ? 'DÓLARES' : $codigoIso);
+        return $base . ' ' . $nombre;
+    }
+
+    /**
+     * Validar y normalizar tipo de cambio manual
+     */
+    private function validarTipoCambio($tipoCambio)
+    {
+        if ($tipoCambio === null) return null;
+        if (!is_numeric($tipoCambio)) return null;
+        $tc = (float) $tipoCambio;
+        if ($tc <= 0) return null;
+        if ($tc < 2.0) return null;
+        if ($tc > 10.0) return null;
+        return round($tc, 4);
     }
 
     /**

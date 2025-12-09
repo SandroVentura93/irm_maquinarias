@@ -240,6 +240,13 @@
             </div>
         </div>
 
+        @php
+            $codigoIso = is_object($venta->moneda)
+                ? strtoupper($venta->moneda->codigo_iso ?? 'PEN')
+                : (is_string($venta->moneda) ? strtoupper($venta->moneda) : 'PEN');
+            $simbolo = $codigoIso === 'USD' ? '$' : 'S/';
+        @endphp
+
         <!-- Información sobre la retención -->
         <div class="retencion-info">
             <h4 style="color: #856404; margin-bottom: 5px;">💰 INFORMACIÓN SOBRE RETENCIÓN</h4>
@@ -261,7 +268,7 @@
                 <p><strong>Período del Servicio:</strong> {{ $venta->fecha->format('m/Y') }}</p>
             </div>
             <div style="display: table-cell; width: 33.33%; padding: 5px;">
-                <p><strong>Moneda:</strong> {{ $venta->moneda == 'PEN' ? 'Soles Peruanos' : 'Dólares Americanos' }}</p>
+                <p><strong>Moneda:</strong> {{ $codigoIso === 'PEN' ? 'Soles Peruanos' : 'Dólares Americanos' }} <span style="display:inline-block; padding:2px 6px; background:#2c5aa0; color:white; border-radius:4px; font-size:10px;">{{ $codigoIso }}</span></p>
                 <p><strong>Tipo de Servicio:</strong> Servicios Profesionales</p>
             </div>
             <div style="display: table-cell; width: 33.33%; padding: 5px;">
@@ -291,12 +298,12 @@
                         <small style="color: #6c757d;">👨‍💼 Servicio prestado: Consultoría especializada</small>
                     </td>
                     <td>{{ number_format($detalle->cantidad, 0) }}</td>
-                    <td class="text-right">{{ $venta->moneda }} {{ number_format($detalle->precio_unitario, 2) }}</td>
+                    <td class="text-right">{{ $simbolo }} {{ number_format($detalle->precio_unitario, 2) }}</td>
                     <td class="amount">
                         @php
                             $subtotal_item = $detalle->cantidad * $detalle->precio_unitario * (1 - $detalle->descuento_porcentaje/100);
                         @endphp
-                        {{ $venta->moneda }} {{ number_format($subtotal_item, 2) }}
+                        {{ $simbolo }} {{ number_format($subtotal_item, 2) }}
                     </td>
                 </tr>
                 @endforeach
@@ -332,15 +339,15 @@
                 <table class="totals-table">
                     <tr>
                         <td class="label">Valor del Servicio:</td>
-                        <td class="value">{{ $venta->moneda }} {{ number_format($datos['base_imponible'] ?? 0, 2) }}</td>
+                        <td class="value">{{ $simbolo }} {{ number_format($datos['base_imponible'] ?? 0, 2) }}</td>
                     </tr>
                     <tr>
                         <td class="label">Retención IR (8%):</td>
-                        <td class="value retencion">-{{ $venta->moneda }} {{ number_format($datos['retencion'] ?? ($datos['base_imponible'] * 0.08), 2) }}</td>
+                        <td class="value retencion">-{{ $simbolo }} {{ number_format($datos['retencion'] ?? ($datos['base_imponible'] * 0.08), 2) }}</td>
                     </tr>
                     <tr class="total">
                         <td class="total">NETO A PAGAR:</td>
-                        <td class="total">{{ $venta->moneda }} {{ number_format($datos['total'] ?? 0, 2) }}</td>
+                        <td class="total">{{ $simbolo }} {{ number_format($datos['total'] ?? 0, 2) }}</td>
                     </tr>
                 </table>
                 
@@ -349,7 +356,7 @@
                     <h4 style="color: #6c757d; margin-bottom: 5px;">CONSTANCIA DE RETENCIÓN</h4>
                     <p style="font-size: 10px; color: #666;">
                         La empresa retendrá el 8% del Impuesto a la Renta<br>
-                        Monto retenido: {{ $venta->moneda }} {{ number_format($datos['retencion'] ?? ($datos['base_imponible'] * 0.08), 2) }}<br>
+                        Monto retenido: {{ $simbolo }} {{ number_format($datos['retencion'] ?? ($datos['base_imponible'] * 0.08), 2) }}<br>
                         Se entregará constancia de retención
                     </p>
                 </div>

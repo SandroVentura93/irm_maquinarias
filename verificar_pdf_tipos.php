@@ -14,19 +14,19 @@ echo "=== VERIFICACIÓN DE TIPOS DE COMPROBANTE ===\n\n";
 
 // Verificar que los tipos de comprobante están correctos
 $tiposComprobante = [
-    1 => ['codigo_sunat' => '01', 'descripcion' => 'Factura'],
-    2 => ['codigo_sunat' => '03', 'descripcion' => 'Boleta de Venta'],
-    3 => ['codigo_sunat' => '07', 'descripcion' => 'Nota de Crédito'],
-    4 => ['codigo_sunat' => '08', 'descripcion' => 'Nota de Débito'],
-    5 => ['codigo_sunat' => '09', 'descripcion' => 'Guía de Remisión'],
-    6 => ['codigo_sunat' => '12', 'descripcion' => 'Ticket o Cinta Emitido por Máquina Registradora'],
-    7 => ['codigo_sunat' => '13', 'descripcion' => 'Documento emitido por Operador de Servicios Electrónicos'],
-    8 => ['codigo_sunat' => '14', 'descripcion' => 'Documento emitido por el Sistema de Emisión Electrónica']
+    1 => ['descripcion' => 'Factura'],
+    2 => ['descripcion' => 'Boleta de Venta'],
+    3 => ['descripcion' => 'Nota de Crédito'],
+    4 => ['descripcion' => 'Nota de Débito'],
+    5 => ['descripcion' => 'Guía de Remisión'],
+    6 => ['descripcion' => 'Ticket o Cinta Emitido por Máquina Registradora'],
+    7 => ['descripcion' => 'Documento emitido por Operador de Servicios Electrónicos'],
+    8 => ['descripcion' => 'Documento emitido por el Sistema de Emisión Electrónica']
 ];
 
 echo "Tipos de comprobante SUNAT correctos:\n";
 foreach ($tiposComprobante as $id => $tipo) {
-    echo "ID: $id - Código SUNAT: {$tipo['codigo_sunat']} - {$tipo['descripcion']}\n";
+    echo "ID: $id - {$tipo['descripcion']}\n";
 }
 
 echo "\n=== CONFIGURACIÓN DEL PDFCONTROLLER ===\n\n";
@@ -36,13 +36,13 @@ $controller = new PdfController();
 
 // Simular diferentes tipos de comprobante
 $tiposAProbar = [
-    (object) ['codigo_sunat' => '01', 'descripcion' => 'Factura'],
-    (object) ['codigo_sunat' => '03', 'descripcion' => 'Boleta de Venta'],
-    (object) ['codigo_sunat' => '07', 'descripcion' => 'Nota de Crédito'],
-    (object) ['codigo_sunat' => '08', 'descripcion' => 'Nota de Débito'],
-    (object) ['codigo_sunat' => '09', 'descripcion' => 'Guía de Remisión'],
-    (object) ['codigo_sunat' => '12', 'descripcion' => 'Ticket o Cinta Emitido por Máquina Registradora'],
-    (object) ['codigo_sunat' => '14', 'descripcion' => 'Documento emitido por el Sistema de Emisión Electrónica']
+    (object) ['descripcion' => 'Factura'],
+    (object) ['descripcion' => 'Boleta de Venta'],
+    (object) ['descripcion' => 'Nota de Crédito'],
+    (object) ['descripcion' => 'Nota de Débito'],
+    (object) ['descripcion' => 'Guía de Remisión'],
+    (object) ['descripcion' => 'Ticket o Cinta Emitido por Máquina Registradora'],
+    (object) ['descripcion' => 'Documento emitido por el Sistema de Emisión Electrónica']
 ];
 
 echo "Configuraciones disponibles en PdfController:\n";
