@@ -30,7 +30,7 @@
                 </div>
                 <div class="tipo-cambio-badge me-3">
                     <i class="fas fa-exchange-alt me-2"></i>
-                    <strong>TC:</strong> S/ {{ number_format($tipoCambio, 2) }}/USD
+                    <strong>TC:</strong> S/ {{ number_format($tipoCambio, 4) }}/USD
                 </div>
                 <a href="{{ route('productos.edit', $producto) }}" class="btn btn-warning btn-modern">
                     <i class="fas fa-edit me-2"></i>Editar Producto

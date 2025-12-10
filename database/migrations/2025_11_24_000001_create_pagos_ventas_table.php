@@ -12,6 +12,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('id_venta');
             $table->decimal('monto', 12, 2);
             $table->string('metodo', 50);
+            $table->string('moneda', 20)->nullable();
             $table->string('numero_operacion', 200)->nullable(); // Add the 'numero_operacion' column
             $table->timestamp('fecha')->useCurrent();
             $table->foreign('id_venta')->references('id_venta')->on('ventas')->onDelete('cascade');

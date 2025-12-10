@@ -1,68 +1,192 @@
 @extends('layouts.dashboard')
 
 @section('content')
-<div class="container mt-4">
-    <h1 class="text-primary">Registrar Pago para la Venta #{{ $id }}</h1>
 
-    <!-- Información del saldo -->
-    <div class="alert alert-info mb-3">
-        <h6 class="mb-0">
-            <strong>Saldo Pendiente:</strong> 
-            <span class="fw-bold fs-5">{{ $simbolo }} {{ number_format($saldo, 2) }}</span>
-        </h6>
-    </div>
 
-    <form id="formPago" method="POST" action="{{ route('ventas.pago', ['venta' => $id]) }}">
-        @csrf
-        <input type="hidden" name="venta_id" value="{{ $id }}">
+<style>
+    .pago-full-bg {
+        min-height: 100vh;
+        background: linear-gradient(120deg, #f5f7fa 0%, #c3cfe2 100%);
+        padding: 0;
+        margin: 0;
+    }
+    .pago-card-pro {
+        border-radius: 24px;
+        box-shadow: 0 8px 32px rgba(80,80,120,0.13);
+        overflow: hidden;
+        background: linear-gradient(120deg, #fff 60%, #e0e7ff 100%);
+        border: none;
+    }
+    .pago-card-header-pro {
+        background: linear-gradient(90deg, #6366f1 0%, #4f46e5 100%);
+        color: #fff;
+        padding: 2.2rem 2rem 1.2rem 2rem;
+        border-bottom: none;
+    }
+    .pago-card-header-pro h3 {
+        font-weight: 700;
+        font-size: 2.1rem;
+        margin-bottom: 0;
+        letter-spacing: 1px;
+    }
+    .pago-card-body-pro {
+        padding: 2.5rem 2.5rem 2rem 2.5rem;
+    }
+    .pago-form-label {
+        font-weight: 600;
+        color: #4f46e5;
+        font-size: 1.08rem;
+    }
+    .pago-form-control {
+        border-radius: 12px;
+        font-size: 1.15rem;
+        padding: 0.9rem 1.1rem;
+        border: 2px solid #e0e7ff;
+        background: #f8fafc;
+        transition: border-color 0.2s;
+    }
+    .pago-form-control:focus {
+        border-color: #6366f1;
+        background: #fff;
+        box-shadow: 0 0 0 2px #6366f133;
+    }
+    .pago-btn-pro {
+        border-radius: 10px;
+        font-size: 1.15rem;
+        font-weight: 600;
+        padding: 0.85rem 2.5rem;
+        box-shadow: 0 4px 16px rgba(80,80,120,0.10);
+    }
+    .pago-saldo-box {
+        background: linear-gradient(90deg, #e0e7ff 0%, #fff 100%);
+        border-radius: 14px;
+        padding: 1.2rem 1.5rem;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 1.2rem;
+        box-shadow: 0 2px 8px rgba(99,102,241,0.07);
+    }
+    .pago-saldo-box .saldo-label {
+        color: #6366f1;
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+    .pago-saldo-box .saldo-valor {
+        font-size: 2.1rem;
+        font-weight: 800;
+        color: #10b981;
+        letter-spacing: 1px;
+    }
+    .pago-historial-card {
+        border-radius: 18px;
+        background: #fff;
+        box-shadow: 0 4px 18px rgba(99,102,241,0.08);
+        margin-top: 2.5rem;
+        border: none;
+    }
+    .pago-historial-header {
+        background: #f8fafc;
+        border-bottom: 1px solid #e0e7ff;
+        border-radius: 18px 18px 0 0;
+        padding: 1.2rem 2rem 1rem 2rem;
+    }
+    .pago-historial-header h5 {
+        color: #4f46e5;
+        font-weight: 700;
+        margin-bottom: 0;
+    }
+    .pago-historial-list .list-group-item {
+        font-size: 1.08rem;
+        padding: 1.1rem 2rem;
+        border: none;
+        border-bottom: 1px solid #f1f5f9;
+        background: transparent;
+    }
+    .pago-historial-list .list-group-item:last-child {
+        border-bottom: none;
+    }
+    .pago-historial-list .badge {
+        font-size: 0.98rem;
+        font-weight: 600;
+        background: #e0e7ff;
+        color: #4f46e5;
+    }
+</style>
 
-        <div class="mb-3">
-            <label for="pago_monto" class="form-label">Monto a Pagar</label>
-            <div class="input-group">
-                <span class="input-group-text">{{ $simbolo }}</span>
-                <input type="number" step="0.01" class="form-control" id="pago_monto" name="monto" required value="{{ number_format($saldo, 2) }}">
+<div class="pago-full-bg">
+    <div class="container-fluid px-0">
+        <div class="pago-card-pro my-5 mx-auto" style="max-width: 1100px;">
+            <div class="pago-card-header-pro">
+                <h3><i class="fas fa-cash-register me-2"></i>Registrar Pago para la Venta <span class="badge bg-light text-primary">#{{ $id }}</span></h3>
+            </div>
+            <div class="pago-card-body-pro">
+                <div class="pago-saldo-box mb-4">
+                    <i class="fas fa-wallet fa-2x"></i>
+                    <span class="saldo-label">Saldo Pendiente:</span>
+                    <span class="saldo-valor">{{ $simbolo }} {{ number_format($saldo, 2) }}</span>
+                </div>
+                <form id="formPago" method="POST" action="{{ route('ventas.pago', ['venta' => $id]) }}">
+                    @csrf
+                    <input type="hidden" name="venta_id" value="{{ $id }}">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label for="pago_monto" class="pago-form-label">Monto a Pagar</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-primary fw-bold">{{ $simbolo }}</span>
+                                <input type="number" step="0.01" class="form-control pago-form-control" id="pago_monto" name="monto" required value="{{ number_format($saldo, 2) }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="pago_moneda" class="pago-form-label">Moneda del Pago</label>
+                            <select class="form-select pago-form-control" id="pago_moneda" name="pago_moneda" required disabled>
+                                <option value="Soles" {{ $moneda === 'Soles' ? 'selected' : '' }}>Soles</option>
+                                <option value="Dolares" {{ $moneda === 'Dolares' ? 'selected' : '' }}>Dólares</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="metodo" class="pago-form-label">Tipo de Pago</label>
+                            <select class="form-select pago-form-control" id="metodo" name="metodo" required>
+                                <option value="Efectivo">Efectivo</option>
+                                <option value="Transferencia">Transferencia</option>
+                                <option value="Tarjeta">Tarjeta</option>
+                                <option value="Yape">Yape</option>
+                                <option value="Plin">Plin</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="numero_operacion" class="pago-form-label">Número de Operación</label>
+                            <input type="text" class="form-control pago-form-control" id="numero_operacion" name="numero_operacion" required placeholder="">
+                        </div>
+                    </div>
+                    <div class="text-end mt-4">
+                        <button type="submit" class="btn btn-success pago-btn-pro"><i class="fas fa-check-circle me-2"></i>Registrar Pago</button>
+                    </div>
+                </form>
             </div>
         </div>
-
-        <div class="mb-3">
-            <label for="pago_moneda" class="form-label">Moneda del Pago</label>
-            <select class="form-select" id="pago_moneda" name="pago_moneda" required disabled>
-                <option value="Soles" {{ $moneda === 'Soles' ? 'selected' : '' }}>Soles</option>
-                <option value="Dolares" {{ $moneda === 'Dolares' ? 'selected' : '' }}>Dólares</option>
-            </select>
+        <div class="pago-historial-card mx-auto mb-5" style="max-width: 1100px;">
+            <div class="pago-historial-header d-flex align-items-center">
+                <i class="fas fa-history me-2 text-primary"></i>
+                <h5 class="mb-0">Historial de Pagos</h5>
+            </div>
+            <div class="pago-historial-list">
+                <ul class="list-group list-group-flush">
+                    @forelse ($venta->pagos as $pago)
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>
+                                <i class="fas fa-calendar-alt me-1 text-muted"></i>
+                                <span class="fw-semibold">{{ $pago->fecha }}</span>
+                                <span class="badge ms-2">{{ $pago->moneda }}</span>
+                            </span>
+                            <span class="fw-bold text-success">{{ number_format($pago->monto, 2) }}</span>
+                        </li>
+                    @empty
+                        <li class="list-group-item text-center text-muted">No hay pagos registrados.</li>
+                    @endforelse
+                </ul>
+            </div>
         </div>
-
-        <div class="mb-3">
-            <label for="tipo_pago" class="form-label">Tipo de Pago</label>
-            <select class="form-select" id="tipo_pago" name="tipo_pago" required>
-                <option value="Efectivo">Efectivo</option>
-                <option value="Transferencia">Transferencia</option>
-                <option value="Tarjeta">Tarjeta</option>
-                <option value="Yape">Yape</option>
-                <option value="Plin">Plin</option>
-            </select>
-        </div>
-
-        <div class="mb-3" id="numeroOperacionContainer">
-            <label for="numero_operacion" class="form-label">Número de Operación</label>
-            <input type="text" class="form-control" id="numero_operacion" name="numero_operacion" required>
-        </div>
-
-        <div class="text-end">
-            <button type="submit" class="btn btn-success">Registrar Pago</button>
-        </div>
-    </form>
-
-    <!-- Historial de Pagos -->
-    <div class="mt-4">
-        <h6>Historial de Pagos</h6>
-        <ul class="list-group">
-            @foreach ($venta->pagos as $pago)
-                <li class="list-group-item">
-                    {{ $pago->fecha }} - {{ $pago->moneda }} {{ number_format($pago->monto, 2) }}
-                </li>
-            @endforeach
-        </ul>
     </div>
 </div>
 @endsection
@@ -290,36 +414,4 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 })();
 
-<script>
-(function () {
-    if (window.__pagosDebugInit) return;
-    window.__pagosDebugInit = true;
-
-    console.log('Iniciando depuración del script de pagos...');
-
-    const montoInput = document.getElementById('pago_monto');
-    if (!montoInput) {
-        console.error('El campo "Monto a Pagar" no se encontró en el DOM.');
-        return;
-    }
-
-    console.log('Campo "Monto a Pagar" encontrado:', montoInput);
-
-    if (typeof window.SALDO_PENDIENTE === 'undefined') {
-        console.error('La variable global "SALDO_PENDIENTE" no está definida.');
-        return;
-    }
-
-    console.log('Saldo pendiente obtenido desde la variable global:', window.SALDO_PENDIENTE);
-
-    const saldo = Number(window.SALDO_PENDIENTE);
-    if (isNaN(saldo)) {
-        console.error('El saldo pendiente no es un número válido:', window.SALDO_PENDIENTE);
-        return;
-    }
-
-    montoInput.value = saldo.toFixed(2);
-    console.log('Monto a pagar actualizado automáticamente:', montoInput.value);
-})();
-</script>
 @endsection

@@ -68,6 +68,17 @@ class VentaController extends Controller
         $ventas = $query->orderBy('created_at', 'desc')
             ->limit(500) // Limitar resultados para mejor performance
             ->get();
+
+        // Forzar recálculo de saldo para cada venta listada (por si hay inconsistencias)
+        foreach ($ventas as $venta) {
+            $pagos = $venta->pagos()->sum('monto');
+            if ($pagos == 0) {
+                $venta->saldo = $venta->total;
+            } else {
+                $venta->saldo = $venta->total - $pagos;
+            }
+            $venta->save();
+        }
         
         // Obtener tipo de cambio actual (ya tiene cache interno)
         $tipoCambio = $this->obtenerTipoCambio();
@@ -912,10 +923,10 @@ class VentaController extends Controller
                 ]);
             }
 
+
             foreach ($data['detalle'] as $d) {
                 $precio_final = $d['precio_unitario'] * (1 - ($d['descuento_porcentaje'] ?? 0) / 100);
                 $subtotal_linea = $precio_final * $d['cantidad'];
-                // No agregar IGV adicional en líneas (precios finales ya incluyen impuestos)
                 $igv_linea = 0;
                 $total_linea = $subtotal_linea;
                 \App\Models\DetalleVenta::create([
@@ -930,17 +941,13 @@ class VentaController extends Controller
                     'total' => $total_linea,
                 ]);
 
-                // Descontar stock solo para comprobantes de venta (Factura, Boleta, Ticket)
                 if ($descuentaStock) {
                     $productoAntes = Producto::find($d['id_producto']);
                     $stockAntes = $productoAntes ? $productoAntes->stock_actual : 0;
-                    
                     Producto::where('id_producto', $d['id_producto'])
                         ->decrement('stock_actual', $d['cantidad']);
-                    
                     $productoDespues = Producto::find($d['id_producto']);
                     $stockDespues = $productoDespues ? $productoDespues->stock_actual : 0;
-                    
                     \Log::info('[CONTROL STOCK] Stock descontado', [
                         'producto_id' => $d['id_producto'],
                         'cantidad_descontada' => $d['cantidad'],
@@ -951,6 +958,17 @@ class VentaController extends Controller
                     \Log::info('[CONTROL STOCK] NO se descuenta stock porque no es comprobante de venta');
                 }
             }
+
+            // Recalcular total y saldo después de agregar productos
+            $venta->total = $venta->detalleVentas()->sum('total');
+            $pagos = $venta->pagos()->sum('monto');
+            // Si no hay pagos, el saldo debe ser igual al total
+            if ($pagos == 0) {
+                $venta->saldo = $venta->total;
+            } else {
+                $venta->saldo = $venta->total - $pagos;
+            }
+            $venta->save();
 
             \App\Models\ComprobanteElectronico::create([
                 'id_venta' => $venta->id_venta,
@@ -983,7 +1001,7 @@ class VentaController extends Controller
                     ],
                 ], 201);
             }
-            return redirect()->route('ventas.show', $venta->id_venta)
+            return redirect()->route('ventas.index')
                 ->with('success', 'Venta registrada correctamente. Número de comprobante: ' . $numero_formateado);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -1006,17 +1024,22 @@ class VentaController extends Controller
                 3 => 'Nota de Crédito',
                 4 => 'Cotizacion'
             ];
-            
             $tipoComprobante = $tiposComprobante[$venta->id_tipo_comprobante] ?? 'Comprobante';
-            
+
             // Obtener y validar tipo de cambio (prioriza el ingresado en la venta)
             $tipoCambioRaw = $venta->tipo_cambio ?? null;
             $tipoCambio = $this->validarTipoCambio($tipoCambioRaw) ?? $this->obtenerTipoCambio();
-            
+
             // Determinar moneda de la venta
             $codigoIso = strtoupper(optional($venta->moneda)->codigo_iso ?? 'PEN');
             $simbolo = optional($venta->moneda)->simbolo ?? ($codigoIso === 'USD' ? '$' : 'S/');
             $descripcionMoneda = optional($venta->moneda)->nombre ?? ($codigoIso === 'USD' ? 'Dólares Americanos' : 'Soles Peruanos');
+
+            // Leer parámetro para mostrar código/parte
+            $mostrarCodigoParte = true;
+            if (request()->has('mostrar_codigo_parte')) {
+                $mostrarCodigoParte = request('mostrar_codigo_parte') == '1' ? true : false;
+            }
 
             // Preparar datos para el PDF
             $data = [
@@ -1035,7 +1058,8 @@ class VentaController extends Controller
                 ],
                 'tipoCambio' => $tipoCambio,
                 'descuentoTotal' => $venta->detalleVentas->sum('descuento_monto') ?? 0,
-                'totalEnLetras' => $this->numeroALetrasConMoneda($venta->total ?? 0, $codigoIso)
+                'totalEnLetras' => $this->numeroALetrasConMoneda($venta->total ?? 0, $codigoIso),
+                'mostrarCodigoParte' => $mostrarCodigoParte
             ];
 
             // Seleccionar la vista según el tipo de comprobante
@@ -1045,13 +1069,12 @@ class VentaController extends Controller
                 'Boleta' => 'comprobantes.boleta',
                 'Nota de Crédito' => 'comprobantes.nota_credito'
             ];
-            
             $vista = $vistaMap[$tipoComprobante] ?? 'comprobantes.pdf';
-            
+
             // Generar PDF usando la vista específica del tipo de comprobante
             $pdf = PDF::loadView($vista, $data);
             $pdf->setPaper('A4', 'portrait');
-            
+
             // Nombre del archivo con prefijo según tipo
             $prefijos = [
                 'Cotizacion' => 'COT',
@@ -1059,13 +1082,12 @@ class VentaController extends Controller
                 'Boleta' => 'BOL',
                 'Nota de Crédito' => 'NC'
             ];
-            
             $prefijo = $prefijos[$tipoComprobante] ?? 'COMP';
             $numero = str_replace(['-', $venta->serie], '', $venta->numero);
             $fileName = $prefijo . '_' . $venta->serie . '_' . $numero . '.pdf';
-            
+
             return $pdf->download($fileName);
-            
+
         } catch (\Exception $e) {
             // Retornar error detallado para debug
             return response()->json([
@@ -1716,8 +1738,14 @@ class VentaController extends Controller
     {
         $venta = Venta::findOrFail($id);
 
-        return view('ventas.pago', [
-            'venta' => $venta
+        $codigoIso = strtoupper(optional($venta->moneda)->codigo_iso ?? 'PEN');
+        $nombreMoneda = $codigoIso === 'USD' ? 'Dolares' : 'Soles';
+        return view('ventas.pagos.show', [
+            'venta' => $venta,
+            'id' => $venta->id_venta,
+            'saldo' => $venta->saldo,
+            'simbolo' => optional($venta->moneda)->simbolo ?? 'S/',
+            'moneda' => $nombreMoneda
         ]);
     }
 
@@ -1728,7 +1756,7 @@ class VentaController extends Controller
         $venta = Venta::findOrFail($id);
         \Log::info('Venta encontrada', ['venta' => $venta]);
 
-        // Validate the payment input
+        // Validar los datos del pago
         $request->validate([
             'monto' => 'required|numeric|min:0.01',
             'metodo' => 'required|string|max:255',
@@ -1736,22 +1764,31 @@ class VentaController extends Controller
         ]);
 
         try {
-            // Register the payment
+            // Registrar el pago correctamente
             $pago = new \App\Models\PagoVenta();
-            $pago->id_venta = $venta->id;
+            $pago->id_venta = $venta->id_venta;
             $pago->monto = $request->monto;
             $pago->metodo = $request->metodo;
             $pago->numero_operacion = $request->numero_operacion;
             $pago->fecha = now();
+            $pago->moneda = $request->pago_moneda;
             $pago->save();
             \Log::info('Pago registrado', ['pago' => $pago]);
 
-            // Deduct the payment from the pending balance
-            $venta->saldo_pendiente -= $request->monto;
+            // Actualizar el saldo correctamente
+            $venta->saldo -= $request->monto;
+            // Si el saldo es 0 o menor, cambiar estado a 'ACEPTADO'
+            if ($venta->saldo <= 0) {
+                $venta->saldo = 0;
+                $venta->xml_estado = 'ACEPTADO';
+            }
             $venta->save();
-            \Log::info('Saldo actualizado', ['venta' => $venta]);
+            \Log::info('Saldo y estado actualizados', ['venta' => $venta]);
 
-            return redirect('/ventas')->with('success', 'Pago registrado correctamente.');
+            $saldoAnterior = $venta->saldo + $request->monto;
+            $saldoActual = $venta->saldo;
+            $mensaje = 'Pago registrado correctamente. Saldo anterior: ' . number_format($saldoAnterior, 2) . ', monto pagado: ' . number_format($request->monto, 2) . ', saldo actual: ' . number_format($saldoActual, 2);
+            return redirect('/ventas')->with('success', $mensaje);
         } catch (\Exception $e) {
             \Log::error('Error al registrar el pago', ['error' => $e->getMessage()]);
             return redirect('/ventas')->with('error', 'Hubo un problema al registrar el pago.');

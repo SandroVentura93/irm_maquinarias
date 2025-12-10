@@ -41,10 +41,12 @@
         </div>
     </div>
 
-    <form id="formPago" method="POST" action="#">
-        <input type="hidden" name="id_venta" id="pago_id_venta">
-        <input type="hidden" id="pago_moneda" name="moneda">
-        <input type="hidden" id="pago_tipo_cambio" name="tipo_cambio">
+    <form id="formPago" method="POST" action="{{ url('/ventas/' . ($venta->id_venta ?? '') . '/pago') }}">
+        @csrf
+
+        <input type="hidden" name="id_venta" id="pago_id_venta" value="{{ $venta->id_venta ?? '' }}">
+        <input type="hidden" id="pago_moneda" name="moneda" value="{{ $venta->moneda ?? 'PEN' }}">
+        <input type="hidden" id="pago_tipo_cambio" name="tipo_cambio" value="{{ $venta->tipo_cambio ?? 1 }}">
 
         <div class="mb-3">
             <label for="pago_monto" class="form-label">Monto a Pagar</label>

@@ -159,7 +159,7 @@ Route::middleware(['auth'])->group(function () {
     
     // Acciones especiales de ventas - Admin, Gerente y Vendedor
     Route::middleware(['role:1', 'role:2', 'role:3'])->prefix('ventas')->name('ventas.')->group(function () {
-        Route::post('pago', [VentaController::class, 'registrarPagoConId'])->name('pago');
+        Route::post('{venta}/pago', [VentaController::class, 'registrarPagoConId'])->name('pagar');
         Route::get('{venta}/confirm-cancel', [VentaController::class, 'confirmCancel'])->name('confirm-cancel');
         Route::patch('{venta}/cancel', [VentaController::class, 'cancel'])->name('cancel');
         Route::get('{venta}/pdf', [VentaController::class, 'generarPDF'])->name('pdf');
@@ -443,12 +443,7 @@ Route::middleware(['auth'])->group(function () {
     // Nueva ruta para la vista de pagos
     Route::get('/ventas/pagos', [PagosController::class, 'index'])->name('ventas.pagos');
     
-    // Ruta para registrar un pago
-    Route::post('/ventas/pago', [PagosController::class, 'store'])->name('ventas.pago');
 
     // Ruta para mostrar la vista de pago para una venta específica
-    Route::match(['get', 'post'], '/ventas/{id}/pago', [PagosController::class, 'show'])->name('ventas.mostrar_pago');
-    
-    // Ruta para mostrar la vista de pago para una venta específica (nueva ruta)
     Route::get('ventas/{venta}/pago', [VentaController::class, 'pago'])->name('ventas.pago');
 });

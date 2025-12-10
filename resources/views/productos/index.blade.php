@@ -15,10 +15,14 @@
                 </div>
             </div>
             <div class="header-actions d-flex align-items-center">
-                <div class="tipo-cambio-badge me-3">
-                    <i class="fas fa-exchange-alt me-2"></i>
-                    <strong>TC:</strong> S/ {{ number_format($tipoCambio, 2) }}/USD
-                </div>
+                <form method="GET" action="{{ route('productos.index') }}" class="d-flex align-items-center me-3" id="formTipoCambioGlobal">
+                    <div class="input-group input-group-sm tipo-cambio-badge">
+                        <span class="input-group-text"><i class="fas fa-exchange-alt"></i> TC</span>
+                        <input type="number" step="0.0001" min="0" name="tipo_cambio" id="tipo_cambio_global" class="form-control" value="{{ number_format($tipoCambio, 4) }}" style="max-width:100px;">
+                        <span class="input-group-text">S/ x USD</span>
+                        <button type="submit" class="btn btn-outline-info btn-sm ms-2">Aplicar</button>
+                    </div>
+                </form>
                 <a href="{{ route('productos.create') }}" class="btn btn-success btn-modern">
                     <i class="fas fa-plus-circle me-2"></i>Nuevo Producto
                 </a>
@@ -215,10 +219,6 @@
             </form>
 
             <!-- Tipo de Cambio Manual -->
-            <div class="form-group mt-4">
-                <label for="tipoCambioManual">Tipo de Cambio Manual:</label>
-                <input type="number" step="0.01" class="form-control" id="tipoCambioManual" name="tipoCambioManual" placeholder="Ingrese el tipo de cambio">
-            </div>
         </div>
     </div>
 

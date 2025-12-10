@@ -37,8 +37,8 @@ class DetalleVentaController extends Controller
     public function store(Request $request)
     {
         $validatedData = $request->validate([
-            'id_venta' => 'required|exists:ventas,id',
-            'id_producto' => 'required|exists:productos,id',
+            'id_venta' => 'required|exists:ventas,id_venta',
+            'id_producto' => 'required|exists:productos,id_producto',
             'cantidad' => 'required|integer|min:1',
             'precio_unitario' => 'required|numeric',
             'subtotal' => 'required|numeric',
@@ -46,9 +46,20 @@ class DetalleVentaController extends Controller
             'total' => 'required|numeric',
         ]);
 
-        DetalleVenta::create($validatedData);
+        $detalle = DetalleVenta::create($validatedData);
 
-        return redirect()->route('detalle_ventas.index')->with('success', 'Detalle de venta creado exitosamente.');
+        // Actualizar saldo solo si el comprobante es factura, boleta o ticket
+        $venta = \App\Models\Venta::find($detalle->id_venta);
+        $tipoComprobante = strtolower($venta->tipoComprobante->descripcion ?? '');
+        if (in_array($tipoComprobante, ['factura', 'boleta', 'ticket'])) {
+            $venta->total = $venta->total + $detalle->total;
+            // Recalcular saldo: saldo = total - suma de pagos
+            $pagos = $venta->pagos()->sum('monto');
+            $venta->saldo = $venta->total - $pagos;
+            $venta->save();
+        }
+
+        return redirect()->route('detalle_ventas.index')->with('success', 'Detalle de venta creado exitosamente y saldo actualizado.');
     }
 
     /**

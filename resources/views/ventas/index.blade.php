@@ -326,14 +326,66 @@
                                         <i class="fas fa-eye"></i>
                                     </a>
                                     @if($venta->xml_estado !== 'ANULADO')
-                                    <a href="{{ route('ventas.pdf', $venta) }}" class="btn btn-action btn-pdf" title="Generar PDF" target="_blank">
-                                        <i class="fas fa-file-pdf"></i>
-                                    </a>
+                                        @if($esCotizacion)
+                                            <button type="button" class="btn btn-action btn-pdf" title="Generar PDF" onclick="showCotizacionPdfModal({{ $venta->id_venta }})">
+                                                <i class="fas fa-file-pdf"></i>
+                                            </button>
+                                        @else
+                                            <a href="{{ route('ventas.pdf', $venta) }}" class="btn btn-action btn-pdf" title="Generar PDF" target="_blank">
+                                                <i class="fas fa-file-pdf"></i>
+                                            </a>
+                                        @endif
                                     @endif
+                                    @push('scripts')
+                                    <!-- Modal para opciones de impresión de cotización -->
+                                    <div class="modal fade" id="cotizacionPdfModal" tabindex="-1" aria-labelledby="cotizacionPdfModalLabel" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="cotizacionPdfModalLabel">Opciones de impresión de cotización</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="form-check mb-3">
+                                                        <input class="form-check-input" type="checkbox" value="1" id="mostrarCodigoParte" checked>
+                                                        <label class="form-check-label" for="mostrarCodigoParte">
+                                                            Mostrar <b>número de parte</b> y <b>código</b> de producto en la cotización
+                                                        </label>
+                                                    </div>
+                                                    <div class="alert alert-info small">
+                                                        Si desmarcas la opción, la cotización no mostrará el código ni el número de parte de los productos.<br>
+                                                        Puedes cambiar esta preferencia cada vez que imprimas.
+                                                    </div>
+                                                    <div class="d-grid gap-2 mt-3">
+                                                        <button type="button" class="btn btn-success" onclick="procederDescargaCotizacion()">
+                                                            <i class="fas fa-file-pdf me-1"></i> Descargar PDF
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <script>
+                                    let cotizacionIdSeleccionada = null;
+                                    function showCotizacionPdfModal(idCotizacion) {
+                                        cotizacionIdSeleccionada = idCotizacion;
+                                        const modal = new bootstrap.Modal(document.getElementById('cotizacionPdfModal'));
+                                        document.getElementById('mostrarCodigoParte').checked = true;
+                                        modal.show();
+                                    }
+                                    function procederDescargaCotizacion() {
+                                        if (!cotizacionIdSeleccionada) return;
+                                        const mostrar = document.getElementById('mostrarCodigoParte').checked ? 1 : 0;
+                                        const url = `/ventas/${cotizacionIdSeleccionada}/pdf?mostrar_codigo_parte=${mostrar}`;
+                                        window.open(url, '_blank');
+                                        bootstrap.Modal.getInstance(document.getElementById('cotizacionPdfModal')).hide();
+                                    }
+                                    </script>
+                                    @endpush
                                     <!-- Botón de pago -->
 
                                     @if($venta->xml_estado === 'PENDIENTE')
-                                    <a href="{{ route('ventas.mostrar_pago', $venta) }}" class="btn btn-action btn-pay" title="Registrar Pago">
+                                    <a href="{{ route('ventas.pago', $venta) }}" class="btn btn-action btn-pay" title="Registrar Pago">
                                         <i class="fas fa-credit-card"></i>
                                     </a>
                                     @endif

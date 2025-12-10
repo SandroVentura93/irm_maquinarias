@@ -249,12 +249,14 @@
                     <td>{{ $index + 1 }}</td>
                     <td style="text-align: left; padding-left: 10px;">
                         <strong>{{ $detalle->producto->descripcion ?? 'Producto no encontrado' }}</strong>
-                        @if($detalle->producto->codigo)
-                            <br><small>Código: {{ $detalle->producto->codigo }}</small>
-                        @endif
-                        @if($detalle->producto->numero_parte)
-                            <br><small>P/N: {{ $detalle->producto->numero_parte }}</small>
-                        @endif
+                        @php
+                            $mostrarCodigoParte = true;
+                            if (isset($datos) && array_key_exists('mostrarCodigoParte', $datos)) {
+                                $mostrarCodigoParte = $datos['mostrarCodigoParte'];
+                            }
+                        @endphp
+                        <br><small>Código: {{ $mostrarCodigoParte ? ($detalle->producto->codigo ?? '-') : '-' }}</small>
+                        <br><small>P/N: {{ $mostrarCodigoParte ? ($detalle->producto->numero_parte ?? '-') : '-' }}</small>
                     </td>
                     <td>{{ number_format($detalle->cantidad, 2) }}</td>
                     @php

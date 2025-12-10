@@ -587,7 +587,7 @@
 
 <!-- Script personalizado del layout -->
 @push('scripts')
-<script src="{{ asset('js/ui-enhancements.js') }}"></script>
+<script src="{{ asset('js/app.js') }}"></script>
 @endpush
 <!-- Sección personalizada para scripts adicionales -->
 @yield('scripts')

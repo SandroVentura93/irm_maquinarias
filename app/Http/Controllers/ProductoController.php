@@ -58,16 +58,15 @@ class ProductoController extends Controller
         $categorias = Categoria::orderBy('descripcion')->get();
         $marcas = Marca::orderBy('descripcion')->get();
         
-        // Obtener tipo de cambio actual
-        $tipoCambio = $this->obtenerTipoCambio();
-        
         // Estadísticas rápidas
         $estadisticas = [
             'total_productos' => Producto::count(),
             'productos_bajo_stock' => Producto::whereColumn('stock_actual', '<', 'stock_minimo')->count(),
             'valor_total_inventario' => Producto::sum('precio_venta'),
         ];
-        
+        // Tipo de cambio manual: por defecto 3.80, editable en la vista
+        $tipoCambio = $request->get('tipo_cambio', session('tipo_cambio', 3.80));
+        session(['tipo_cambio' => $tipoCambio]);
         return view('productos.index', compact('productos', 'tipoCambio', 'categorias', 'marcas', 'estadisticas'));
     }
 
@@ -80,9 +79,8 @@ class ProductoController extends Controller
         $marcas = Marca::all();
         $proveedores = Proveedor::all();
         
-        // Obtener tipo de cambio actual
-        $tipoCambio = $this->obtenerTipoCambio();
-
+        // Tipo de cambio manual: por defecto 3.80, editable en la vista
+        $tipoCambio = session('tipo_cambio', 3.80);
         return view('productos.create', compact('categorias', 'marcas', 'proveedores', 'tipoCambio'));
     }
 
@@ -121,9 +119,8 @@ class ProductoController extends Controller
      */
     public function show(Producto $producto)
     {
-        // Obtener tipo de cambio actual
-        $tipoCambio = $this->obtenerTipoCambio();
-        
+        // Tipo de cambio manual: por defecto 3.80, editable en la vista
+        $tipoCambio = session('tipo_cambio', 3.80);
         return view('productos.show', compact('producto', 'tipoCambio'));
     }
 
@@ -136,9 +133,8 @@ class ProductoController extends Controller
         $marcas = Marca::all();
         $proveedores = Proveedor::all();
         
-        // Obtener tipo de cambio actual
-        $tipoCambio = $this->obtenerTipoCambio();
-
+        // Tipo de cambio manual: por defecto 3.80, editable en la vista
+        $tipoCambio = session('tipo_cambio', 3.80);
         return view('productos.edit', compact('producto', 'categorias', 'marcas', 'proveedores', 'tipoCambio'));
     }
 
@@ -218,54 +214,6 @@ class ProductoController extends Controller
         ]);
     }
 
-    // Método para obtener tipo de cambio actual
-    private function obtenerTipoCambio()
-    {
-        try {
-            // Intentar obtener de caché primero
-            $tipoCambio = Cache::get('tipo_cambio_actual');
-            
-            if ($tipoCambio) {
-                return $tipoCambio;
-            }
-            
-            // Si no hay en caché, obtener de API
-            $tipoCambio = $this->obtenerTipoCambioAPI();
-            
-            if ($tipoCambio) {
-                // Guardar en caché por 1 hora
-                Cache::put('tipo_cambio_actual', $tipoCambio, 3600);
-                return $tipoCambio;
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Error al obtener tipo de cambio de API: ' . $e->getMessage());
-        }
-
-        // Valor por defecto si falla la API
-        return 3.75;
-    }
-
-    // Método para obtener tipo de cambio desde API externa
-    private function obtenerTipoCambioAPI()
-    {
-        try {
-            // Configurar SSL para evitar errores de certificados
-            $response = Http::withOptions([
-                'verify' => false,
-            ])->timeout(10)->get('https://api.exchangerate-api.com/v4/latest/USD');
-            
-            if ($response->successful()) {
-                $data = $response->json();
-                if (isset($data['rates']['PEN'])) {
-                    return round($data['rates']['PEN'], 2);
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::error('Error en API de tipo de cambio: ' . $e->getMessage());
-        }
-
-        return null;
-    }
 
     /**
      * ⚡ Búsqueda optimizada para AJAX (formulario de ventas)

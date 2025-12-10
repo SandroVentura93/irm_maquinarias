@@ -33,7 +33,9 @@
                 <div class="hero-actions">
                     <div class="exchange-rate-badge">
                         <i class="fas fa-exchange-alt me-2"></i>
-                        <span>TC: S/ {{ number_format($tipoCambio, 2) }}/USD</span>
+                        <strong>TC:</strong>
+                        <input type="number" step="0.0001" min="0" name="tipo_cambio" id="tipo_cambio_form" class="form-control d-inline-block w-auto ms-1" value="{{ number_format($tipoCambio, 4) }}" style="max-width:100px;display:inline-block;">
+                        <span class="ms-1">S/ x USD</span>
                     </div>
                     <a href="{{ route('productos.show', $producto) }}" class="btn btn-info btn-hero me-2">
                         <i class="fas fa-eye me-2"></i>Ver Producto
