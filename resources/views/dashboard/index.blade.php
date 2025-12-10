@@ -99,28 +99,49 @@
                 </div>
             </div>
         </div>
-        
+        <!-- NUEVO: Totales por Moneda -->
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="stats-card stats-card-success">
+            <div class="stats-card stats-card-secondary">
+                <div class="stats-card-body">
+                    <div class="stats-icon">
+                        <i class="fas fa-money-bill-wave"></i>
+                    </div>
+                    <div class="stats-content">
+                        <div class="stats-number">PEN: S/ {{ number_format($ingresos_total_pen, 2) }}</div>
+                        <div class="stats-label">Ingresos en Soles</div>
+                        <div class="stats-growth">
+                            <span class="stats-today">Hoy: S/ {{ number_format($ingresos_hoy_pen, 2) }}</span>
+                            <span class="stats-month">Mes: S/ {{ number_format($ingresos_mes_pen, 2) }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="stats-footer">
+                    <a href="{{ route('ventas.index') }}?moneda=PEN">Ver ventas PEN <i class="fas fa-arrow-right ms-1"></i></a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stats-card stats-card-secondary">
                 <div class="stats-card-body">
                     <div class="stats-icon">
                         <i class="fas fa-dollar-sign"></i>
                     </div>
                     <div class="stats-content">
-                        <div class="stats-number">S/ {{ number_format($ingresos_total, 2) }}</div>
-                        <div class="stats-label">Ingresos Totales</div>
+                        <div class="stats-number">USD: $ {{ number_format($ingresos_total_usd, 2) }}</div>
+                        <div class="stats-label">Ingresos en Dólares</div>
                         <div class="stats-growth">
-                            <span class="stats-today">Hoy: S/ {{ number_format($ingresos_hoy, 2) }}</span>
-                            <span class="stats-month">Mes: S/ {{ number_format($ingresos_mes, 2) }}</span>
+                            <span class="stats-today">Hoy: $ {{ number_format($ingresos_hoy_usd, 2) }}</span>
+                            <span class="stats-month">Mes: $ {{ number_format($ingresos_mes_usd, 2) }}</span>
                         </div>
                     </div>
                 </div>
                 <div class="stats-footer">
-                    <a href="{{ route('ventas.index') }}">Ver detalles <i class="fas fa-arrow-right ms-1"></i></a>
+                    <a href="{{ route('ventas.index') }}?moneda=USD">Ver ventas USD <i class="fas fa-arrow-right ms-1"></i></a>
                 </div>
             </div>
         </div>
-        
+        <!-- Panel de Ingresos Totales eliminado por solicitud del usuario -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="stats-card stats-card-info">
                 <div class="stats-card-body">
@@ -358,18 +379,24 @@
                     </div>
                     <div class="chart-controls">
                         <div class="chart-metrics">
-                            <div class="metric">
-                                <span class="metric-value">{{ number_format($ventas_semana ? array_sum(array_column($ventas_semana, 'ventas')) : 0) }}</span>
-                                <span class="metric-label">Ventas 7 días</span>
-                            </div>
-                            <div class="metric">
-                                <span class="metric-value">S/ {{ number_format($ventas_semana ? array_sum(array_column($ventas_semana, 'ingresos')) : 0, 2) }}</span>
-                                <span class="metric-label">Ingresos 7 días</span>
-                            </div>
+                                <div class="metric">
+                                    <span class="metric-value">{{ number_format($ventas_semana ? array_sum(array_column($ventas_semana, 'ventas')) : 0) }}</span>
+                                    <span class="metric-label">Ventas 7 días</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-value">S/ {{ number_format($ventas_semana ? array_sum(array_column($ventas_semana, 'ingresos_pen')) : 0, 2) }}</span>
+                                    <span class="metric-subvalue">$ {{ number_format($ventas_semana ? array_sum(array_column($ventas_semana, 'ingresos_usd')) : 0, 2) }}</span>
+                                    <span class="metric-label">Ingresos 7 días (PEN / USD)</span>
+                                </div>
                         </div>
                         <button class="btn btn-sm btn-outline-primary chart-refresh-btn" onclick="refreshChart('ventas')" title="Actualizar datos">
                             <i class="fas fa-sync-alt"></i>
                         </button>
+                        <!-- Totales por moneda (últimos 7 días) -->
+                        <div class="chart-totals mt-2">
+                            <span class="total-pen">S/ {{ number_format($ventas_semana ? array_sum(array_column($ventas_semana, 'ingresos_pen')) : 0, 2) }}</span>
+                            <span class="total-usd">$ {{ number_format($ventas_semana ? array_sum(array_column($ventas_semana, 'ingresos_usd')) : 0, 2) }}</span>
+                        </div>
                     </div>
                 </div>
                 <div class="chart-body">
@@ -479,14 +506,15 @@
                     </div>
                     <div class="chart-controls">
                         <div class="chart-metrics">
-                            <div class="metric">
-                                <span class="metric-value">{{ number_format($estadisticas_mensuales ? array_sum(array_column($estadisticas_mensuales, 'ventas')) : 0) }}</span>
-                                <span class="metric-label">Ventas 6 meses</span>
-                            </div>
-                            <div class="metric">
-                                <span class="metric-value">S/ {{ number_format($estadisticas_mensuales ? array_sum(array_column($estadisticas_mensuales, 'ingresos')) : 0, 2) }}</span>
-                                <span class="metric-label">Ingresos 6 meses</span>
-                            </div>
+                                <div class="metric">
+                                    <span class="metric-value">{{ number_format($estadisticas_mensuales ? array_sum(array_column($estadisticas_mensuales, 'ventas')) : 0) }}</span>
+                                    <span class="metric-label">Ventas 6 meses</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-value">S/ {{ number_format($estadisticas_mensuales ? array_sum(array_column($estadisticas_mensuales, 'ingresos_pen')) : 0, 2) }}</span>
+                                    <span class="metric-subvalue">$ {{ number_format($estadisticas_mensuales ? array_sum(array_column($estadisticas_mensuales, 'ingresos_usd')) : 0, 2) }}</span>
+                                    <span class="metric-label">Ingresos 6 meses (PEN / USD)</span>
+                                </div>
                         </div>
                     </div>
                 </div>
@@ -587,6 +615,27 @@
     --hover-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
     --border-radius: 15px;
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chart-totals {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-left: 0.5rem;
+}
+.chart-totals .total-pen {
+    font-weight: 700;
+    color: #1f9d55;
+}
+.chart-totals .total-usd {
+    font-weight: 700;
+    color: #ff6f3b;
+}
+.metric-subvalue {
+    display: block;
+    color: #6b7280;
+    font-weight: 600;
+    margin-top: 4px;
 }
 
 /* Header Ultra Moderno del Dashboard */
@@ -2370,7 +2419,21 @@ document.addEventListener('DOMContentLoaded', function() {
     Chart.defaults.backgroundColor = 'rgba(102, 126, 234, 0.1)';
     
     // Datos para gráficos
-    const ventasData = @json($ventas_semana);
+    const ventasData = @json($ventas_semana || []);
+    // Preparar arrays por moneda y balances acumulados
+    const ingresosPenArr = ventasData.map(item => Number(item.ingresos_pen || 0));
+    const ingresosUsdArr = ventasData.map(item => Number(item.ingresos_usd || 0));
+    function cumulative(arr) {
+        const out = [];
+        let s = 0;
+        for (let v of arr) {
+            s += Number(v) || 0;
+            out.push(s);
+        }
+        return out;
+    }
+    const balancePen = cumulative(ingresosPenArr);
+    const balanceUsd = cumulative(ingresosUsdArr);
     const estadisticasMensuales = @json($estadisticas_mensuales);
     
     // Configuración responsive común
@@ -2407,10 +2470,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 pointBorderColor: '#ffffff',
                 pointBorderWidth: 2
             }, {
-                label: 'Ingresos (S/)',
-                data: ventasData.map(item => item.ingresos),
+                label: 'Ingresos PEN (S/)',
+                data: ventasData.map(item => item.ingresos_pen || 0),
                 borderColor: '#28a745',
-                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                backgroundColor: 'rgba(40, 167, 69, 0.08)',
                 borderWidth: 3,
                 tension: 0.4,
                 fill: true,
@@ -2418,7 +2481,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 pointBorderColor: '#ffffff',
                 pointBorderWidth: 2,
                 yAxisID: 'y1'
+            }, {
+                label: 'Ingresos USD ($)',
+                data: ventasData.map(item => item.ingresos_usd || 0),
+                borderColor: '#ff7f50',
+                backgroundColor: 'rgba(255, 127, 80, 0.08)',
+                borderWidth: 3,
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: '#ff7f50',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                yAxisID: 'y2'
             }]
+
+            // Añadimos líneas de balance acumulado por moneda
+            .concat([{
+                label: 'Balance Acumulado PEN (S/)',
+                data: balancePen,
+                borderColor: '#1f9d55',
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: false,
+                borderDash: [6,4],
+                pointRadius: 0,
+                yAxisID: 'y1'
+            }, {
+                label: 'Balance Acumulado USD ($)',
+                data: balanceUsd,
+                borderColor: '#ff6f3b',
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: false,
+                borderDash: [6,4],
+                pointRadius: 0,
+                yAxisID: 'y2'
+            }])
         },
         options: {
             ...commonResponsiveConfig,
@@ -2445,7 +2545,26 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     }
                 },
+                // Left axis used for PEN (S/)
                 y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    beginAtZero: true,
+                    grid: {
+                        color: '#f1f5f9'
+                    },
+                    ticks: {
+                        font: {
+                            size: 12
+                        },
+                        callback: function(value) {
+                            return 'S/ ' + value.toLocaleString();
+                        }
+                    }
+                },
+                // Right axis used for USD ($)
+                y2: {
                     type: 'linear',
                     display: true,
                     position: 'right',
@@ -2458,7 +2577,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             size: 12
                         },
                         callback: function(value) {
-                            return 'S/ ' + value.toLocaleString();
+                            return '$ ' + value.toLocaleString();
                         }
                     }
                 }
@@ -2490,11 +2609,25 @@ document.addEventListener('DOMContentLoaded', function() {
                             return 'Fecha: ' + context[0].label;
                         },
                         label: function(context) {
-                            if (context.datasetIndex === 0) {
-                                return 'Ventas: ' + context.parsed.y + ' unidades';
-                            } else {
-                                return 'Ingresos: S/ ' + context.parsed.y.toLocaleString();
+                            // Normalizar label y valor
+                            const label = context.dataset && context.dataset.label ? context.dataset.label : '';
+                            const rawValue = (context.parsed && context.parsed.y !== undefined) ? context.parsed.y : context.parsed;
+                            const value = (rawValue === null || rawValue === undefined) ? 0 : rawValue;
+
+                            if (label.includes('Ventas')) {
+                                return 'Ventas: ' + value + ' unidades';
                             }
+
+                            if (label.includes('PEN')) {
+                                return 'Ingresos: S/ ' + Number(value).toLocaleString();
+                            }
+
+                            if (label.includes('USD')) {
+                                return 'Ingresos: $ ' + Number(value).toLocaleString();
+                            }
+
+                            // Fallback
+                            return (label || context.label) + ': ' + value;
                         }
                     }
                 }
@@ -2567,10 +2700,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 borderRadius: 8,
                 borderSkipped: false
             }, {
-                label: 'Ingresos (S/)',
-                data: estadisticasMensuales.map(item => item.ingresos),
+                label: 'Ingresos PEN (S/)',
+                data: estadisticasMensuales.map(item => item.ingresos_pen || 0),
                 backgroundColor: 'rgba(40, 167, 69, 0.8)',
                 borderColor: '#28a745',
+                borderWidth: 2,
+                borderRadius: 8,
+                borderSkipped: false,
+                yAxisID: 'y'
+            }, {
+                label: 'Ingresos USD ($)',
+                data: estadisticasMensuales.map(item => item.ingresos_usd || 0),
+                backgroundColor: 'rgba(255, 127, 80, 0.8)',
+                borderColor: '#ff7f50',
                 borderWidth: 2,
                 borderRadius: 8,
                 borderSkipped: false,
@@ -2602,6 +2744,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     }
                 },
+                // Usar y para PEN (S/), y1 para USD ($) en el mensual
                 y1: {
                     type: 'linear',
                     display: true,
@@ -2615,7 +2758,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             size: 12
                         },
                         callback: function(value) {
-                            return 'S/ ' + value.toLocaleString();
+                            return '$ ' + value.toLocaleString();
                         }
                     }
                 }
@@ -2647,11 +2790,18 @@ document.addEventListener('DOMContentLoaded', function() {
                             return 'Mes: ' + context[0].label;
                         },
                         label: function(context) {
+                            const value = (context.parsed && context.parsed.y !== undefined) ? context.parsed.y : context.parsed;
                             if (context.datasetIndex === 0) {
-                                return 'Ventas: ' + context.parsed.y + ' unidades';
-                            } else {
-                                return 'Ingresos: S/ ' + context.parsed.y.toLocaleString();
+                                return 'Ventas: ' + value + ' unidades';
                             }
+
+                            const label = context.dataset && context.dataset.label ? context.dataset.label : '';
+                            if (label.includes('USD')) {
+                                return 'Ingresos: $ ' + Number(value).toLocaleString();
+                            }
+
+                            // Por defecto asumimos PEN
+                            return 'Ingresos: S/ ' + Number(value).toLocaleString();
                         }
                     }
                 }
@@ -2782,10 +2932,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Contador animado para números - DESACTIVADO para mejor rendimiento
     function animateValue(element, start, end, duration) {
         // Mostrar valor final inmediatamente sin animación
-        if (element.textContent.includes('S/')) {
-            element.textContent = `S/ ${end.toLocaleString()}`;
+        const isCurrencySoles = element.textContent.includes('S/');
+        const isCurrencyDollar = element.textContent.includes('$');
+        if (isCurrencySoles) {
+            element.textContent = `S/ ${Number(end).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        } else if (isCurrencyDollar) {
+            element.textContent = `$ ${Number(end).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         } else {
-            element.textContent = end.toLocaleString();
+            // si es un conteo (sin decimales) mostrar entero formateado
+            if (Number.isInteger(Number(end))) {
+                element.textContent = Number(end).toLocaleString();
+            } else {
+                element.textContent = Number(end).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            }
         }
     }
     
@@ -2795,10 +2954,14 @@ document.addEventListener('DOMContentLoaded', function() {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 const element = entry.target;
-                const text = element.textContent.replace(/[^\d]/g, '');
-                const targetValue = parseInt(text) || 0;
-                
-                if (targetValue > 0) {
+                // Limpiar manteniendo punto decimal y signo negativo si existiera
+                const raw = element.textContent || '';
+                // Permitir dígitos, punto, coma y signo negativo; luego normalizar comas (miles)
+                let cleaned = raw.replace(/[^\d.,-]/g, '').replace(/,/g, '');
+                let targetValue = parseFloat(cleaned);
+                if (isNaN(targetValue)) targetValue = 0;
+
+                if (targetValue !== 0) {
                     // Mostrar valor inmediatamente sin animación
                     animateValue(element, 0, targetValue, 0);
                 }

@@ -114,8 +114,8 @@
                     <i class="fas fa-shopping-cart"></i>
                 </div>
                 <div class="stat-content">
-                    <span class="stat-label">Total Vendido</span>
-                    <span class="stat-value">S/. {{ number_format($total_ventas, 2) }}</span>
+                    <span class="stat-label">Total Vendido (S/)</span>
+                    <span class="stat-value">S/. {{ number_format($total_ventas_pen ?? $total_ventas, 2) }}</span>
                 </div>
                 <div class="stat-badge success">
                     <i class="fas fa-arrow-up"></i>
@@ -130,11 +130,43 @@
                     <i class="fas fa-box"></i>
                 </div>
                 <div class="stat-content">
-                    <span class="stat-label">Total Comprado</span>
-                    <span class="stat-value">S/. {{ number_format($total_compras, 2) }}</span>
+                    <span class="stat-label">Total Comprado (S/)</span>
+                    <span class="stat-value">S/. {{ number_format($total_compras_pen ?? $total_compras, 2) }}</span>
                 </div>
                 <div class="stat-badge danger">
                     <i class="fas fa-arrow-down"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Comprado USD -->
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card compras">
+                <div class="stat-icon">
+                    <i class="fas fa-dollar-sign"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">Total Comprado (USD)</span>
+                    <span class="stat-value">$ {{ number_format($total_compras_usd ?? 0, 2) }}</span>
+                </div>
+                <div class="stat-badge danger">
+                    <i class="fas fa-arrow-down"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Vendido USD -->
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-card ventas">
+                <div class="stat-icon">
+                    <i class="fas fa-dollar-sign"></i>
+                </div>
+                <div class="stat-content">
+                    <span class="stat-label">Total Vendido (USD)</span>
+                    <span class="stat-value">$ {{ number_format($total_ventas_usd ?? 0, 2) }}</span>
+                </div>
+                <div class="stat-badge success">
+                    <i class="fas fa-arrow-up"></i>
                 </div>
             </div>
         </div>
@@ -201,7 +233,8 @@
                             </div>
                             <div class="financial-info">
                                 <span class="financial-label">Ingresos</span>
-                                <span class="financial-value success">S/. {{ number_format($total_ventas, 2) }}</span>
+                                <span class="financial-value success">S/. {{ number_format($total_ventas_pen ?? 0, 2) }}</span>
+                                <span class="financial-value" style="margin-top:6px; color:#ef4444;">$ {{ number_format($total_ventas_usd ?? 0, 2) }}</span>
                             </div>
                         </div>
 
@@ -211,7 +244,8 @@
                             </div>
                             <div class="financial-info">
                                 <span class="financial-label">Egresos</span>
-                                <span class="financial-value danger">S/. {{ number_format($total_compras, 2) }}</span>
+                                <span class="financial-value danger">S/. {{ number_format($total_compras_pen ?? 0, 2) }}</span>
+                                <span class="financial-value" style="margin-top:6px; color:#1e293b;">$ {{ number_format($total_compras_usd ?? 0, 2) }}</span>
                             </div>
                         </div>
 
@@ -223,7 +257,8 @@
                             </div>
                             <div class="financial-info">
                                 <span class="financial-label">Ganancia Neta</span>
-                                <span class="financial-value primary">S/. {{ number_format($ganancia, 2) }}</span>
+                                <span class="financial-value primary">S/. {{ number_format($ganancia_pen ?? ($total_ventas_pen - $total_compras_pen), 2) }}</span>
+                                <span class="financial-value" style="margin-top:6px; color:#667eea;">$ {{ number_format($ganancia_usd ?? ($total_ventas_usd - $total_compras_usd), 2) }}</span>
                             </div>
                         </div>
 
@@ -768,18 +803,33 @@
     gradient3.addColorStop(0, 'rgba(102, 126, 234, 0.8)');
     gradient3.addColorStop(1, 'rgba(102, 126, 234, 0.2)');
 
+    // Preparar datos por moneda para el gráfico
+    const labels = ['Ventas', 'Compras', 'Ganancia'];
+    const penData = [{{ $total_ventas_pen ?? 0 }}, {{ $total_compras_pen ?? 0 }}, {{ $ganancia_pen ?? 0 }}];
+    const usdData = [{{ $total_ventas_usd ?? 0 }}, {{ $total_compras_usd ?? 0 }}, {{ $ganancia_usd ?? 0 }}];
+
     const graficoDiario = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: ['Ventas', 'Compras', 'Ganancia'],
+            labels: labels,
             datasets: [{
-                label: 'Monto (S/.)',
-                data: [{{ $total_ventas }}, {{ $total_compras }}, {{ $ganancia }}],
-                backgroundColor: [gradient1, gradient2, gradient3],
-                borderColor: ['#10b981', '#ef4444', '#667eea'],
-                borderWidth: 3,
+                label: 'S/. (PEN)',
+                data: penData,
+                backgroundColor: gradient1,
+                borderColor: '#10b981',
+                borderWidth: 2,
                 borderRadius: 12,
                 borderSkipped: false,
+                yAxisID: 'y'
+            }, {
+                label: '$ (USD)',
+                data: usdData,
+                backgroundColor: gradient2,
+                borderColor: '#ef4444',
+                borderWidth: 2,
+                borderRadius: 12,
+                borderSkipped: false,
+                yAxisID: 'y1'
             }]
         },
         options: {
@@ -787,60 +837,59 @@
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    display: false
+                    position: 'top'
                 },
                 tooltip: {
                     backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    padding: 16,
+                    padding: 12,
                     titleFont: {
-                        size: 16,
-                        weight: 'bold'
+                        size: 14,
+                        weight: '700'
                     },
                     bodyFont: {
-                        size: 14
+                        size: 13
                     },
                     borderColor: '#667eea',
-                    borderWidth: 2,
-                    cornerRadius: 10,
+                    borderWidth: 1,
+                    cornerRadius: 8,
                     callbacks: {
                         label: function(context) {
-                            return 'S/. ' + context.parsed.y.toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                            const val = context.parsed.y !== undefined ? context.parsed.y : context.parsed;
+                            if (context.dataset.label && context.dataset.label.includes('S/.')) {
+                                return 'S/. ' + Number(val).toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2});
+                            }
+                            return '$ ' + Number(val).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
                         }
                     }
                 }
             },
             animation: {
-                duration: 1500,
-                easing: 'easeInOutQuart'
+                duration: 1200,
+                easing: 'easeInOutQuad'
             },
             scales: {
                 x: {
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        font: {
-                            size: 14,
-                            weight: 'bold'
-                        },
-                        color: '#475569'
-                    }
+                    grid: { display: false },
+                    ticks: { font: { size: 14, weight: '700' }, color: '#475569' }
                 },
                 y: {
                     beginAtZero: true,
-                    grid: {
-                        color: '#f1f5f9',
-                        lineWidth: 2
-                    },
+                    position: 'left',
+                    grid: { color: '#f1f5f9', lineWidth: 2 },
                     ticks: {
-                        font: {
-                            size: 13,
-                            weight: '600'
-                        },
-                        color: '#64748b',
-                        callback: function(value) {
-                            return 'S/. ' + value.toLocaleString('es-PE');
-                        }
+                        callback: function(value) { return 'S/. ' + value.toLocaleString('es-PE'); },
+                        font: { size: 12, weight: '700' },
+                        color: '#10b981'
+                    }
+                },
+                y1: {
+                    beginAtZero: true,
+                    position: 'right',
+                    grid: { drawOnChartArea: false },
+                    ticks: {
+                        callback: function(value) { return '$ ' + value.toLocaleString('en-US'); },
+                        font: { size: 12, weight: '700' },
+                        color: '#ef4444'
                     }
                 }
             }

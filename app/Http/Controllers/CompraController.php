@@ -14,7 +14,27 @@ class CompraController extends Controller
     public function index()
     {
         $compras = Compra::with(['proveedor', 'moneda'])->orderByDesc('fecha')->paginate(15);
-        return view('compras.index', compact('compras'));
+
+        // Obtener ids de moneda PEN y USD
+        $moneda_pen = Moneda::where('codigo_iso', 'PEN')->first();
+        $moneda_usd = Moneda::where('codigo_iso', 'USD')->first();
+        $id_pen = $moneda_pen->id_moneda ?? 1;
+        $id_usd = $moneda_usd->id_moneda ?? 2;
+
+        // Conteo por moneda
+        $compras_count_pen = Compra::where('id_moneda', $id_pen)->count();
+        $compras_count_usd = Compra::where('id_moneda', $id_usd)->count();
+
+        // Totales por moneda (sumar total tal cual, aquí las compras no tienen estado XML)
+        $totales_por_moneda = \DB::table('compras')
+            ->select('id_moneda', \DB::raw('SUM(total) as monto'))
+            ->groupBy('id_moneda')
+            ->pluck('monto', 'id_moneda');
+
+        $monto_total_pen = isset($totales_por_moneda[$id_pen]) ? (float) $totales_por_moneda[$id_pen] : 0;
+        $monto_total_usd = isset($totales_por_moneda[$id_usd]) ? (float) $totales_por_moneda[$id_usd] : 0;
+
+        return view('compras.index', compact('compras', 'compras_count_pen', 'compras_count_usd', 'monto_total_pen', 'monto_total_usd'));
     }
 
     public function create()

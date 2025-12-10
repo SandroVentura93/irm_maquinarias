@@ -486,6 +486,15 @@ class ReportesController extends Controller
             ];
         }
 
+        // Añadir totales por moneda al final del Excel
+        $data[] = [];
+        $data[] = ['Totales por Moneda'];
+        $data[] = ['Moneda', 'Monto'];
+        $data[] = ['VENTAS - PEN (S/)', $total_ventas_pen];
+        $data[] = ['VENTAS - USD ($)', $total_ventas_usd];
+        $data[] = ['COMPRAS - PEN (S/)', $total_compras_pen ?? 0];
+        $data[] = ['COMPRAS - USD ($)', $total_compras_usd ?? 0];
+
         return \Excel::download(new \App\Exports\ReporteDiarioExport($data), 'reporte_mensual_' . $year . '_' . $month . '.xlsx');
     }
     // Exportar reporte mensual en PDF
@@ -553,9 +562,46 @@ class ReportesController extends Controller
         $fecha_inicio = "$year-$month-01 00:00:00";
         $fecha_fin = date('Y-m-t', strtotime("$year-$month-01")) . ' 23:59:59';
 
+        // Totales generales
         $total_ventas = Venta::whereBetween('fecha', [$fecha_inicio, $fecha_fin])->sum('total');
         $total_compras = Compra::whereBetween('fecha', [$fecha_inicio, $fecha_fin])->sum('total');
         $ganancia = $total_ventas - $total_compras;
+
+        // Inicializar totales por moneda para evitar variables indefinidas en la vista
+        $total_ventas_pen = 0;
+        $total_ventas_usd = 0;
+        $total_compras_pen = 0;
+        $total_compras_usd = 0;
+
+        // Obtener ids de monedas (PEN / USD)
+        $moneda_pen = \App\Models\Moneda::where('codigo_iso', 'PEN')->first();
+        $moneda_usd = \App\Models\Moneda::where('codigo_iso', 'USD')->first();
+        $id_pen = $moneda_pen->id_moneda ?? 1;
+        $id_usd = $moneda_usd->id_moneda ?? 2;
+
+        // Totales por moneda (ventas)
+        $ventas_por_moneda = \DB::table('ventas')
+            ->select('id_moneda', \DB::raw('SUM(total) as monto'))
+            ->whereBetween('fecha', [$fecha_inicio, $fecha_fin])
+            ->groupBy('id_moneda')
+            ->pluck('monto', 'id_moneda');
+
+        $total_ventas_pen = isset($ventas_por_moneda[$id_pen]) ? (float) $ventas_por_moneda[$id_pen] : 0;
+        $total_ventas_usd = isset($ventas_por_moneda[$id_usd]) ? (float) $ventas_por_moneda[$id_usd] : 0;
+
+        // Totales por moneda (compras)
+        $compras_por_moneda = \DB::table('compras')
+            ->select('id_moneda', \DB::raw('SUM(total) as monto'))
+            ->whereBetween('fecha', [$fecha_inicio, $fecha_fin])
+            ->groupBy('id_moneda')
+            ->pluck('monto', 'id_moneda');
+
+        $total_compras_pen = isset($compras_por_moneda[$id_pen]) ? (float) $compras_por_moneda[$id_pen] : 0;
+        $total_compras_usd = isset($compras_por_moneda[$id_usd]) ? (float) $compras_por_moneda[$id_usd] : 0;
+
+        // Ganancias por moneda
+        $ganancia_pen = $total_ventas_pen - $total_compras_pen;
+        $ganancia_usd = $total_ventas_usd - $total_compras_usd;
         $cantidad_productos_vendidos = \App\Models\DetalleVenta::whereHas('venta', function($q) use ($fecha_inicio, $fecha_fin) {
             $q->whereBetween('fecha', [$fecha_inicio, $fecha_fin]);
         })->sum('cantidad');
@@ -570,7 +616,13 @@ class ReportesController extends Controller
             'cantidad_productos_vendidos',
             'cantidad_productos_comprados',
             'year',
-            'month'
+            'month',
+            'total_ventas_pen',
+            'total_ventas_usd',
+            'total_compras_pen',
+            'total_compras_usd',
+            'ganancia_pen',
+            'ganancia_usd'
         ));
     }
 
@@ -591,6 +643,55 @@ class ReportesController extends Controller
 
         $total_ventas = Venta::whereBetween('fecha', [$desde, $hasta])->sum('total');
         $total_compras = Compra::whereBetween('fecha', [$desde, $hasta])->sum('total');
+        // Totales por moneda
+        $moneda_pen = \App\Models\Moneda::where('codigo_iso', 'PEN')->first();
+        $moneda_usd = \App\Models\Moneda::where('codigo_iso', 'USD')->first();
+        $id_pen = $moneda_pen->id_moneda ?? 1;
+        $id_usd = $moneda_usd->id_moneda ?? 2;
+        $ventas_por_moneda = \DB::table('ventas')
+            ->select('id_moneda', \DB::raw('SUM(total) as monto'))
+            ->whereBetween('fecha', [$desde, $hasta])
+            ->groupBy('id_moneda')
+            ->pluck('monto', 'id_moneda');
+
+        $total_ventas_pen = isset($ventas_por_moneda[$id_pen]) ? (float) $ventas_por_moneda[$id_pen] : 0;
+        $total_ventas_usd = isset($ventas_por_moneda[$id_usd]) ? (float) $ventas_por_moneda[$id_usd] : 0;
+        // Totales por moneda para compras
+        $compras_por_moneda = \DB::table('compras')
+            ->select('id_moneda', \DB::raw('SUM(total) as monto'))
+            ->whereBetween('fecha', [$desde, $hasta])
+            ->groupBy('id_moneda')
+            ->pluck('monto', 'id_moneda');
+
+        $total_compras_pen = isset($compras_por_moneda[$id_pen]) ? (float) $compras_por_moneda[$id_pen] : 0;
+        $total_compras_usd = isset($compras_por_moneda[$id_usd]) ? (float) $compras_por_moneda[$id_usd] : 0;
+        // Totales por moneda
+        $moneda_pen = \App\Models\Moneda::where('codigo_iso', 'PEN')->first();
+        $moneda_usd = \App\Models\Moneda::where('codigo_iso', 'USD')->first();
+        $id_pen = $moneda_pen->id_moneda ?? 1;
+        $id_usd = $moneda_usd->id_moneda ?? 2;
+        $ventas_por_moneda = \DB::table('ventas')
+            ->select('id_moneda', \DB::raw('SUM(total) as monto'))
+            ->whereBetween('fecha', [$desde, $hasta])
+            ->groupBy('id_moneda')
+            ->pluck('monto', 'id_moneda');
+
+        $total_ventas_pen = isset($ventas_por_moneda[$id_pen]) ? (float) $ventas_por_moneda[$id_pen] : 0;
+        $total_ventas_usd = isset($ventas_por_moneda[$id_usd]) ? (float) $ventas_por_moneda[$id_usd] : 0;
+        // Totales por moneda (PEN / USD) para ventas
+        $moneda_pen = \App\Models\Moneda::where('codigo_iso', 'PEN')->first();
+        $moneda_usd = \App\Models\Moneda::where('codigo_iso', 'USD')->first();
+        $id_pen = $moneda_pen->id_moneda ?? 1;
+        $id_usd = $moneda_usd->id_moneda ?? 2;
+
+        $ventas_por_moneda = \DB::table('ventas')
+            ->select('id_moneda', \DB::raw('SUM(total) as monto'))
+            ->whereBetween('fecha', [$desde, $hasta])
+            ->groupBy('id_moneda')
+            ->pluck('monto', 'id_moneda');
+
+        $total_ventas_pen = isset($ventas_por_moneda[$id_pen]) ? (float) $ventas_por_moneda[$id_pen] : 0;
+        $total_ventas_usd = isset($ventas_por_moneda[$id_usd]) ? (float) $ventas_por_moneda[$id_usd] : 0;
         $ganancia = $total_ventas - $total_compras;
         $cantidad_productos_vendidos = \App\Models\DetalleVenta::whereHas('venta', function($q) use ($desde, $hasta) {
             $q->whereBetween('fecha', [$desde, $hasta]);
@@ -658,6 +759,36 @@ class ReportesController extends Controller
         $total_ventas = Venta::whereBetween('fecha', [$desde, $hasta])->sum('total');
         $total_compras = Compra::whereBetween('fecha', [$desde, $hasta])->sum('total');
         $ganancia = $total_ventas - $total_compras;
+
+        // Totales por moneda (ventas) en el rango diario
+        $moneda_pen = \App\Models\Moneda::where('codigo_iso', 'PEN')->first();
+        $moneda_usd = \App\Models\Moneda::where('codigo_iso', 'USD')->first();
+        $id_pen = $moneda_pen->id_moneda ?? 1;
+        $id_usd = $moneda_usd->id_moneda ?? 2;
+
+        $ventas_por_moneda = \DB::table('ventas')
+            ->select('id_moneda', \DB::raw('SUM(total) as monto'))
+            ->whereBetween('fecha', [$desde, $hasta])
+            ->groupBy('id_moneda')
+            ->pluck('monto', 'id_moneda');
+
+        $total_ventas_pen = isset($ventas_por_moneda[$id_pen]) ? (float) $ventas_por_moneda[$id_pen] : 0;
+        $total_ventas_usd = isset($ventas_por_moneda[$id_usd]) ? (float) $ventas_por_moneda[$id_usd] : 0;
+
+        // Totales por moneda para ventas en el rango diario
+        $moneda_pen = \App\Models\Moneda::where('codigo_iso', 'PEN')->first();
+        $moneda_usd = \App\Models\Moneda::where('codigo_iso', 'USD')->first();
+        $id_pen = $moneda_pen->id_moneda ?? 1;
+        $id_usd = $moneda_usd->id_moneda ?? 2;
+
+        $ventas_por_moneda = \DB::table('ventas')
+            ->select('id_moneda', \DB::raw('SUM(total) as monto'))
+            ->whereBetween('fecha', [$desde, $hasta])
+            ->groupBy('id_moneda')
+            ->pluck('monto', 'id_moneda');
+
+        $total_ventas_pen = isset($ventas_por_moneda[$id_pen]) ? (float) $ventas_por_moneda[$id_pen] : 0;
+        $total_ventas_usd = isset($ventas_por_moneda[$id_usd]) ? (float) $ventas_por_moneda[$id_usd] : 0;
         $cantidad_productos_vendidos = \App\Models\DetalleVenta::whereHas('venta', function($q) use ($desde, $hasta) {
             $q->whereBetween('fecha', [$desde, $hasta]);
         })->sum('cantidad');
@@ -765,15 +896,22 @@ class ReportesController extends Controller
         }
 
         // Si el usuario ya seleccionó una semana, calcular el rango de fechas de esa semana
-        $fecha_inicio = null;
-        $fecha_fin = null;
-        $desde = null;
-        $hasta = null;
-        $total_ventas = null;
-        $total_compras = null;
-        $ganancia = null;
-        $cantidad_productos_vendidos = null;
-        $cantidad_productos_comprados = null;
+    $fecha_inicio = null;
+    $fecha_fin = null;
+    $desde = null;
+    $hasta = null;
+    $total_ventas = null;
+    $total_compras = null;
+    $ganancia = null;
+    $cantidad_productos_vendidos = null;
+    $cantidad_productos_comprados = null;
+    // Inicializar totales por moneda para evitar undefined variables cuando no hay semana seleccionada
+    $total_ventas_pen = 0;
+    $total_ventas_usd = 0;
+    $total_compras_pen = 0;
+    $total_compras_usd = 0;
+    $ganancia_pen = 0;
+    $ganancia_usd = 0;
         if ($week) {
             $dto = new \DateTime();
             $dto->setISODate($year, $week);
@@ -785,6 +923,34 @@ class ReportesController extends Controller
 
             $total_ventas = Venta::whereBetween('fecha', [$desde, $hasta])->sum('total');
             $total_compras = Compra::whereBetween('fecha', [$desde, $hasta])->sum('total');
+            // Totales por moneda (considerar ACEPTADO/PENDIENTE similar a otros reportes)
+            $moneda_pen = \App\Models\Moneda::where('codigo_iso', 'PEN')->first();
+            $moneda_usd = \App\Models\Moneda::where('codigo_iso', 'USD')->first();
+            $id_pen = $moneda_pen->id_moneda ?? 1;
+            $id_usd = $moneda_usd->id_moneda ?? 2;
+
+            $ventas_por_moneda = \DB::table('ventas')
+                ->select('id_moneda', \DB::raw('SUM(CASE WHEN xml_estado = "ACEPTADO" THEN total WHEN xml_estado = "PENDIENTE" THEN total - saldo ELSE 0 END) as monto'))
+                ->whereBetween('fecha', [$desde, $hasta])
+                ->whereIn('xml_estado', ['ACEPTADO', 'PENDIENTE'])
+                ->groupBy('id_moneda')
+                ->pluck('monto', 'id_moneda');
+
+            $total_ventas_pen = isset($ventas_por_moneda[$id_pen]) ? (float) $ventas_por_moneda[$id_pen] : 0;
+            $total_ventas_usd = isset($ventas_por_moneda[$id_usd]) ? (float) $ventas_por_moneda[$id_usd] : 0;
+
+            $compras_por_moneda = \DB::table('compras')
+                ->select('id_moneda', \DB::raw('SUM(total) as monto'))
+                ->whereBetween('fecha', [$desde, $hasta])
+                ->groupBy('id_moneda')
+                ->pluck('monto', 'id_moneda');
+
+            $total_compras_pen = isset($compras_por_moneda[$id_pen]) ? (float) $compras_por_moneda[$id_pen] : 0;
+            $total_compras_usd = isset($compras_por_moneda[$id_usd]) ? (float) $compras_por_moneda[$id_usd] : 0;
+
+            $ganancia_pen = $total_ventas_pen - $total_compras_pen;
+            $ganancia_usd = $total_ventas_usd - $total_compras_usd;
+
             $ganancia = $total_ventas - $total_compras;
 
             $cantidad_productos_vendidos = \App\Models\DetalleVenta::whereHas('venta', function($q) use ($desde, $hasta) {
@@ -800,6 +966,12 @@ class ReportesController extends Controller
             'total_ventas',
             'total_compras',
             'ganancia',
+            'total_ventas_pen',
+            'total_ventas_usd',
+            'total_compras_pen',
+            'total_compras_usd',
+            'ganancia_pen',
+            'ganancia_usd',
             'cantidad_productos_vendidos',
             'cantidad_productos_comprados',
             'year',
@@ -818,9 +990,42 @@ class ReportesController extends Controller
 
         $desde = $fecha . ' ' . $hora_inicio;
         $hasta = $fecha . ' ' . $hora_fin;
+    // Inicializar totales por moneda para evitar variables indefinidas
+    $total_ventas_pen = 0;
+    $total_ventas_usd = 0;
+    $total_compras_pen = 0;
+    $total_compras_usd = 0;
 
-        $total_ventas = Venta::whereBetween('fecha', [$desde, $hasta])->sum('total');
-        $total_compras = Compra::whereBetween('fecha', [$desde, $hasta])->sum('total');
+    $total_ventas = Venta::whereBetween('fecha', [$desde, $hasta])->sum('total');
+    $total_compras = Compra::whereBetween('fecha', [$desde, $hasta])->sum('total');
+
+    // Calcular totales por moneda (ventas)
+    $moneda_pen = \App\Models\Moneda::where('codigo_iso', 'PEN')->first();
+    $moneda_usd = \App\Models\Moneda::where('codigo_iso', 'USD')->first();
+    $id_pen = $moneda_pen->id_moneda ?? 1;
+    $id_usd = $moneda_usd->id_moneda ?? 2;
+
+    $ventas_por_moneda = \DB::table('ventas')
+        ->select('id_moneda', \DB::raw('SUM(total) as monto'))
+        ->whereBetween('fecha', [$desde, $hasta])
+        ->groupBy('id_moneda')
+        ->pluck('monto', 'id_moneda');
+
+    $total_ventas_pen = isset($ventas_por_moneda[$id_pen]) ? (float) $ventas_por_moneda[$id_pen] : 0;
+    $total_ventas_usd = isset($ventas_por_moneda[$id_usd]) ? (float) $ventas_por_moneda[$id_usd] : 0;
+
+    // Calcular totales por moneda (compras)
+    $compras_por_moneda = \DB::table('compras')
+        ->select('id_moneda', \DB::raw('SUM(total) as monto'))
+        ->whereBetween('fecha', [$desde, $hasta])
+        ->groupBy('id_moneda')
+        ->pluck('monto', 'id_moneda');
+
+    $total_compras_pen = isset($compras_por_moneda[$id_pen]) ? (float) $compras_por_moneda[$id_pen] : 0;
+    $total_compras_usd = isset($compras_por_moneda[$id_usd]) ? (float) $compras_por_moneda[$id_usd] : 0;
+        // Ganancias separadas por moneda
+        $ganancia_pen = $total_ventas_pen - $total_compras_pen;
+        $ganancia_usd = $total_ventas_usd - $total_compras_usd;
         $ganancia = $total_ventas - $total_compras;
 
         $cantidad_productos_vendidos = \App\Models\DetalleVenta::whereHas('venta', function($q) use ($desde, $hasta) {
@@ -835,11 +1040,17 @@ class ReportesController extends Controller
             'total_ventas',
             'total_compras',
             'ganancia',
+            'ganancia_pen',
+            'ganancia_usd',
             'cantidad_productos_vendidos',
             'cantidad_productos_comprados',
             'fecha',
             'hora_inicio',
-            'hora_fin'
+            'hora_fin',
+            'total_ventas_pen',
+            'total_ventas_usd',
+            'total_compras_pen',
+            'total_compras_usd'
         ));
     }
     // Exportar reporte diario en PDF
@@ -893,6 +1104,11 @@ class ReportesController extends Controller
             'hora_fin',
             'grafico_path'
         );
+        // Añadir totales por moneda al array de datos para PDF
+        $data['total_ventas_pen'] = $total_ventas_pen;
+        $data['total_ventas_usd'] = $total_ventas_usd;
+        $data['total_compras_pen'] = $total_compras_pen ?? 0;
+        $data['total_compras_usd'] = $total_compras_usd ?? 0;
         
         $pdf = \PDF::loadView('reportes.diario_pdf', $data);
         return $pdf->download('reporte_diario_' . $fecha . '.pdf');

@@ -352,21 +352,44 @@
             <div class="stat-label">Total Compras</div>
             <div class="stat-value">{{ $compras->total() }}</div>
         </div>
-        
+        <div class="stat-card">
+            <div class="stat-icon total">
+                <i class="fas fa-coins"></i>
+            </div>
+            <div class="stat-label">Monto Total (S/)</div>
+            <div class="stat-value">S/ {{ number_format(($monto_total_pen ?? 0), 2) }}</div>
+        </div>
+
         <div class="stat-card">
             <div class="stat-icon total">
                 <i class="fas fa-dollar-sign"></i>
             </div>
-            <div class="stat-label">Monto Total</div>
-            <div class="stat-value">S/ {{ number_format($compras->sum('total'), 2) }}</div>
+            <div class="stat-label">Monto Total (USD)</div>
+            <div class="stat-value">$ {{ number_format(($monto_total_usd ?? 0), 2) }}</div>
         </div>
-        
+
         <div class="stat-card">
             <div class="stat-icon mes">
                 <i class="fas fa-calendar-alt"></i>
             </div>
             <div class="stat-label">Compras del Mes</div>
             <div class="stat-value">{{ $compras->where('fecha', '>=', now()->startOfMonth())->count() }}</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon mes">
+                <i class="fas fa-money-bill-wave"></i>
+            </div>
+            <div class="stat-label">Compras en PEN</div>
+            <div class="stat-value">{{ $compras_count_pen ?? 0 }}</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon mes">
+                <i class="fas fa-dollar-sign"></i>
+            </div>
+            <div class="stat-label">Compras en USD</div>
+            <div class="stat-value">{{ $compras_count_usd ?? 0 }}</div>
         </div>
     </div>
 

@@ -56,6 +56,54 @@ class DashboardController extends Controller
                                              ->where('xml_estado', 'PENDIENTE')
                                              ->sum(\DB::raw('total - saldo')) ?? 0;
             $ingresos_total = $ingresos_total_aceptadas + $ingresos_total_pendientes;
+
+            // Totales y conteos separados por moneda (PEN - Soles, USD - Dólares)
+            // Obtener ids por codigo_iso, con fallback
+            $moneda_pen = \App\Models\Moneda::where('codigo_iso', 'PEN')->first();
+            $moneda_usd = \App\Models\Moneda::where('codigo_iso', 'USD')->first();
+            $id_pen = $moneda_pen->id_moneda ?? 1;
+            $id_usd = $moneda_usd->id_moneda ?? 2;
+
+            // Conteos de ventas por moneda (ACEPTADO o PENDIENTE)
+            $ventas_total_pen = \App\Models\Venta::whereIn('xml_estado', ['ACEPTADO', 'PENDIENTE'])
+                                        ->where('id_moneda', $id_pen)
+                                        ->count();
+            $ventas_total_usd = \App\Models\Venta::whereIn('xml_estado', ['ACEPTADO', 'PENDIENTE'])
+                                        ->where('id_moneda', $id_usd)
+                                        ->count();
+
+            // Mejores agregaciones: sumar por moneda usando CASE para ACEPTADO (total) y PENDIENTE (total - saldo)
+            $totales_por_moneda = \DB::table('ventas')
+                ->select('id_moneda', \DB::raw('SUM(CASE WHEN xml_estado = "ACEPTADO" THEN total WHEN xml_estado = "PENDIENTE" THEN total - saldo ELSE 0 END) as monto'))
+                ->whereIn('xml_estado', ['ACEPTADO', 'PENDIENTE'])
+                ->groupBy('id_moneda')
+                ->pluck('monto', 'id_moneda');
+
+            $ingresos_total_pen = isset($totales_por_moneda[$id_pen]) ? (float) $totales_por_moneda[$id_pen] : 0;
+            $ingresos_total_usd = isset($totales_por_moneda[$id_usd]) ? (float) $totales_por_moneda[$id_usd] : 0;
+
+            // Ingresos hoy por moneda
+            $totales_hoy_por_moneda = \DB::table('ventas')
+                ->select('id_moneda', \DB::raw('SUM(CASE WHEN xml_estado = "ACEPTADO" THEN total WHEN xml_estado = "PENDIENTE" THEN total - saldo ELSE 0 END) as monto'))
+                ->whereDate('fecha', today())
+                ->whereIn('xml_estado', ['ACEPTADO', 'PENDIENTE'])
+                ->groupBy('id_moneda')
+                ->pluck('monto', 'id_moneda');
+
+            $ingresos_hoy_pen = isset($totales_hoy_por_moneda[$id_pen]) ? (float) $totales_hoy_por_moneda[$id_pen] : 0;
+            $ingresos_hoy_usd = isset($totales_hoy_por_moneda[$id_usd]) ? (float) $totales_hoy_por_moneda[$id_usd] : 0;
+
+            // Ingresos mes por moneda
+            $totales_mes_por_moneda = \DB::table('ventas')
+                ->select('id_moneda', \DB::raw('SUM(CASE WHEN xml_estado = "ACEPTADO" THEN total WHEN xml_estado = "PENDIENTE" THEN total - saldo ELSE 0 END) as monto'))
+                ->whereMonth('fecha', now()->month)
+                ->whereYear('fecha', now()->year)
+                ->whereIn('xml_estado', ['ACEPTADO', 'PENDIENTE'])
+                ->groupBy('id_moneda')
+                ->pluck('monto', 'id_moneda');
+
+            $ingresos_mes_pen = isset($totales_mes_por_moneda[$id_pen]) ? (float) $totales_mes_por_moneda[$id_pen] : 0;
+            $ingresos_mes_usd = isset($totales_mes_por_moneda[$id_usd]) ? (float) $totales_mes_por_moneda[$id_usd] : 0;
             
             // Estadísticas por tipo de comprobante (solo aceptadas y pendientes)
             $facturas = \App\Models\Venta::where('id_tipo_comprobante', 1)
@@ -126,21 +174,26 @@ class DashboardController extends Controller
             $ventas_semana = [];
             for ($i = 6; $i >= 0; $i--) {
                 $fecha = now()->subDays($i);
-                
-                $ingresos_aceptadas = \App\Models\Venta::whereDate('fecha', $fecha)
-                                                 ->where('xml_estado', 'ACEPTADO')
-                                                 ->sum('total') ?? 0;
-                $ingresos_pendientes = \DB::table('ventas')
-                                                 ->whereDate('fecha', $fecha)
-                                                 ->where('xml_estado', 'PENDIENTE')
-                                                 ->sum(\DB::raw('total - saldo')) ?? 0;
-                
+
+                // Ingresos por moneda usando CASE para ACEPTADO (total) y PENDIENTE (total - saldo)
+                $totales_dia = \DB::table('ventas')
+                    ->select('id_moneda', \DB::raw('SUM(CASE WHEN xml_estado = "ACEPTADO" THEN total WHEN xml_estado = "PENDIENTE" THEN total - saldo ELSE 0 END) as monto'))
+                    ->whereDate('fecha', $fecha)
+                    ->whereIn('xml_estado', ['ACEPTADO', 'PENDIENTE'])
+                    ->groupBy('id_moneda')
+                    ->pluck('monto', 'id_moneda');
+
+                $monto_pen_dia = isset($totales_dia[$id_pen]) ? (float) $totales_dia[$id_pen] : 0;
+                $monto_usd_dia = isset($totales_dia[$id_usd]) ? (float) $totales_dia[$id_usd] : 0;
+
                 $ventas_semana[] = [
                     'fecha' => $fecha->format('d/m'),
                     'ventas' => \App\Models\Venta::whereDate('fecha', $fecha)
                                                 ->whereIn('xml_estado', ['ACEPTADO', 'PENDIENTE'])
                                                 ->count(),
-                    'ingresos' => $ingresos_aceptadas + $ingresos_pendientes
+                    'ingresos_pen' => $monto_pen_dia,
+                    'ingresos_usd' => $monto_usd_dia,
+                    'ingresos' => $monto_pen_dia + $monto_usd_dia
                 ];
             }
             
@@ -150,24 +203,27 @@ class DashboardController extends Controller
             $estadisticas_mensuales = [];
             for ($i = 5; $i >= 0; $i--) {
                 $mes = now()->subMonths($i);
-                
-                $ingresos_aceptadas = \App\Models\Venta::whereMonth('fecha', $mes->month)
-                                                 ->whereYear('fecha', $mes->year)
-                                                 ->where('xml_estado', 'ACEPTADO')
-                                                 ->sum('total') ?? 0;
-                $ingresos_pendientes = \DB::table('ventas')
-                                                 ->whereMonth('fecha', $mes->month)
-                                                 ->whereYear('fecha', $mes->year)
-                                                 ->where('xml_estado', 'PENDIENTE')
-                                                 ->sum(\DB::raw('total - saldo')) ?? 0;
-                
+
+                $totales_mes = \DB::table('ventas')
+                    ->select('id_moneda', \DB::raw('SUM(CASE WHEN xml_estado = "ACEPTADO" THEN total WHEN xml_estado = "PENDIENTE" THEN total - saldo ELSE 0 END) as monto'))
+                    ->whereMonth('fecha', $mes->month)
+                    ->whereYear('fecha', $mes->year)
+                    ->whereIn('xml_estado', ['ACEPTADO', 'PENDIENTE'])
+                    ->groupBy('id_moneda')
+                    ->pluck('monto', 'id_moneda');
+
+                $monto_pen_mes = isset($totales_mes[$id_pen]) ? (float) $totales_mes[$id_pen] : 0;
+                $monto_usd_mes = isset($totales_mes[$id_usd]) ? (float) $totales_mes[$id_usd] : 0;
+
                 $estadisticas_mensuales[] = [
                     'mes' => $mes->format('M Y'),
                     'ventas' => \App\Models\Venta::whereMonth('fecha', $mes->month)
                                                ->whereYear('fecha', $mes->year)
                                                ->whereIn('xml_estado', ['ACEPTADO', 'PENDIENTE'])
                                                ->count(),
-                    'ingresos' => $ingresos_aceptadas + $ingresos_pendientes
+                    'ingresos_pen' => $monto_pen_mes,
+                    'ingresos_usd' => $monto_usd_mes,
+                    'ingresos' => $monto_pen_mes + $monto_usd_mes
                 ];
             }
             
@@ -202,6 +258,11 @@ class DashboardController extends Controller
             'clientes', 'productos', 'monedas', 'alertas', 
             'ventas_hoy', 'ventas_mes', 'ventas_total',
             'ingresos_hoy', 'ingresos_mes', 'ingresos_total',
+            // totales por moneda
+            'ventas_total_pen', 'ventas_total_usd',
+            'ingresos_total_pen', 'ingresos_total_usd',
+            'ingresos_hoy_pen', 'ingresos_hoy_usd',
+            'ingresos_mes_pen', 'ingresos_mes_usd',
             'facturas', 'boletas', 'tickets', 'cotizaciones',
             'top_productos', 'top_clientes', 'productos_stock_bajo', 'productos_sin_stock',
             'ventas_pendientes', 'ventas_aceptadas', 'ventas_anuladas',

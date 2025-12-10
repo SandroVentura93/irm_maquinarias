@@ -100,8 +100,8 @@
                 </div>
                 <div class="stat-content">
                     <span class="stat-label">Total Vendido</span>
-                    <span class="stat-value">S/. {{ number_format($total_ventas, 2) }}</span>
-                    <span class="stat-meta">Este mes</span>
+                    <span class="stat-value">S/. {{ number_format($total_ventas_pen ?? 0, 2) }}</span>
+                    <span class="stat-meta">$ {{ number_format($total_ventas_usd ?? 0, 2) }}</span>
                 </div>
                 <div class="stat-badge success">
                     <i class="fas fa-arrow-up"></i>
@@ -117,8 +117,8 @@
                 </div>
                 <div class="stat-content">
                     <span class="stat-label">Total Comprado</span>
-                    <span class="stat-value">S/. {{ number_format($total_compras, 2) }}</span>
-                    <span class="stat-meta">Este mes</span>
+                    <span class="stat-value">S/. {{ number_format($total_compras_pen ?? 0, 2) }}</span>
+                    <span class="stat-meta">$ {{ number_format($total_compras_usd ?? 0, 2) }}</span>
                 </div>
                 <div class="stat-badge danger">
                     <i class="fas fa-arrow-down"></i>
@@ -190,7 +190,8 @@
                             </div>
                             <div class="financial-info">
                                 <span class="financial-label">Ingresos Mensuales</span>
-                                <span class="financial-value success">S/. {{ number_format($total_ventas, 2) }}</span>
+                                <span class="financial-value success">S/. {{ number_format($total_ventas_pen ?? 0, 2) }}</span>
+                                <span class="financial-value" style="margin-top:6px; color:#ef4444;">$ {{ number_format($total_ventas_usd ?? 0, 2) }}</span>
                             </div>
                         </div>
 
@@ -200,7 +201,8 @@
                             </div>
                             <div class="financial-info">
                                 <span class="financial-label">Egresos Mensuales</span>
-                                <span class="financial-value danger">S/. {{ number_format($total_compras, 2) }}</span>
+                                <span class="financial-value danger">S/. {{ number_format($total_compras_pen ?? 0, 2) }}</span>
+                                <span class="financial-value" style="margin-top:6px; color:#1e293b;">$ {{ number_format($total_compras_usd ?? 0, 2) }}</span>
                             </div>
                         </div>
 
@@ -212,7 +214,8 @@
                             </div>
                             <div class="financial-info">
                                 <span class="financial-label">Ganancia Mensual</span>
-                                <span class="financial-value primary">S/. {{ number_format($ganancia, 2) }}</span>
+                                <span class="financial-value primary">S/. {{ number_format($ganancia_pen ?? ($total_ventas_pen - $total_compras_pen), 2) }}</span>
+                                <span class="financial-value" style="margin-top:6px; color:#667eea;">$ {{ number_format($ganancia_usd ?? ($total_ventas_usd - $total_compras_usd), 2) }}</span>
                             </div>
                         </div>
 
@@ -842,80 +845,72 @@
     gradient3.addColorStop(0, 'rgba(249, 115, 22, 0.8)');
     gradient3.addColorStop(1, 'rgba(249, 115, 22, 0.2)');
 
+    // Preparar datos por moneda
+    const labels = ['Ventas', 'Compras', 'Ganancia'];
+    const penData = [{{ $total_ventas_pen ?? 0 }}, {{ $total_compras_pen ?? 0 }}, {{ $ganancia_pen ?? 0 }}];
+    const usdData = [{{ $total_ventas_usd ?? 0 }}, {{ $total_compras_usd ?? 0 }}, {{ $ganancia_usd ?? 0 }}];
+
     const graficoMensual = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: ['Ventas', 'Compras', 'Ganancia'],
+            labels: labels,
             datasets: [{
-                label: 'Monto (S/.)',
-                data: [{{ $total_ventas }}, {{ $total_compras }}, {{ $ganancia }}],
-                backgroundColor: [gradient1, gradient2, gradient3],
-                borderColor: ['#10b981', '#ef4444', '#f97316'],
-                borderWidth: 3,
+                label: 'S/. (PEN)',
+                data: penData,
+                backgroundColor: gradient1,
+                borderColor: '#10b981',
+                borderWidth: 2,
                 borderRadius: 12,
                 borderSkipped: false,
+                yAxisID: 'y'
+            }, {
+                label: '$ (USD)',
+                data: usdData,
+                backgroundColor: gradient2,
+                borderColor: '#ef4444',
+                borderWidth: 2,
+                borderRadius: 12,
+                borderSkipped: false,
+                yAxisID: 'y1'
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    display: false
-                },
+                legend: { position: 'top' },
                 tooltip: {
                     backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    padding: 16,
-                    titleFont: {
-                        size: 16,
-                        weight: 'bold'
-                    },
-                    bodyFont: {
-                        size: 14
-                    },
+                    padding: 12,
+                    bodyFont: { size: 13 },
                     borderColor: '#f97316',
-                    borderWidth: 2,
-                    cornerRadius: 10,
+                    borderWidth: 1,
+                    cornerRadius: 8,
                     callbacks: {
                         label: function(context) {
-                            return 'S/. ' + context.parsed.y.toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                            const val = context.parsed.y !== undefined ? context.parsed.y : context.parsed;
+                            if (context.dataset && context.dataset.label && context.dataset.label.includes('S/.')) {
+                                return 'S/. ' + Number(val).toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2});
+                            }
+                            return '$ ' + Number(val).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
                         }
                     }
                 }
             },
-            animation: {
-                duration: 1500,
-                easing: 'easeInOutQuart'
-            },
+            animation: { duration: 1200, easing: 'easeInOutQuart' },
             scales: {
-                x: {
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        font: {
-                            size: 14,
-                            weight: 'bold'
-                        },
-                        color: '#475569'
-                    }
-                },
+                x: { grid: { display: false }, ticks: { font: { size: 14, weight: '700' }, color: '#475569' } },
                 y: {
                     beginAtZero: true,
-                    grid: {
-                        color: '#f1f5f9',
-                        lineWidth: 2
-                    },
-                    ticks: {
-                        font: {
-                            size: 13,
-                            weight: '600'
-                        },
-                        color: '#64748b',
-                        callback: function(value) {
-                            return 'S/. ' + value.toLocaleString('es-PE');
-                        }
-                    }
+                    position: 'left',
+                    grid: { color: '#f1f5f9', lineWidth: 2 },
+                    ticks: { callback: function(v){ return 'S/. ' + v.toLocaleString('es-PE'); }, color: '#10b981', font: { size: 12, weight: '700'} }
+                },
+                y1: {
+                    beginAtZero: true,
+                    position: 'right',
+                    grid: { drawOnChartArea: false },
+                    ticks: { callback: function(v){ return '$ ' + v.toLocaleString('en-US'); }, color: '#ef4444', font: { size: 12, weight: '700'} }
                 }
             }
         }
