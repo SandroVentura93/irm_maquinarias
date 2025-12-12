@@ -1,41 +1,16 @@
----
-# cPanel deployment file
-# This file instructs cPanel's Git deployment to run common tasks when you deploy.
-# Adjust commands to your environment if needed (PHP path, composer location, node availability).
 deployment:
   tasks:
-    # Install PHP dependencies (production) if composer is available
-    - export COMPOSER_HOME=/tmp && \
-      if command -v composer >/dev/null 2>&1; then \
-        composer install --no-dev --optimize-autoloader --no-interaction; \
-      else \
-        echo "composer not found, skipping composer install"; \
-      fi
-
-    # Compile front-end assets if npm is available
-    - if command -v npm >/dev/null 2>&1; then \
-        npm ci && npm run prod; \
-      else \
-        echo "npm not found, skipping asset build"; \
-      fi
-
-    # Ensure storage link exists (will not fail the deploy if it already exists)
-    - php artisan storage:link || true
-
-    # (Optional) Run database migrations in production - uncomment if you want automatic migrations
-    # - php artisan migrate --force
-
-    # Cache config, routes and views for better performance
+    - export DEPLOY_DIR=/home/irmmaquinarias/repositories/irm_maquinarias
+    - cd $DEPLOY_DIR
+    - git reset --hard
+    - git pull origin maestro
+    - if [ ! -f .env ]; then cp .env.example .env; fi
+    - composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+    - if [ -f package.json ]; then npm ci && npm run production || npm run build || true; fi
+    - php artisan key:generate --force || true
+    - php artisan migrate --force || true
     - php artisan config:cache || true
     - php artisan route:cache || true
-    - php artisan view:cache || true
-
-    # Fix permissions for storage and cache folders
-    - chown -R $USER:$USER storage bootstrap/cache || true
-    - find storage -type d -exec chmod 775 {} + || true
-    - find storage -type f -exec chmod 664 {} + || true
-    - find bootstrap/cache -type d -exec chmod 775 {} + || true
-    - find bootstrap/cache -type f -exec chmod 664 {} + || true
-
-    # Final note
-    - echo "cPanel deployment tasks finished"
+    - chown -R irmmaquinarias:irmmaquinarias storage bootstrap/cache || true
+    - chmod -R 775 storage bootstrap/cache || true
+    - rsync -a --delete ./public/ /home/irmmaquinarias/public_html/
