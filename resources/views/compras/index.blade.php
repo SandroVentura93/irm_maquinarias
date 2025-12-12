@@ -321,6 +321,36 @@
         font-weight: 700;
         color: #111827;
     }
+
+    /* Responsive adjustments */
+    @media (max-width: 992px) {
+        .page-title { font-size: 1.5rem; }
+        .btn-modern { padding: 0.5rem 1rem; }
+    }
+
+    @media (max-width: 768px) {
+        .page-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+        .page-title { font-size: 1.25rem; }
+        .stats-row { grid-template-columns: 1fr; }
+
+        /* Convert table into a stacked list on small screens */
+        .table-modern thead { display: none; }
+        .table-modern, .table-modern tbody, .table-modern tr, .table-modern td { display: block; width: 100%; }
+        .table-modern tr { margin-bottom: 1rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; }
+        .table-modern td { padding: 0.5rem 0; border: none; display: flex; justify-content: space-between; align-items: center; }
+        .table-modern td:before { content: attr(data-label); font-weight: 600; color: #6b7280; margin-right: 0.5rem; }
+        .action-buttons { justify-content: flex-end; }
+        .btn-action { width: 36px; height: 36px; }
+        .id-badge { padding: 0.35rem 0.75rem; }
+    }
+
+    /* Header tweaks for mobile: make header stack and button full-width */
+    @media (max-width: 768px) {
+        .page-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+        .page-header .page-title { font-size: 1.25rem; }
+        .page-header .btn-modern { width: 100%; justify-content: center; padding: 0.6rem; }
+        .page-header .page-title i { font-size: 1rem; }
+    }
 </style>
 
 <div class="container-fluid px-4 py-4">
@@ -418,22 +448,22 @@
                     <tbody>
                         @forelse($compras as $compra)
                             <tr>
-                                <td>
+                                <td data-label="ID">
                                     <span class="id-badge">#{{ $compra->id_compra }}</span>
                                 </td>
-                                <td>
+                                <td data-label="Proveedor">
                                     <div class="proveedor-name">
                                         <i class="fas fa-building me-2" style="color: #dc2626;"></i>
                                         {{ $compra->proveedor->razon_social ?? '-' }}
                                     </div>
                                 </td>
-                                <td>
+                                <td data-label="Moneda">
                                     <span class="moneda-badge">
                                         <i class="fas fa-coins me-1"></i>
                                         {{ $compra->moneda->nombre ?? '-' }}
                                     </span>
                                 </td>
-                                <td>
+                                <td data-label="Fecha">
                                     <span class="fecha-badge">
                                         <i class="fas fa-calendar"></i>
                                         {{ Carbon\Carbon::parse($compra->fecha)->format('d/m/Y') }}
@@ -443,16 +473,16 @@
                                     $simbolo = $compra->moneda->simbolo ?? 'S/';
                                     $icono = ($compra->moneda->codigo_iso ?? 'PEN') === 'USD' ? 'fas fa-dollar-sign' : 'fas fa-money-bill-wave';
                                 @endphp
-                                <td class="text-end amount-cell">
+                                <td data-label="Subtotal" class="text-end amount-cell">
                                     <i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($compra->subtotal, 2) }}
                                 </td>
-                                <td class="text-end amount-cell">
+                                <td data-label="IGV" class="text-end amount-cell">
                                     <i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($compra->igv, 2) }}
                                 </td>
-                                <td class="text-end total-cell">
+                                <td data-label="Total" class="text-end total-cell">
                                     <i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($compra->total, 2) }}
                                 </td>
-                                <td>
+                                <td data-label="Acciones">
                                     <div class="action-buttons">
                                         <a href="{{ route('compras.show', $compra->id_compra) }}" 
                                            class="btn-action btn-view" 

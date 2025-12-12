@@ -19,8 +19,8 @@ class ParametrosSeeder extends Seeder
             ['nombre' => 'IGV', 'valor' => '0.18', 'descripcion' => 'Impuesto General a las Ventas'],
             ['nombre' => 'MONEDA_DEFAULT', 'valor' => '1', 'descripcion' => 'Moneda por defecto (Sol Peruano)'],
             ['nombre' => 'STOCK_CRITICO', 'valor' => '5', 'descripcion' => 'Cantidad mínima para alertas de stock'],
-            ['nombre' => 'EMPRESA_RUC', 'valor' => '20123456789', 'descripcion' => 'RUC de la empresa'],
-            ['nombre' => 'EMPRESA_RAZON_SOCIAL', 'valor' => 'IRM Maquinarias S.A.C.', 'descripcion' => 'Razón social de la empresa'],
+            ['nombre' => 'EMPRESA_RUC', 'valor' => '20570639553', 'descripcion' => 'RUC de la empresa'],
+            ['nombre' => 'EMPRESA_RAZON_SOCIAL', 'valor' => 'IRM Maquinarias S.R.L.', 'descripcion' => 'Razón social de la empresa'],
         ];
 
         foreach ($parametros as $parametro) {

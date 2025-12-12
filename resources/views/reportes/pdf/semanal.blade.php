@@ -167,12 +167,28 @@
     <div class="totals-section">
         <table class="totals-table">
             <tr>
-                <td class="label">Total Ventas:</td>
-                <td class="value">S/ {{ number_format($total_ventas, 2) }}</td>
+                <td class="label">Ventas (PEN):</td>
+                <td class="value">S/ {{ number_format($total_ventas_pen ?? ($total_ventas ?? 0), 2) }}</td>
             </tr>
             <tr>
-                <td class="label">Total Compras:</td>
-                <td class="value amount-negative">S/ {{ number_format($total_compras, 2) }}</td>
+                <td class="label">Ventas (USD):</td>
+                <td class="value">$ {{ number_format($total_ventas_usd ?? 0, 2) }}</td>
+            </tr>
+            <tr>
+                <td class="label">Compras (PEN):</td>
+                <td class="value amount-negative">S/ {{ number_format($total_compras_pen ?? ($total_compras ?? 0), 2) }}</td>
+            </tr>
+            <tr>
+                <td class="label">Compras (USD):</td>
+                <td class="value amount-negative">$ {{ number_format($total_compras_usd ?? 0, 2) }}</td>
+            </tr>
+            <tr>
+                <td class="label">Ganancia (PEN):</td>
+                <td class="value">S/ {{ number_format(($ganancia_pen ?? (($total_ventas ?? 0) - ($total_compras ?? 0))), 2) }}</td>
+            </tr>
+            <tr>
+                <td class="label">Ganancia (USD):</td>
+                <td class="value">$ {{ number_format(($ganancia_usd ?? 0), 2) }}</td>
             </tr>
             <tr>
                 <td class="label">Productos Vendidos:</td>
@@ -181,10 +197,6 @@
             <tr>
                 <td class="label">Productos Comprados:</td>
                 <td class="value">{{ number_format($cantidad_productos_comprados) }}</td>
-            </tr>
-            <tr>
-                <td class="label">GANANCIA TOTAL:</td>
-                <td class="value">S/ {{ number_format($ganancia, 2) }}</td>
             </tr>
         </table>
     </div>
@@ -218,7 +230,7 @@
     @endif
 
     <div class="footer">
-        Reporte generado automáticamente por el Sistema de Gestión IRM Maquinarias
+        Reporte generado automáticamente por el Sistema de Gestión IRM Maquinarias S.R.L.
     </div>
 </body>
 </html>

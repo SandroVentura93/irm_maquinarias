@@ -333,7 +333,7 @@ function validarTipoDocumento() {
       break;
     case 'RUC':
       numeroInput.setAttribute('maxlength', '11');
-      numeroInput.setAttribute('placeholder', 'Ej: 20123456789 (11 dígitos)');
+  numeroInput.setAttribute('placeholder', 'Ej: 20570639553 (11 dígitos)');
       info.innerHTML = '<i class="fas fa-info-circle text-info"></i> RUC debe tener 11 dígitos';
       break;
     case 'PASAPORTE':

@@ -223,6 +223,47 @@
         border-bottom: none;
     }
 
+    /* Mobile: stacked product list */
+    @media (max-width: 768px) {
+        .card-body-custom { padding: 1rem; }
+        .table-modern thead { display: none; }
+        .table-modern, .table-modern tbody, .table-modern tr, .table-modern td { display: block; width: 100%; }
+        .table-modern tr { margin-bottom: 0.75rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; }
+        .table-modern td { padding: 0.5rem 0; display: flex; justify-content: space-between; align-items: center; }
+        .table-modern td:before { content: attr(data-label); font-weight: 600; color: #6b7280; margin-right: 0.5rem; }
+        .info-grid { grid-template-columns: 1fr; }
+        .totals-section { padding: 1rem; }
+    }
+
+    /* Extra mobile polish: scale fonts, make totals full width and stack properly */
+    @media (max-width: 768px) {
+        .page-title { font-size: 1.15rem; }
+        .card-header-gradient h5 { font-size: 1rem; }
+        .info-value { font-size: 1rem; }
+        .stat-value { font-size: 1.25rem; }
+        .totals-section { padding: 1rem; box-shadow: none; border-radius: 8px; }
+        /* Ensure the totals column doesn't offset on small screens */
+        .row > .col-lg-6.offset-lg-6 { margin-left: 0 !important; width: 100% !important; }
+        /* Make totals labels smaller and align stack */
+        .total-label { font-size: 0.95rem; }
+        .total-value { font-size: 1.05rem; }
+        /* Action buttons stack and stretch */
+        .actions-bar { flex-direction: column; gap: 0.5rem; }
+        .actions-bar .btn-action { width: 100%; }
+        /* Improve product card readability on tiny screens */
+        .product-name { font-size: 0.95rem; }
+        .quantity-badge { padding: 0.25rem 0.5rem; font-size: 0.9rem; }
+    }
+
+    /* Header tweaks for mobile in show view */
+    @media (max-width: 768px) {
+        .page-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+        .page-header .page-title { font-size: 1.25rem; }
+        .page-header .page-title i { font-size: 1rem; }
+        .actions-bar { width: 100%; display:flex; gap:0.5rem; }
+        .actions-bar .btn-action { flex: 1; justify-content:center; }
+    }
+
     .product-name {
         font-weight: 600;
         color: #111827;
@@ -551,19 +592,19 @@
                     <tbody>
                         @forelse($compra->detalles as $detalle)
                         <tr>
-                            <td>
+                            <td data-label="Producto">
                                 <div class="product-name">
                                     <i class="fas fa-box"></i>
                                     {{ $detalle->producto->descripcion ?? $detalle->producto->nombre ?? '-' }}
                                 </div>
                             </td>
-                            <td class="text-center">
+                            <td data-label="Cantidad" class="text-center">
                                 <span class="quantity-badge">{{ $detalle->cantidad }}</span>
                             </td>
-                            <td class="text-end price-cell"><i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($detalle->precio_unitario, 2) }}</td>
-                            <td class="text-end price-cell"><i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($detalle->subtotal, 2) }}</td>
-                            <td class="text-end price-cell"><i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($detalle->igv, 2) }}</td>
-                            <td class="text-end total-cell"><i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($detalle->total, 2) }}</td>
+                            <td data-label="Precio" class="text-end price-cell"><i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($detalle->precio_unitario, 2) }}</td>
+                            <td data-label="Subtotal" class="text-end price-cell"><i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($detalle->subtotal, 2) }}</td>
+                            <td data-label="IGV" class="text-end price-cell"><i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($detalle->igv, 2) }}</td>
+                            <td data-label="Total" class="text-end total-cell"><i class="{{ $icono }} me-1"></i> {{ $simbolo }} {{ number_format($detalle->total, 2) }}</td>
                         </tr>
                         @empty
                         <tr>

@@ -210,10 +210,10 @@
             <div class="company-info">
                 @include('comprobantes.partials.logo')
                 <div class="company-details">
-                    <h2>{{ $empresa['razon_social'] ?? 'IRM MAQUINARIAS SRL' }}</h2>
-                    <p><strong>RUC:</strong> {{ $empresa['ruc'] ?? '20123456789' }}</p>
-                    <p><strong>Dirección:</strong> {{ $empresa['direccion'] ?? 'Av. Industrial 123, Lima - Perú' }}</p>
-                    <p><strong>Teléfono:</strong> {{ $empresa['telefono'] ?? '(01) 234-5678' }}</p>
+                    <h2>{{ $empresa['razon_social'] ?? 'IRM Maquinarias S.R.L.' }}</h2>
+                    <p><strong>RUC:</strong> {{ $empresa['ruc'] ?? '20570639553' }}</p>
+                    <p><strong>Dirección:</strong> {{ $empresa['direccion'] ?? 'AV. ATAHUALPA NRO. 725, CAJAMARCA' }}</p>
+                    <p><strong>Teléfono:</strong> {{ $empresa['telefono'] ?? '976390506 - 974179198' }}</p>
                     <p><strong>Email:</strong> {{ $empresa['email'] ?? 'ventas@irmmaquinarias.com' }}</p>
                 </div>
             </div>
@@ -344,7 +344,7 @@
             @if(strtoupper($venta->xml_estado) === 'PENDIENTE')
                 <p style="color: #d9534f; font-weight: bold;">Saldo pendiente: {{ $simbolo }} {{ number_format($venta->saldo, 2) }}</p>
             @endif
-            <p>Sistema de Gestión IRM Maquinarias - Generado el {{ now()->format('d/m/Y H:i:s') }}</p>
+            <p>Sistema de Gestión IRM Maquinarias S.R.L. - Generado el {{ now()->format('d/m/Y H:i:s') }}</p>
         </div>
     </div>
 </body>

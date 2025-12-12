@@ -1,207 +1,26 @@
 <?php
-
-
 namespace App\Http\Controllers;
 
-use App\Models\ComprobanteElectronico;
-
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Cache;
-use App\Models\Cliente;
-use App\Models\Venta;
-use App\Models\PagoVenta;
-use App\Models\DetalleVenta;
 use App\Models\Producto;
-use PDF;
-// ...existing use statements...
+use App\Models\Venta;
+use App\Models\DetalleVenta;
+use App\Models\ComprobanteElectronico;
+use App\Models\Cliente;
+use App\Models\Moneda;
+use App\Models\TipoComprobante;
+use App\Models\PagoVenta;
+use App\Models\Ubigeo;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
+use Illuminate\Support\Facades\DB;
 
 class VentaController extends Controller
 {
-    // Lista de ventas
-    public function index(Request $request)
-    {
-        // ⚡ Optimización de consulta con paginación y filtros
-        $query = Venta::with([
-                'cliente:id_cliente,nombre,numero_documento',
-                'tipoComprobante:id_tipo_comprobante,descripcion,codigo_sunat',
-                'moneda:id_moneda,codigo_iso,simbolo'
-            ])
-            ->select('id_venta', 'id_cliente', 'id_tipo_comprobante', 'id_moneda', 'serie', 'numero', 'fecha', 'total', 'saldo', 'xml_estado', 'created_at');
-        
-        // Filtro por búsqueda de texto (número de documento o cliente)
-        if ($request->has('search') && $request->search != '') {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('numero', 'LIKE', "%{$search}%")
-                  ->orWhere('serie', 'LIKE', "%{$search}%")
-                  ->orWhereHas('cliente', function($subQ) use ($search) {
-                      $subQ->where('nombre', 'LIKE', "%{$search}%")
-                           ->orWhere('numero_documento', 'LIKE', "%{$search}%");
-                  });
-            });
-        }
-        
-        // Filtro por tipo de comprobante
-        if ($request->has('tipo_comprobante') && $request->tipo_comprobante != '') {
-            $query->whereHas('tipoComprobante', function($q) use ($request) {
-                $q->where('descripcion', $request->tipo_comprobante);
-            });
-        }
-        
-        // Filtro por estado XML
-        if ($request->has('xml_estado') && $request->xml_estado != '') {
-            $query->where('xml_estado', $request->xml_estado);
-        }
-        
-        // Filtro por rango de fechas
-        if ($request->has('fecha_desde') && $request->fecha_desde != '') {
-            $query->whereDate('fecha', '>=', $request->fecha_desde);
-        }
-        
-        if ($request->has('fecha_hasta') && $request->fecha_hasta != '') {
-            $query->whereDate('fecha', '<=', $request->fecha_hasta);
-        }
-        
-        $ventas = $query->orderBy('created_at', 'desc')
-            ->limit(500) // Limitar resultados para mejor performance
-            ->get();
-
-        // Forzar recálculo de saldo para cada venta listada (por si hay inconsistencias)
-        foreach ($ventas as $venta) {
-            $pagos = $venta->pagos()->sum('monto');
-            if ($pagos == 0) {
-                $venta->saldo = $venta->total;
-            } else {
-                $venta->saldo = $venta->total - $pagos;
-            }
-            $venta->save();
-        }
-        
-        // Obtener tipo de cambio actual (ya tiene cache interno)
-        $tipoCambio = $this->obtenerTipoCambio();
-        
-        return view('ventas.index', compact('ventas', 'tipoCambio'));
-    }
-
-    // Vista principal del formulario
-    public function create()
-    {
-        // ⚡ Cache optimizado para datos que no cambian frecuentemente
-        $ubigeos = Cache::remember('ubigeos_list', 86400, function() { // 24 horas
-            return DB::table('ubigeos')
-                ->select('id_ubigeo', DB::raw("CONCAT(departamento, ' - ', provincia, ' - ', distrito) as descripcion"))
-                ->orderBy('departamento')
-                ->orderBy('provincia') 
-                ->orderBy('distrito')
-                ->get();
-        });
-        
-        // ⚡ Cache para tipos de comprobante
-        $tiposComprobante = Cache::remember('tipos_comprobante_active', 3600, function() { // 1 hora
-            return \App\Models\TipoComprobante::orderBy('codigo_sunat')->get();
-        });
-        
-        // Obtener tipo de cambio actual (ya tiene cache interno)
-        $tipoCambio = $this->obtenerTipoCambio();
-
-        return view('ventas.create', compact('ubigeos', 'tiposComprobante', 'tipoCambio'));
-    }
-
     // Método para obtener tipo de cambio actual
     private function obtenerTipoCambio()
     {
-        try {
-            // Intentar obtener desde cache primero (válido por 1 hora)
-            $tipoCambioCache = \Cache::remember('tipo_cambio_usd_pen', 3600, function () {
-                return $this->obtenerTipoCambioAPI();
-            });
-            
-            if ($tipoCambioCache && $tipoCambioCache > 0) {
-                return $tipoCambioCache;
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Error al obtener tipo de cambio desde cache: ' . $e->getMessage());
-        }
-
-        // Si falla el cache, intentar API directamente
-        try {
-            $tipoCambio = $this->obtenerTipoCambioAPI();
-            if ($tipoCambio) {
-                return $tipoCambio;
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Error al obtener tipo de cambio de API: ' . $e->getMessage());
-        }
-
-        // Valor por defecto actualizado (aproximado para Perú)
-        return 3.73; // Valor aproximado, se actualiza automáticamente con las APIs
-    }
-
-    // Método para obtener tipo de cambio desde múltiples APIs
-    private function obtenerTipoCambioAPI()
-    {
-        // 1. Intentar desde API de SUNAT
-        try {
-            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 5]);
-            $fecha = now()->format('d-m-Y');
-            
-            $response = $client->get("https://api.apis.net.pe/v1/tipo-cambio-sunat", [
-                'query' => ['fecha' => $fecha]
-            ]);
-            
-            if ($response->getStatusCode() == 200) {
-                $data = json_decode($response->getBody(), true);
-                
-                if (isset($data['compra']) && isset($data['venta'])) {
-                    // Usar precio de COMPRA (para mostrar cuántos soles por dólar)
-                    $tipoCambio = $data['compra'];
-                    
-                    // Guardar info en cache
-                    \Cache::put('tipo_cambio_usd_pen_info', [
-                        'fuente' => 'SUNAT',
-                        'fecha_actualizacion' => now(),
-                        'cache_hit' => false,
-                        'compra' => $data['compra'],
-                        'venta' => $data['venta']
-                    ], 3600);
-                    
-                    \Log::info("Tipo de cambio obtenido de SUNAT (compra): {$tipoCambio}");
-                    return $tipoCambio;
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Error al obtener tipo de cambio de SUNAT: ' . $e->getMessage());
-        }
-        
-        // 2. Fallback: API alternativa
-        try {
-            $client = new \GuzzleHttp\Client(['verify' => false, 'timeout' => 5]);
-            $response = $client->get("https://api.exchangerate-api.com/v4/latest/USD");
-            
-            if ($response->getStatusCode() == 200) {
-                $data = json_decode($response->getBody(), true);
-                
-                if (isset($data['rates']['PEN'])) {
-                    $tipoCambio = $data['rates']['PEN'];
-                    
-                    \Cache::put('tipo_cambio_usd_pen_info', [
-                        'fuente' => 'ExchangeRate-API',
-                        'fecha_actualizacion' => now(),
-                        'cache_hit' => false
-                    ], 3600);
-                    
-                    \Log::info("Tipo de cambio obtenido de API alternativa: {$tipoCambio}");
-                    return $tipoCambio;
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::warning('Error al obtener tipo de cambio de API alternativa: ' . $e->getMessage());
-        }
-        
-        return null;
+        // Valor fijo para tipo de cambio (ajusta según tu necesidad)
+        return 3.73;
     }
 
     // Buscar cliente por RUC/DNI (mejorado)
@@ -226,12 +45,10 @@ class VentaController extends Controller
     public function buscarProducto(Request $r)
     {
         $q = $r->query('q', '');
-        
         // Validar longitud mínima
         if (strlen($q) < 2) {
             return response()->json([]);
         }
-
         try {
             // Buscar en múltiples campos sin filtro estricto de activo
             $productos = Producto::where(function($query) use ($q) {
@@ -274,15 +91,12 @@ class VentaController extends Controller
                     'texto_busqueda' => ($producto->codigo ?? '') . ' - ' . ($producto->numero_parte ?? '') . ' - ' . ($producto->descripcion ?? '') . ' - ' . ($producto->modelo ?? '')
                 ];
             });
-
             \Log::info("Búsqueda de productos realizada", [
                 'query' => $q, 
                 'encontrados' => $productos->count(),
                 'productos' => $productos->take(3)->toArray()
             ]);
-
             return response()->json($productos);
-            
         } catch (\Exception $e) {
             \Log::error('Error en búsqueda de productos: ' . $e->getMessage(), [
                 'query' => $q,
@@ -1018,11 +832,13 @@ class VentaController extends Controller
                          ->findOrFail($id);
 
             // Determinar el tipo de comprobante basado en el ID
+            // Mapear correctamente los tipos de comprobante (incluye Cotización = 8)
             $tiposComprobante = [
                 1 => 'Factura',
                 2 => 'Boleta',
                 3 => 'Nota de Crédito',
-                4 => 'Cotizacion'
+                6 => 'Ticket',
+                8 => 'Cotizacion'
             ];
             $tipoComprobante = $tiposComprobante[$venta->id_tipo_comprobante] ?? 'Comprobante';
 
@@ -1040,6 +856,13 @@ class VentaController extends Controller
             if (request()->has('mostrar_codigo_parte')) {
                 $mostrarCodigoParte = request('mostrar_codigo_parte') == '1' ? true : false;
             }
+
+            // Debug log: registrar si llegó el parámetro para ayudar a diagnosticar
+            \Log::info('generarPDF: mostrar_codigo_parte recibido', [
+                'venta_id' => $venta->id_venta,
+                'param_raw' => request()->get('mostrar_codigo_parte'),
+                'computed_flag' => $mostrarCodigoParte
+            ]);
 
             // Preparar datos para el PDF
             $data = [
@@ -1059,7 +882,11 @@ class VentaController extends Controller
                 'tipoCambio' => $tipoCambio,
                 'descuentoTotal' => $venta->detalleVentas->sum('descuento_monto') ?? 0,
                 'totalEnLetras' => $this->numeroALetrasConMoneda($venta->total ?? 0, $codigoIso),
-                'mostrarCodigoParte' => $mostrarCodigoParte
+                'mostrarCodigoParte' => $mostrarCodigoParte,
+                // Mantener compatibilidad con vistas que esperan un array $datos
+                'datos' => [
+                    'mostrarCodigoParte' => $mostrarCodigoParte
+                ]
             ];
 
             // Seleccionar la vista según el tipo de comprobante
@@ -1794,4 +1621,21 @@ class VentaController extends Controller
             return redirect('/ventas')->with('error', 'Hubo un problema al registrar el pago.');
         }
     }
+
+    public function create(Request $request)
+    {
+        $clientes = \App\Models\Cliente::orderBy('nombre')->limit(100)->get();
+        $productos = Producto::orderBy('descripcion')->limit(100)->get();
+        $monedas = \App\Models\Moneda::all();
+        $ubigeos = \App\Models\Ubigeo::all();
+        return view('ventas.create', compact('clientes', 'productos', 'monedas', 'ubigeos'));
+    }
+
+    public function index(Request $request)
+    {
+        $ventas = Venta::orderBy('created_at', 'desc')->paginate(20);
+        return view('ventas.index', compact('ventas'));
+    }
+
 }
+    

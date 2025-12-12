@@ -76,7 +76,7 @@
 
     <!-- Botones de Exportación -->
     <div class="export-buttons mb-4">
-        <a href="/mensual/pdf?year={{ request('year') }}&month={{ request('month') }}" 
+        <a href="{{ route('mensual.pdf', ['year' => request('year', date('Y')), 'month' => request('month', date('m'))]) }}" 
            class="btn-export pdf" 
            target="_blank">
             <i class="fas fa-file-pdf"></i>

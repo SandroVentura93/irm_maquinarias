@@ -98,7 +98,7 @@
 
     <!-- Botones de Exportación -->
     <div class="export-buttons mb-4">
-        <a href="/semanal/pdf?year={{ request('year') }}&month={{ request('month') }}&week={{ request('week') }}" 
+        <a href="{{ route('semanal.pdf', ['year' => request('year', date('Y')), 'month' => request('month', date('m')), 'week' => request('week')]) }}" 
            class="btn-export pdf" 
            target="_blank">
             <i class="fas fa-file-pdf"></i>

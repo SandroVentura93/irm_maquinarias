@@ -210,10 +210,10 @@
             <div class="company-info">
                 @include('comprobantes.partials.logo')
                 <div class="company-details">
-                    <h2 style="color: rgba(59, 124, 228, 1; font-size: 18px; margin-bottom: 5px;">{{ $empresa['razon_social'] ?? 'IRM MAQUINARIAS SRL' }}</h2>
-                    <p><strong>RUC:</strong> {{ $empresa['ruc'] ?? '20123456789' }}</p>
-                    <p><strong>Dirección:</strong> {{ $empresa['direccion'] ?? 'Av. Industrial 123, Lima - Perú' }}</p>
-                    <p><strong>Teléfono:</strong> {{ $empresa['telefono'] ?? '(01) 234-5678' }}</p>
+                    <h2 style="color: rgba(59, 124, 228, 1; font-size: 18px; margin-bottom: 5px;">{{ $empresa['razon_social'] ?? 'IRM Maquinarias S.R.L.' }}</h2>
+                    <p><strong>RUC:</strong> {{ $empresa['ruc'] ?? '20570639553' }}</p>
+                    <p><strong>Dirección:</strong> {{ $empresa['direccion'] ?? 'AV. ATAHUALPA NRO. 725, CAJAMARCA' }}</p>
+                    <p><strong>Teléfono:</strong> {{ $empresa['telefono'] ?? '976390506 - 974179198' }}</p>
                     <p><strong>Email:</strong> {{ $empresa['email'] ?? 'ventas@irmmaquinarias.com' }}</p>
                 </div>
             </div>
@@ -347,7 +347,7 @@
             <p><strong>Atendido por:</strong> {{ $venta->vendedor->nombre }}</p>
             @endif
             <p>¡Gracias por su compra!</p>
-                <p>Sistema de Gestión IRM Maquinarias - Generado el {{ now()->format('d/m/Y H:i:s') }}</p>
+                <p>Sistema de Gestión IRM Maquinarias S.R.L. - Generado el {{ now()->format('d/m/Y H:i:s') }}</p>
                 @if(strtoupper($venta->xml_estado) === 'PENDIENTE')
                     <p style="color: #d9534f; font-weight: bold;">Saldo pendiente: {{ $simbolo }} {{ number_format($venta->saldo, 2) }}</p>
                 @endif

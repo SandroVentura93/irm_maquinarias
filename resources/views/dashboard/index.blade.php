@@ -15,7 +15,7 @@
                             <div class="logo-animation"></div>
                         </div>
                         <div class="header-text-content">
-                            <h1 class="dashboard-title-ultra">IRM Maquinarias</h1>
+                            <h1 class="dashboard-title-ultra">IRM Maquinarias S.R.L.</h1>
                             <h2 class="dashboard-subtitle-ultra">Dashboard Ejecutivo</h2>
                             <p class="dashboard-description">Panel de Control y Análisis de Rendimiento</p>
                         </div>
@@ -2419,7 +2419,7 @@ document.addEventListener('DOMContentLoaded', function() {
     Chart.defaults.backgroundColor = 'rgba(102, 126, 234, 0.1)';
     
     // Datos para gráficos
-    const ventasData = @json($ventas_semana || []);
+    const ventasData = @json($ventas_semana ?? []);
     // Preparar arrays por moneda y balances acumulados
     const ingresosPenArr = ventasData.map(item => Number(item.ingresos_pen || 0));
     const ingresosUsdArr = ventasData.map(item => Number(item.ingresos_usd || 0));
@@ -2434,7 +2434,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     const balancePen = cumulative(ingresosPenArr);
     const balanceUsd = cumulative(ingresosUsdArr);
-    const estadisticasMensuales = @json($estadisticas_mensuales);
+    const estadisticasMensuales = @json($estadisticas_mensuales ?? []);
     
     // Configuración responsive común
     const commonResponsiveConfig = {

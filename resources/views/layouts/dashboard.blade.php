@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>IRM Maquinarias - Dashboard</title>
+    <title>IRM Maquinarias S.R.L. - Dashboard</title>
     
     <!-- Bootstrap 5 y librerías modernas -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -82,6 +82,19 @@
             background-clip: text;
         }
 
+        /* Mobile sidebar toggler */
+        .sidebar-toggler{
+            display:none;
+            background: linear-gradient(135deg,var(--primary-color),var(--primary-light));
+            border:none;color:white;padding:8px 10px;border-radius:8px;align-items:center;justify-content:center;cursor:pointer;
+            box-shadow:var(--shadow-sm);
+        }
+
+        @media (max-width: 768px){
+            .sidebar-toggler{display:flex;margin-right:12px}
+            .top-navbar .logo-text{margin-left:6px}
+        }
+
         .top-navbar .user-info {
             margin-left: auto;
             display: flex;
@@ -109,6 +122,13 @@
             font-weight: 500;
             transition: all 0.3s ease;
             box-shadow: var(--shadow-sm);
+        }
+
+        /* Mostrar solo el icono de cerrar sesión en móviles */
+        .top-navbar .btn-logout .logout-text{display:inline}
+        @media (max-width:768px){
+            .top-navbar .btn-logout{padding:8px 10px}
+            .top-navbar .btn-logout .logout-text{display:none}
         }
 
         .top-navbar .btn-logout:hover {
@@ -396,13 +416,90 @@
                 left: 0;
             }
         }
+        /* Additional top-navbar responsiveness */
+        @media (max-width: 992px) {
+            .top-navbar { height: 60px; padding: 0 16px; }
+            .top-navbar .logo-text { font-size: 1.2rem; }
+            .top-navbar .user-info { gap: 12px; }
+        }
+
+        @media (max-width: 768px) {
+            .top-navbar { height: 56px; padding: 0 12px; }
+            .top-navbar .logo-text { font-size: 1.05rem; white-space: normal; line-height: 1; }
+            .top-navbar .logo-text i { font-size: 1.05rem; }
+            .top-navbar .welcome-text { display: none; }
+            .top-navbar .user-name { font-size: 0.95rem; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .top-navbar .user-info { gap: 8px; align-items: center; }
+            .top-navbar .btn-logout { padding: 8px; }
+            .sidebar-toggler { margin-right: 8px; }
+        }
+
+        @media (max-width: 480px) {
+            .top-navbar { height: 52px; padding: 0 8px; }
+            .top-navbar .logo-text { font-size: 0.95rem; }
+            .top-navbar .logo-text i { font-size: 1rem; }
+            /* hide username on very small screens to free space */
+            .top-navbar .user-name { display: none; }
+            /* keep only the logout icon visible */
+            .top-navbar .btn-logout { padding: 6px; }
+            .top-navbar .btn-logout .logout-text { display: none !important; }
+            .top-navbar .btn-logout i { font-size: 1rem; }
+        }
+        /* Additional mobile-friendly adjustments */
+        @media (max-width: 992px) {
+            .content-wrapper { padding: 20px; border-radius: 12px; }
+            .container-fluid { padding-left: 16px; padding-right: 16px; }
+        }
+
+        @media (max-width: 768px) {
+            .content { padding: 12px; margin-top: 70px; }
+            .content-wrapper { padding: 12px; border-radius: 8px; box-shadow: none; min-height: auto; }
+            .content .content-wrapper { max-width: 100%; }
+            /* Make page header wrap instead of overflow */
+            .page-header { flex-wrap: wrap; gap: 0.5rem; }
+            .page-title { font-size: 1.25rem; }
+            /* Reduce card radius for full-bleed feel on small screens */
+            .card-modern { border-radius: 8px; }
+            /* Reduce top navbar padding to free horizontal space */
+            .top-navbar { padding: 0 12px; }
+            /* Ensure container spacing is not excessive on very small devices */
+            .container-fluid.px-4.py-4 { padding-left: 8px; padding-right: 8px; }
+        }
+        /* Global responsive helpers */
+        /* Ensure images never overflow their containers */
+        .img-fluid, img { max-width:100%; height:auto; display:block; }
+
+        /* Make tables scrollable and responsive on small screens only */
+        .table-responsive{ overflow:auto; -webkit-overflow-scrolling: touch; }
+        /* Ensure any table inside the main content becomes scrollable on small screens without editing each view */
+        @media (max-width: 992px) {
+            .content .content-wrapper table{
+                display:block;
+                width:100%;
+                overflow:auto;
+                -webkit-overflow-scrolling:touch;
+            }
+            .content .content-wrapper table td, .content .content-wrapper table th{ white-space:nowrap }
+        }
+
+        /* Make inline form controls stack on small screens */
+        @media (max-width: 768px){
+            .form-inline .form-control{ width:100%; margin-bottom:.5rem; }
+            .content-wrapper{ padding:18px }
+        }
     </style>
 </head>
 <body>
     <!-- Navbar Superior -->
     <div class="top-navbar animate-in">
-        <div class="logo-text">
-            <i class="fas fa-cogs"></i> IRM Maquinarias
+            <div style="display:flex;align-items:center;gap:8px">
+            <!-- Mobile toggler to open sidebar -->
+            <button class="sidebar-toggler d-lg-none" aria-label="Abrir menú" type="button">
+                <i class="fas fa-bars"></i>
+            </button>
+            	<div class="logo-text">
+                <i class="fas fa-cogs"></i> IRM Maquinarias S.R.L.
+            	</div>
         </div>
         <div class="user-info">
             <div>
@@ -413,12 +510,14 @@
             <form action="{{ route('logout') }}" method="POST">
                 @csrf
                 <button type="submit" class="btn-logout">
-                    <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+                    <span class="logout-text">Cerrar Sesión</span>
                 </button>
             </form>
             @else
             <a href="{{ route('login') }}" class="btn-logout" style="text-decoration: none;">
-                <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+                <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
+                <span class="logout-text">Iniciar Sesión</span>
             </a>
             @endif
         </div>
@@ -432,7 +531,7 @@
                     <i class="fas fa-industry"></i>
                 </div>
             </div>
-            <h4>IRM Maquinarias</h4>
+            <h4>IRM Maquinarias S.R.L.</h4>
             <div class="brand-tagline">Sistema de Gestión</div>
         </div>
 
@@ -440,7 +539,7 @@
             <div class="nav-section-title">MENÚ PRINCIPAL</div>
             <ul class="nav flex-column">
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
+                    <a class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}" href="{{ route('home') }}">
                         <i class="fas fa-chart-pie"></i> Dashboard
                     </a>
                 </li>
@@ -592,5 +691,48 @@
 <!-- Sección personalizada para scripts adicionales -->
 @yield('scripts')
 @stack('scripts')
+<script>
+    // Mobile sidebar toggle logic
+    (function(){
+        const toggler = document.querySelector('.sidebar-toggler');
+        const sidebar = document.querySelector('.sidebar');
+        if(!toggler || !sidebar) return;
+
+        // Close when clicking outside sidebar — improved with overlay management
+        function ensureOverlay(){
+            let ov = document.getElementById('sidebar-overlay');
+            if(!ov){
+                ov = document.createElement('div');
+                ov.id = 'sidebar-overlay';
+                Object.assign(ov.style,{
+                    position: 'fixed', inset: '0', background: 'rgba(0,0,0,0.32)', zIndex: '1000'
+                });
+                ov.addEventListener('click', closeSidebar);
+                document.body.appendChild(ov);
+            }
+            return ov;
+        }
+
+        function removeOverlay(){
+            const ov = document.getElementById('sidebar-overlay');
+            if(ov) ov.remove();
+        }
+
+        // open/close handlers updated to manage overlay
+        function openSidebar(){ sidebar.classList.add('show'); ensureOverlay(); document.body.style.overflow = 'hidden'; }
+        function closeSidebar(){ sidebar.classList.remove('show'); removeOverlay(); document.body.style.overflow = ''; }
+
+        toggler.addEventListener('click', (e)=>{
+            e.stopPropagation();
+            if(sidebar.classList.contains('show')) closeSidebar(); else openSidebar();
+        });
+
+        // Close on Escape
+        document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeSidebar(); });
+
+        // Close when clicking a navigation link (mobile)
+        sidebar.querySelectorAll('.nav-link').forEach(a=>a.addEventListener('click', ()=>{ if(window.innerWidth<=768) closeSidebar(); }));
+    })();
+</script>
 </body>
 </html>

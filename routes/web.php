@@ -42,6 +42,12 @@ Route::post('/test-cancel/{id}', function($id) {
 |--------------------------------------------------------------------------
 */
 
+// Página pública de aterrizaje (landing). Siempre mostramos la landing en la raíz.
+Route::get('/', function () {
+    return view('landing');
+})->name('landing');
+
+
 // Rutas de autenticación (públicas)
 Route::middleware('guest')->group(function () {
 
@@ -109,8 +115,8 @@ Route::get('/quick-login', function () {
 
 Route::middleware(['auth'])->group(function () {
     
-    // Ruta raíz - Página de inicio
-    Route::get('/', [DashboardController::class, 'index'])->name('home');
+    // Ruta del dashboard - ahora en /home (la raíz / se usa para la landing pública)
+    Route::get('/home', [DashboardController::class, 'index'])->name('home');
     
     /*
     |--------------------------------------------------------------------------

@@ -288,13 +288,25 @@ class PdfController extends Controller
                 'simbolo' => $venta->moneda->simbolo ?? '$',
                 'nombre' => $venta->moneda->nombre ?? 'Dólar Americano'
             ];
+            // Respetar parámetro opcional para mostrar/ocultar código/numero de parte en la vista
+            $mostrarCodigoParte = true;
+            if (request()->has('mostrar_codigo_parte')) {
+                $mostrarCodigoParte = request('mostrar_codigo_parte') == '1' ? true : false;
+            }
+            $datos['mostrarCodigoParte'] = $mostrarCodigoParte;
+            // Debug log para diagnóstico
+            \Log::info('PdfController::generatePdf mostrar_codigo_parte', [
+                'venta_id' => $venta->id_venta,
+                'param_raw' => request()->get('mostrar_codigo_parte'),
+                'computed_flag' => $mostrarCodigoParte
+            ]);
             // Validar tipo de cambio manual
             $tipoCambioRaw = $venta->tipo_cambio ?? null;
             $tipoCambio = $this->validarTipoCambio($tipoCambioRaw) ?? (config('app.tipo_cambio') ?? 3.75);
 
             // ⚡ Configuración optimizada de DomPDF
             $moneda = $venta->moneda; // Pasar objeto Moneda para vistas existentes
-            $pdf = PDF::loadView('comprobantes.' . $tipoConfig['template'], compact('venta', 'datos', 'empresa', 'tipoConfig', 'tipoCambio', 'moneda'))
+            $pdf = PDF::loadView('comprobantes.' . $tipoConfig['template'], compact('venta', 'datos', 'empresa', 'tipoConfig', 'tipoCambio', 'moneda', 'mostrarCodigoParte'))
                 ->setPaper('a4', 'portrait')
                 ->setOptions([
                     'isHtml5ParserEnabled' => true,
@@ -376,8 +388,21 @@ class PdfController extends Controller
             $tipoCambioRaw = $venta->tipo_cambio ?? null;
             $tipoCambio = $this->validarTipoCambio($tipoCambioRaw) ?? (config('app.tipo_cambio') ?? 3.75);
 
+            // Respetar parámetro opcional para mostrar/ocultar código/numero de parte en la vista
+            $mostrarCodigoParte = true;
+            if (request()->has('mostrar_codigo_parte')) {
+                $mostrarCodigoParte = request('mostrar_codigo_parte') == '1' ? true : false;
+            }
+            $datos['mostrarCodigoParte'] = $mostrarCodigoParte;
+            // Debug log para diagnóstico
+            \Log::info('PdfController::viewPdf mostrar_codigo_parte', [
+                'venta_id' => $venta->id_venta,
+                'param_raw' => request()->get('mostrar_codigo_parte'),
+                'computed_flag' => $mostrarCodigoParte
+            ]);
+
             // ⚡ Optimizaciones de DomPDF
-            $pdf = PDF::loadView('comprobantes.' . $tipoConfig['template'], compact('venta', 'datos', 'empresa', 'tipoConfig', 'moneda', 'tipoCambio'))
+            $pdf = PDF::loadView('comprobantes.' . $tipoConfig['template'], compact('venta', 'datos', 'empresa', 'tipoConfig', 'moneda', 'tipoCambio', 'mostrarCodigoParte'))
                 ->setPaper('a4', 'portrait')
                 ->setOptions([
                     'isHtml5ParserEnabled' => true,
@@ -487,10 +512,10 @@ class PdfController extends Controller
     {
         // En el futuro esto podría venir de una tabla de configuración
         return [
-            'razon_social' => env('EMPRESA_RAZON_SOCIAL', 'IRM MAQUINARIAS SRL'),
-            'ruc' => env('EMPRESA_RUC', '20123456789'),
-            'direccion' => env('EMPRESA_DIRECCION', 'Av. Industrial 123, Lima, Perú'),
-            'telefono' => env('EMPRESA_TELEFONO', '(01) 234-5678'),
+            'razon_social' => env('EMPRESA_RAZON_SOCIAL', 'IRM Maquinarias S.R.L.'),
+            'ruc' => env('EMPRESA_RUC', '20570639553'),
+            'direccion' => env('EMPRESA_DIRECCION', 'AV. ATAHUALPA NRO. 725, CAJAMARCA'),
+            'telefono' => env('EMPRESA_TELEFONO', '976390506 - 974179198'),
             'email' => env('EMPRESA_EMAIL', 'ventas@irmmaquinarias.com'),
             'web' => env('EMPRESA_WEB', 'www.irmmaquinarias.com'),
             'logo_path' => $this->getLogoPath(),
@@ -741,7 +766,7 @@ class PdfController extends Controller
             
             // Datos para QR según formato SUNAT
             $qrData = implode('|', [
-                '20123456789', // RUC emisor
+                '20570639553', // RUC emisor
                 $tipoConfig['codigo_sunat'] ?? '01',
                 $venta->serie,
                 str_pad($venta->numero_comprobante, 8, '0', STR_PAD_LEFT),

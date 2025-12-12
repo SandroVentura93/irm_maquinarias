@@ -39,6 +39,6 @@ Todos los 9 templates de PDF ahora usan el logo PNG como prioridad:
 
 ## 🚀 **¡LISTO PARA USAR!**
 
-**El logo PNG oficial de IRM MAQUINARIAS ahora se mostrará correctamente en todos los comprobantes PDF.**
+**El logo PNG oficial de IRM Maquinarias S.R.L. ahora se mostrará correctamente en todos los comprobantes PDF.**
 
 **Próximo paso:** Generar un PDF de prueba para ver el logo en acción.

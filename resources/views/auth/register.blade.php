@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro - IRM Maquinarias</title>
+    <title>Registro - IRM Maquinarias S.R.L.</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -53,7 +53,7 @@
             <div class="col-md-6 col-lg-5">
                 <div class="register-container">
                     <div class="register-header">
-                        <h3><i class="fas fa-tools"></i> IRM Maquinarias</h3>
+                        <h3><i class="fas fa-tools"></i> IRM Maquinarias S.R.L.</h3>
                         <p class="mb-0">Crear Nueva Cuenta</p>
                     </div>
                     <div class="register-body">

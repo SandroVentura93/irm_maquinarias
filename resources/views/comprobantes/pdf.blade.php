@@ -238,12 +238,12 @@
             <div class="company-info">
                 @include('comprobantes.partials.logo')
                 <div class="company-name">
-                    IRM MAQUINARIAS S.A.C.
+                    IRM Maquinarias S.R.L.
                 </div>
                 <div class="company-details">
-                    <strong>RUC:</strong> 20123456789<br>
-                    <strong>Dirección:</strong> Av. Industrial 123, Lima - Perú<br>
-                    <strong>Teléfono:</strong> (01) 234-5678<br>
+                    <strong>RUC:</strong> 20570639553<br>
+                    <strong>Dirección:</strong> AV. ATAHUALPA NRO. 725, CAJAMARCA<br>
+                    <strong>Teléfono:</strong> 976390506 - 974179198<br>
                     <strong>Email:</strong> ventas@irmmaquinarias.com
                 </div>
             </div>
@@ -383,7 +383,7 @@
             @if(strtoupper($venta->xml_estado) === 'PENDIENTE')
                 <p style="color: #d9534f; font-weight: bold;">Saldo pendiente: {{ $simbolo }} {{ number_format($venta->saldo, 2) }}</p>
             @endif
-            <p>Sistema de Gestión IRM Maquinarias - Generado el {{ now()->format('d/m/Y H:i:s') }}</p>
+            <p>Sistema de Gestión IRM Maquinarias S.R.L. - Generado el {{ now()->format('d/m/Y H:i:s') }}</p>
         </div>
     </div>
 </body>

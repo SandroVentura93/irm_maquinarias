@@ -1,12 +1,12 @@
 <div style="width:100%; font-family: Arial, Helvetica, sans-serif; background: #f8fafc; padding: 20px;">
     <div style="display:flex; align-items:center; justify-content:center; margin-bottom:20px; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px #e2e8f0; padding: 10px;">
         <div style="flex:0 0 80px;">
-            <img src="{{ public_path('images/logo.png') }}" alt="Logo" style="max-width:80px; max-height:80px;">
+            <img src="{{ public_path('images/logo.png') }}" alt="Logo" class="img-fluid" style="max-width:80px; max-height:80px;">
         </div>
         <div style="flex:1; text-align:center;">
             <h1 style="margin-bottom:0; color:#2563eb; font-size:2.2em;">{{ config('app.name') }}</h1>
-            <span style="font-size:16px;">RUC: 20481234567</span><br>
-            <span style="font-size:14px;">Av. Ejemplo 123, Lima, Perú</span><br>
+            <span style="font-size:16px;">RUC: 20570639553</span><br>
+            <span style="font-size:14px;">AV. ATAHUALPA NRO. 725, CAJAMARCA</span><br>
             <span style="font-size:14px;">{{ config('app.env') == 'local' ? 'Demo' : 'Producción' }}</span>
             <br>
             <span style="font-size:18px; font-weight:bold; color:#0d9488;">Reporte Semanal de Ventas y Compras</span>

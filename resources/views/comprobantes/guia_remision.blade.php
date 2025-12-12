@@ -192,10 +192,10 @@
             <div class="company-info">
                 @include('comprobantes.partials.logo')
                 <div class="company-details">
-                    <h2>{{ $empresa['razon_social'] ?? 'IRM MAQUINARIAS S.A.C.' }}</h2>
-                    <p><strong>RUC:</strong> {{ $empresa['ruc'] ?? '20123456789' }}</p>
-                    <p><strong>Dirección:</strong> {{ $empresa['direccion'] ?? 'Av. Industrial 123, Lima, Perú' }}</p>
-                    <p><strong>Teléfono:</strong> {{ $empresa['telefono'] ?? '(01) 234-5678' }}</p>
+                    <h2>{{ $empresa['razon_social'] ?? 'IRM Maquinarias S.R.L.' }}</h2>
+                    <p><strong>RUC:</strong> {{ $empresa['ruc'] ?? '20570639553' }}</p>
+                    <p><strong>Dirección:</strong> {{ $empresa['direccion'] ?? 'AV. ATAHUALPA NRO. 725, CAJAMARCA' }}</p>
+                    <p><strong>Teléfono:</strong> {{ $empresa['telefono'] ?? '976390506 - 974179198' }}</p>
                     <p><strong>Email:</strong> {{ $empresa['email'] ?? 'ventas@irmmaquinarias.com' }}</p>
                 </div>
             </div>
@@ -242,7 +242,7 @@
         <div style="display: table; width: 100%; margin: 15px 0; background: #f8f9fa; padding: 10px;">
             <div style="display: table-cell; width: 33.33%; padding: 5px;">
                 <p><strong>Punto de partida:</strong> {{ $empresa['direccion'] ?? 'Almacén Central' }}</p>
-                <p><strong>Transportista:</strong> {{ $empresa['razon_social'] ?? 'IRM MAQUINARIAS S.A.C.' }}</p>
+                <p><strong>Transportista:</strong> {{ $empresa['razon_social'] ?? 'IRM Maquinarias S.R.L.' }}</p>
             </div>
             <div style="display: table-cell; width: 33.33%; padding: 5px;">
                 <p><strong>Punto de llegada:</strong> {{ $venta->cliente->direccion ?? 'A coordinar' }}</p>

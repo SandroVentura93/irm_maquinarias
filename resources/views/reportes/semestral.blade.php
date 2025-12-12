@@ -302,38 +302,59 @@
                     <div class="month-card-header">
                         <i class="fas fa-calendar-day me-2"></i>{{ $month['name'] }}
                     </div>
-                    <div class="month-card-body">
-                        <div class="metric-row">
-                            <span class="metric-label">
-                                <i class="fas fa-shopping-cart me-1"></i>Ventas
-                            </span>
-                            <span class="metric-value success">S/ {{ number_format($month['total_ventas'], 2) }}</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">
-                                <i class="fas fa-box me-1"></i>Compras
-                            </span>
-                            <span class="metric-value danger">S/ {{ number_format($month['total_compras'], 2) }}</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">
-                                <i class="fas fa-chart-line me-1"></i>Ganancia
-                            </span>
-                            <span class="metric-value" style="color: #10b981;">S/ {{ number_format($month['ganancia'], 2) }}</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">
-                                <i class="fas fa-cubes me-1"></i>Vendidos
-                            </span>
-                            <span class="metric-value">{{ $month['cantidad_productos_vendidos'] }}</span>
-                        </div>
-                        <div class="metric-row">
-                            <span class="metric-label">
-                                <i class="fas fa-dolly me-1"></i>Comprados
-                            </span>
-                            <span class="metric-value">{{ $month['cantidad_productos_comprados'] }}</span>
-                        </div>
-                    </div>
+                            <div class="month-card-body">
+                                <div class="metric-row">
+                                    <span class="metric-label">
+                                        <i class="fas fa-shopping-cart me-1"></i>Ventas (PEN)
+                                    </span>
+                                    <span class="metric-value success">S/ {{ number_format($month['total_ventas_pen'] ?? ($month['total_ventas'] ?? 0), 2) }}</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span class="metric-label">
+                                        <i class="fas fa-shopping-cart me-1"></i>Ventas (USD)
+                                    </span>
+                                    <span class="metric-value success">$ {{ number_format($month['total_ventas_usd'] ?? 0, 2) }}</span>
+                                </div>
+
+                                <div class="metric-row">
+                                    <span class="metric-label">
+                                        <i class="fas fa-box me-1"></i>Compras (PEN)
+                                    </span>
+                                    <span class="metric-value danger">S/ {{ number_format($month['total_compras_pen'] ?? ($month['total_compras'] ?? 0), 2) }}</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span class="metric-label">
+                                        <i class="fas fa-box me-1"></i>Compras (USD)
+                                    </span>
+                                    <span class="metric-value danger">$ {{ number_format($month['total_compras_usd'] ?? 0, 2) }}</span>
+                                </div>
+
+                                <div class="metric-row">
+                                    <span class="metric-label">
+                                        <i class="fas fa-chart-line me-1"></i>Ganancia (PEN)
+                                    </span>
+                                    <span class="metric-value" style="color: #10b981;">S/ {{ number_format($month['ganancia_pen'] ?? ($month['ganancia'] ?? 0), 2) }}</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span class="metric-label">
+                                        <i class="fas fa-chart-line me-1"></i>Ganancia (USD)
+                                    </span>
+                                    <span class="metric-value" style="color: #10b981;">$ {{ number_format($month['ganancia_usd'] ?? 0, 2) }}</span>
+                                </div>
+
+                                <div class="metric-row">
+                                    <span class="metric-label">
+                                        <i class="fas fa-cubes me-1"></i>Vendidos
+                                    </span>
+                                    <span class="metric-value">{{ $month['cantidad_productos_vendidos'] }}</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span class="metric-label">
+                                        <i class="fas fa-dolly me-1"></i>Comprados
+                                    </span>
+                                    <span class="metric-value">{{ $month['cantidad_productos_comprados'] }}</span>
+                                </div>
+                            </div>
                 </div>
             </div>
             @endforeach
@@ -353,28 +374,56 @@
                 <i class="fas fa-chart-pie me-2"></i>Resumen del Semestre {{ $semester }} - {{ $year }}
             </h4>
             <div class="row">
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <div class="summary-item">
                         <span class="summary-label">
-                            <i class="fas fa-dollar-sign"></i>Total Ventas
+                            <i class="fas fa-dollar-sign"></i>Total Ventas (PEN)
                         </span>
-                        <span class="summary-value" style="color: #059669;">S/ {{ number_format($totalVentas, 2) }}</span>
+                        <span class="summary-value" style="color: #059669;">S/ {{ number_format($sum_ventas_pen ?? collect($months_data)->sum('total_ventas'), 2) }}</span>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <div class="summary-item">
                         <span class="summary-label">
-                            <i class="fas fa-shopping-bag"></i>Total Compras
+                            <i class="fas fa-dollar-sign"></i>Total Ventas (USD)
                         </span>
-                        <span class="summary-value" style="color: #dc2626;">S/ {{ number_format($totalCompras, 2) }}</span>
+                        <span class="summary-value" style="color: #059669;">$ {{ number_format($sum_ventas_usd ?? collect($months_data)->sum('total_ventas'), 2) }}</span>
                     </div>
                 </div>
-                <div class="col-md-4">
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
                     <div class="summary-item">
                         <span class="summary-label">
-                            <i class="fas fa-trophy"></i>Ganancia Total
+                            <i class="fas fa-shopping-bag"></i>Total Compras (PEN)
                         </span>
-                        <span class="summary-value" style="color: #10b981;">S/ {{ number_format($totalGanancia, 2) }}</span>
+                        <span class="summary-value" style="color: #dc2626;">S/ {{ number_format($sum_compras_pen ?? collect($months_data)->sum('total_compras'), 2) }}</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="summary-item">
+                        <span class="summary-label">
+                            <i class="fas fa-shopping-bag"></i>Total Compras (USD)
+                        </span>
+                        <span class="summary-value" style="color: #dc2626;">$ {{ number_format($sum_compras_usd ?? 0, 2) }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <div class="summary-item">
+                        <span class="summary-label">
+                            <i class="fas fa-trophy"></i>Ganancia Total (PEN)
+                        </span>
+                        <span class="summary-value" style="color: #10b981;">S/ {{ number_format( ($sum_ventas_pen ?? collect($months_data)->sum('total_ventas')) - ($sum_compras_pen ?? collect($months_data)->sum('total_compras')), 2) }}</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="summary-item">
+                        <span class="summary-label">
+                            <i class="fas fa-trophy"></i>Ganancia Total (USD)
+                        </span>
+                        <span class="summary-value" style="color: #10b981;">$ {{ number_format( ($sum_ventas_usd ?? 0) - ($sum_compras_usd ?? 0), 2) }}</span>
                     </div>
                 </div>
             </div>
@@ -487,24 +536,43 @@
                 '{{ $month['name'] }}',
             @endforeach
         ];
-        
-        const ventas = [
+
+        // Try to use controller-provided per-currency series if available, else fallback to months_data fields
+        const ventasPen = @isset($ventas_chart_pen) {!! json_encode($ventas_chart_pen) !!} @else [
             @foreach($months_data as $month)
-                {{ $month['total_ventas'] }},
+                {{ $month['total_ventas_pen'] ?? 0 }},
             @endforeach
-        ];
-        
-        const compras = [
+        ] @endisset;
+
+        const ventasUsd = @isset($ventas_chart_usd) {!! json_encode($ventas_chart_usd) !!} @else [
             @foreach($months_data as $month)
-                {{ $month['total_compras'] }},
+                {{ $month['total_ventas_usd'] ?? 0 }},
             @endforeach
-        ];
-        
-        const ganancias = [
+        ] @endisset;
+
+        const comprasPen = @isset($compras_chart_pen) {!! json_encode($compras_chart_pen) !!} @else [
             @foreach($months_data as $month)
-                {{ $month['ganancia'] }},
+                {{ $month['total_compras_pen'] ?? 0 }},
             @endforeach
-        ];
+        ] @endisset;
+
+        const comprasUsd = @isset($compras_chart_usd) {!! json_encode($compras_chart_usd) !!} @else [
+            @foreach($months_data as $month)
+                {{ $month['total_compras_usd'] ?? 0 }},
+            @endforeach
+        ] @endisset;
+
+        const gananciasPen = @isset($ganancias_chart_pen) {!! json_encode($ganancias_chart_pen) !!} @else [
+            @foreach($months_data as $month)
+                {{ $month['ganancia_pen'] ?? 0 }},
+            @endforeach
+        ] @endisset;
+
+        const gananciasUsd = @isset($ganancias_chart_usd) {!! json_encode($ganancias_chart_usd) !!} @else [
+            @foreach($months_data as $month)
+                {{ $month['ganancia_usd'] ?? 0 }},
+            @endforeach
+        ] @endisset;
 
         new Chart(ctx, {
             type: 'line',
@@ -512,8 +580,8 @@
                 labels: labels,
                 datasets: [
                     {
-                        label: 'Ventas',
-                        data: ventas,
+                        label: 'Ventas (S/)',
+                        data: ventasPen,
                         backgroundColor: gradientVentas,
                         borderColor: '#10b981',
                         borderWidth: 3,
@@ -523,11 +591,27 @@
                         pointHoverRadius: 7,
                         pointBackgroundColor: '#10b981',
                         pointBorderColor: '#fff',
-                        pointBorderWidth: 2
+                        pointBorderWidth: 2,
+                        yAxisID: 'yPen'
                     },
                     {
-                        label: 'Compras',
-                        data: compras,
+                        label: 'Ventas ($)',
+                        data: ventasUsd,
+                        backgroundColor: 'rgba(59,130,246,0.08)',
+                        borderColor: '#3b82f6',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: '#3b82f6',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        yAxisID: 'yUsd'
+                    },
+                    {
+                        label: 'Compras (S/)',
+                        data: comprasPen,
                         backgroundColor: gradientCompras,
                         borderColor: '#ef4444',
                         borderWidth: 3,
@@ -537,21 +621,53 @@
                         pointHoverRadius: 7,
                         pointBackgroundColor: '#ef4444',
                         pointBorderColor: '#fff',
-                        pointBorderWidth: 2
+                        pointBorderWidth: 2,
+                        yAxisID: 'yPen'
                     },
                     {
-                        label: 'Ganancia',
-                        data: ganancias,
-                        backgroundColor: gradientGanancias,
-                        borderColor: '#3b82f6',
+                        label: 'Compras ($)',
+                        data: comprasUsd,
+                        backgroundColor: 'rgba(239,68,68,0.08)',
+                        borderColor: '#ef4444',
                         borderWidth: 3,
                         fill: true,
                         tension: 0.4,
                         pointRadius: 5,
                         pointHoverRadius: 7,
-                        pointBackgroundColor: '#3b82f6',
+                        pointBackgroundColor: '#ef4444',
                         pointBorderColor: '#fff',
-                        pointBorderWidth: 2
+                        pointBorderWidth: 2,
+                        yAxisID: 'yUsd'
+                    },
+                    {
+                        label: 'Ganancia (S/)',
+                        data: gananciasPen,
+                        backgroundColor: gradientGanancias,
+                        borderColor: '#059669',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: '#059669',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        yAxisID: 'yPen'
+                    },
+                    {
+                        label: 'Ganancia ($)',
+                        data: gananciasUsd,
+                        backgroundColor: 'rgba(5,150,105,0.06)',
+                        borderColor: '#059669',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: '#059669',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        yAxisID: 'yUsd'
                     }
                 ]
             },
@@ -583,13 +699,20 @@
                         },
                         callbacks: {
                             label: function(context) {
-                                return context.dataset.label + ': S/ ' + context.parsed.y.toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                var label = context.dataset.label || '';
+                                var value = context.parsed.y || 0;
+                                if (context.dataset.yAxisID === 'yUsd') {
+                                    return label + ': $ ' + value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                }
+                                return label + ': S/ ' + value.toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                             }
                         }
                     }
                 },
                 scales: {
-                    y: {
+                    yPen: {
+                        type: 'linear',
+                        position: 'left',
                         beginAtZero: true,
                         ticks: {
                             callback: function(value) {
@@ -601,6 +724,22 @@
                         },
                         grid: {
                             color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    yUsd: {
+                        type: 'linear',
+                        position: 'right',
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$ ' + value.toLocaleString('en-US');
+                            },
+                            font: {
+                                size: 12
+                            }
+                        },
+                        grid: {
+                            display: false
                         }
                     },
                     x: {

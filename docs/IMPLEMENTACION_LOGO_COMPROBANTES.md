@@ -19,13 +19,13 @@
 
 @if($logoExists && $logoBase64)
     <!-- Logo desde archivo local -->
-    <img src="{{ $logoBase64 }}" alt="IRM MAQUINARIAS SRL">
+    <img src="{{ $logoBase64 }}" alt="IRM Maquinarias S.R.L.">
 @elseif(isset($empresa['logo_base64']) && $empresa['logo_base64'])
     <!-- Logo desde configuración de empresa -->
-    <img src="{{ $empresa['logo_base64 }}" alt="{{ $empresa['razon_social'] ?? 'IRM MAQUINARIAS SRL' }}">
+    <img src="{{ $empresa['logo_base64 }}" alt="{{ $empresa['razon_social'] ?? 'IRM Maquinarias S.R.L.' }}">
 @else
     <!-- Logo por defecto (fallback) -->
-    <img src="data:image/svg+xml;base64,..." alt="IRM MAQUINARIAS SRL">
+    <img src="data:image/svg+xml;base64,..." alt="IRM Maquinarias S.R.L.">
 @endif
 ```
 
@@ -106,11 +106,11 @@
 - **✅ Compatible:** Funciona perfectamente con DomPDF
 - **✅ Mantenible:** Fácil cambiar logo en un solo lugar
 - **✅ Responsive:** Se adapta a diferentes tamaños de documento
-- **✅ Profesional:** Logo real de IRM Maquinarias en todos los PDFs
+- **✅ Profesional:** Logo real de IRM Maquinarias S.R.L. en todos los PDFs
 
 ## 🚀 **RESULTADO FINAL**
 
-**¡Todos los comprobantes PDF ahora incluyen el logo oficial de IRM MAQUINARIAS!**
+**¡Todos los comprobantes PDF ahora incluyen el logo oficial de IRM Maquinarias S.R.L.!**
 
 El sistema está completamente implementado y listo para generar documentos profesionales con la identidad visual correcta de la empresa.
 

@@ -45,8 +45,8 @@ class ReporteDiarioExport implements FromArray, WithHeadings, WithStyles, WithEv
 
                 // Información empresa
                 $event->sheet->setCellValue('B1', config('app.name'));
-                $event->sheet->setCellValue('B2', 'RUC: 20481234567');
-                $event->sheet->setCellValue('B3', 'Av. Ejemplo 123, Lima, Perú');
+                $event->sheet->setCellValue('B2', 'RUC: 20570639553');
+                $event->sheet->setCellValue('B3', 'AV. ATAHUALPA NRO. 725, CAJAMARCA');
                 $event->sheet->setCellValue('B4', config('app.env') == 'local' ? 'Demo' : 'Producción');
                 $event->sheet->getStyle('B1')->getFont()->setBold(true)->setSize(16)->getColor()->setRGB('2563eb');
                 $event->sheet->getStyle('B2:B4')->getFont()->setSize(12);

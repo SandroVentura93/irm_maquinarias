@@ -141,6 +141,26 @@
         background-color: #fef2f2;
     }
 
+    /* Mobile adjustments for edit form */
+    @media (max-width: 768px) {
+        .card-body-custom { padding: 1rem; }
+        .form-control, .form-select { width: 100%; }
+        .table-productos thead { display: none; }
+        .table-productos, .table-productos tbody, .table-productos tr, .table-productos td { display: block; width: 100%; }
+        .table-productos tr { margin-bottom: 0.75rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; }
+        .table-productos td { padding: 0.5rem 0; display: flex; justify-content: space-between; align-items: center; }
+        .table-productos td:before { content: attr(data-label); font-weight: 600; color: #6b7280; margin-right: 0.5rem; }
+        .btn-add-product, .btn-calculate, .btn-submit, .btn-cancel { width: 100%; justify-content: center; }
+    }
+
+    /* Header responsiveness for small screens in edit view */
+    @media (max-width: 768px) {
+        .page-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+        .page-header .page-title { font-size: 1.25rem; }
+        .page-header .page-title i { font-size: 1rem; }
+        .page-header .btn-cancel, .page-header .btn-submit { width: 100%; }
+    }
+
     .btn-add-product {
         background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         color: white;
@@ -439,7 +459,7 @@
                         <tbody id="productos-table">
                             @foreach($compra->detalles as $i => $detalle)
                             <tr>
-                                <td>
+                                <td data-label="Producto">
                                     <select name="detalles[{{ $i }}][id_producto]" class="form-select form-select-sm" required>
                                         <option value="">Seleccione...</option>
                                         @foreach($productos as $producto)
@@ -449,11 +469,11 @@
                                         @endforeach
                                     </select>
                                 </td>
-                                <td>
+                                <td data-label="Cantidad">
                                     <input type="number" name="detalles[{{ $i }}][cantidad]" class="form-control form-control-sm" 
                                            min="1" value="{{ $detalle->cantidad }}" required oninput="calcularFila(this)">
                                 </td>
-                                <td>
+                                <td data-label="Precio">
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text" id="simboloDetalle{{ $i }}">{{ ($compra->moneda->codigo_iso ?? 'PEN') === 'USD' ? '$' : 'S/' }}</span>
                                         <input type="number" step="0.01" name="detalles[{{ $i }}][precio_unitario]" 
@@ -461,22 +481,22 @@
                                                required oninput="calcularFila(this)">
                                     </div>
                                 </td>
-                                <td>
+                                <td data-label="Subtotal">
                                     <input type="number" step="0.01" name="detalles[{{ $i }}][subtotal]" 
                                            class="form-control form-control-sm" 
                                            value="{{ $detalle->subtotal ?? ($detalle->cantidad * $detalle->precio_unitario) }}" readonly>
                                 </td>
-                                <td>
+                                <td data-label="IGV">
                                     <input type="number" step="0.01" name="detalles[{{ $i }}][igv]" 
                                            class="form-control form-control-sm" 
                                            value="{{ $detalle->igv ?? (($detalle->cantidad * $detalle->precio_unitario) * 0.18) }}" readonly>
                                 </td>
-                                <td>
+                                <td data-label="Total">
                                     <input type="number" step="0.01" name="detalles[{{ $i }}][total]" 
                                            class="form-control form-control-sm" 
                                            value="{{ $detalle->total ?? (($detalle->cantidad * $detalle->precio_unitario) * 1.18) }}" readonly>
                                 </td>
-                                <td class="text-center">
+                                <td data-label="Acciones" class="text-center">
                                     <button type="button" class="btn-remove-row" onclick="this.closest('tr').remove();calcularTotales();" title="Eliminar">
                                         <i class="fas fa-trash"></i>
                                     </button>

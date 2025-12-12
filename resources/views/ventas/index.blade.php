@@ -253,14 +253,14 @@
                 <tbody class="table-body">
                     @foreach($ventas as $venta)
                         <tr class="table-row" data-status="{{ $venta->xml_estado }}">
-                            <td class="fw-semibold text-primary">#{{ $venta->id_venta }}</td>
-                            <td>
+                            <td data-label="ID" class="fw-semibold text-primary">#{{ $venta->id_venta }}</td>
+                            <td data-label="Cliente">
                                 <div class="client-info">
                                     <div class="client-name">{{ $venta->cliente ? $venta->cliente->nombre : 'Sin cliente' }}</div>
                                     <div class="client-doc text-muted">{{ $venta->cliente ? $venta->cliente->numero_documento : '' }}</div>
                                 </div>
                             </td>
-                            <td>
+                            <td data-label="Tipo Comprobante">
                                 <span class="comprobante-type">
                                     {{ $venta->tipoComprobante->descripcion ?? 'N/A' }}
                                 </span>
@@ -275,20 +275,20 @@
                                 @endif
                             </td>
                             <!-- <td class="fw-semibold">{{ $venta->serie }}-{{ $venta->numero }}</td> -->
-                            <td class="fw-semibold">
+                            <td data-label="Número" class="fw-semibold">
                                 @if(Str::startsWith($venta->numero, $venta->serie))
                                     {{ $venta->numero }}
                                 @else
                                     {{ $venta->serie }}-{{ $venta->numero }}
                                 @endif
                             </td>
-                            <td>
+                            <td data-label="Fecha">
                                 <div class="date-info">
                                     <div class="date">{{ \Carbon\Carbon::parse($venta->fecha)->format('d/m/Y') }}</div>
                                     <div class="time text-muted">{{ \Carbon\Carbon::parse($venta->fecha)->format('H:i') }}</div>
                                 </div>
                             </td>
-                            <td>
+                            <td data-label="Total">
                                 @php
                                     $codigoMoneda = optional($venta->moneda)->codigo_iso;
                                     $simboloMoneda = optional($venta->moneda)->simbolo;
@@ -301,13 +301,13 @@
                                     @endif
                                 </div>
                             </td>
-                            <td>
+                            <td data-label="Moneda">
                                 @php
                                     $codigoMoneda = $codigoMoneda ?? 'PEN';
                                 @endphp
                                 <span class="badge bg-secondary">{{ $codigoMoneda }}</span>
                             </td>
-                            <td>
+                            <td data-label="Estado">
                                 <span class="status-badge status-{{ strtolower($venta->xml_estado) }}">
                                     <i class="status-icon fas {{ $venta->xml_estado === 'ACEPTADO' ? 'fa-check-circle' : ($venta->xml_estado === 'PENDIENTE' ? 'fa-clock' : ($venta->xml_estado === 'ANULADO' ? 'fa-times-circle' : 'fa-exclamation-circle')) }}"></i>
                                     {{ $venta->xml_estado }}
@@ -320,7 +320,7 @@
                                     <div class="text-danger small mt-1">Saldo pendiente: <b>{{ $simboloMoneda }} {{ number_format($venta->saldo, 2) }}</b> <span class="badge bg-light text-dark ms-1">{{ $codigoMoneda }}</span></div>
                                 @endif
                             </td>
-                            <td>
+                            <td data-label="Acciones">
                                 <div class="action-buttons">
                                     <a href="{{ route('ventas.show', $venta) }}" class="btn btn-action btn-view" title="Ver Detalle">
                                         <i class="fas fa-eye"></i>
@@ -366,19 +366,30 @@
                                         </div>
                                     </div>
                                     <script>
-                                    let cotizacionIdSeleccionada = null;
-                                    function showCotizacionPdfModal(idCotizacion) {
-                                        cotizacionIdSeleccionada = idCotizacion;
-                                        const modal = new bootstrap.Modal(document.getElementById('cotizacionPdfModal'));
-                                        document.getElementById('mostrarCodigoParte').checked = true;
-                                        modal.show();
+                                    // Evitar redeclaraciones en caso de que el script se incluya varias veces
+                                    if (typeof window.cotizacionIdSeleccionada === 'undefined') {
+                                        window.cotizacionIdSeleccionada = null;
                                     }
-                                    function procederDescargaCotizacion() {
-                                        if (!cotizacionIdSeleccionada) return;
-                                        const mostrar = document.getElementById('mostrarCodigoParte').checked ? 1 : 0;
-                                        const url = `/ventas/${cotizacionIdSeleccionada}/pdf?mostrar_codigo_parte=${mostrar}`;
-                                        window.open(url, '_blank');
-                                        bootstrap.Modal.getInstance(document.getElementById('cotizacionPdfModal')).hide();
+
+                                    if (typeof window.showCotizacionPdfModal === 'undefined') {
+                                        window.showCotizacionPdfModal = function(idCotizacion) {
+                                            window.cotizacionIdSeleccionada = idCotizacion;
+                                            const modal = new bootstrap.Modal(document.getElementById('cotizacionPdfModal'));
+                                            modal.show();
+                                        };
+                                    }
+
+                                    if (typeof window.procederDescargaCotizacion === 'undefined') {
+                                        window.procederDescargaCotizacion = function() {
+                                            if (!window.cotizacionIdSeleccionada) return;
+                                            const checkbox = document.getElementById('mostrarCodigoParte');
+                                            const mostrar = checkbox ? (checkbox.checked ? 1 : 0) : 1;
+                                            const url = `/ventas/${window.cotizacionIdSeleccionada}/pdf?mostrar_codigo_parte=${mostrar}`;
+                                            // DEBUG: mostrar en la consola el valor y la URL usada
+                                            try { console.log('[DEBUG] procederDescargaCotizacion', { id: window.cotizacionIdSeleccionada, mostrar: mostrar, url: url }); } catch(e){}
+                                            window.open(url, '_blank');
+                                            bootstrap.Modal.getInstance(document.getElementById('cotizacionPdfModal')).hide();
+                                        };
                                     }
                                     </script>
                                     @endpush
@@ -849,6 +860,51 @@
     from {
         transform: rotate(0deg);
     }
+
+/* Responsive adjustments for mobile */
+@media (max-width: 992px) {
+    .page-icon { width:48px; height:48px; font-size:1.15rem }
+    .page-title { font-size:1.4rem }
+}
+
+@media (max-width: 768px) {
+    .container-fluid { padding-left:8px; padding-right:8px }
+    .page-icon { width:44px; height:44px; }
+    .page-title { font-size:1.15rem }
+    .page-subtitle { display:none }
+    .btn-modern { width:100%; padding:10px; }
+    /* Make header stack */
+    .row.mb-4 { display:flex; flex-direction:column; gap:0.5rem }
+    .col-lg-4.text-lg-end { text-align: left !important }
+
+    /* Table stacked blocks */
+    .table-modern thead { display:none }
+    .table-modern, .table-modern tbody, .table-modern tr, .table-modern td { display:block; width:100% }
+    .table-modern tr { margin-bottom:1rem; border-bottom:1px solid #eee; padding-bottom:0.5rem }
+    .table-modern td { padding:0.5rem 0; display:flex; justify-content:space-between; align-items:center }
+    .table-modern td:before { content: attr(data-label); font-weight:600; color:#6b7280; margin-right:0.5rem }
+    .action-buttons { justify-content:flex-end }
+    .btn-action { width:40px; height:40px }
+}
+
+/* Improve value alignment and wrapping on small screens */
+@media (max-width: 768px) {
+    .table-modern td > * { max-width: 65%; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+    .table-modern td .client-info, .table-modern td .date-info, .table-modern td .amount-info { text-align: right }
+    .table-modern td .client-doc, .table-modern td .time { display: block; font-size: 0.75rem; color: #718096 }
+    .table-modern td .amount-info { font-weight: 700 }
+    /* Make action buttons wrap to a second line if needed */
+    .action-buttons { gap: 0.4rem; justify-content: flex-end; flex-wrap: wrap }
+    .action-buttons .btn-action { width:36px; height:36px; padding:0 }
+    /* Ensure badges don't overflow */
+    .status-badge { white-space: nowrap; }
+}
+
+@media (max-width:480px){
+    .page-icon { display:flex; align-items:center; justify-content:center }
+    .page-title{ font-size:1.05rem }
+    .btn-modern{ padding:8px }
+}
     to {
         transform: rotate(360deg);
     }

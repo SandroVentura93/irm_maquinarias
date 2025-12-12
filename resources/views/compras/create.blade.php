@@ -386,6 +386,19 @@
             gap: 1rem;
         }
     }
+
+    /* Mobile: stack form and product table */
+    @media (max-width: 768px) {
+        .card-body-custom { padding: 1rem; }
+        .form-control, .form-select { width: 100%; }
+        .table-productos thead { display: none; }
+        .table-productos, .table-productos tbody, .table-productos tr, .table-productos td { display: block; width: 100%; }
+        .table-productos tr { margin-bottom: 0.75rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; }
+        .table-productos td { padding: 0.5rem 0; display: flex; justify-content: space-between; align-items: center; }
+        .table-productos td:before { content: attr(data-label); font-weight: 600; color: #6b7280; margin-right: 0.5rem; }
+        .btn-add-product, .btn-calculate, .btn-submit, .btn-cancel { width: 100%; justify-content: center; }
+        .input-group-text { min-width: auto; }
+    }
 </style>
 
 <div class="container-fluid px-4 py-4">
@@ -497,21 +510,21 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td>
+                                <td data-label="Producto">
                                     <select name="detalles[0][id_producto]" class="form-select form-select-sm producto-select" required>
                                         <option value="">Primero seleccione un proveedor</option>
                                     </select>
                                 </td>
-                                <td>
+                                <td data-label="Cantidad">
                                     <input type="number" name="detalles[0][cantidad]" class="form-control form-control-sm" min="1" value="1" required>
                                 </td>
-                                <td>
+                                <td data-label="Precio">
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text" id="simboloDetalle0">$</span>
                                         <input type="number" step="0.01" name="detalles[0][precio_unitario]" class="form-control form-control-sm" value="0" required>
                                     </div>
                                 </td>
-                                <td class="text-center">
+                                <td data-label="Acciones" class="text-center">
                                     <button type="button" class="btn-remove-row" onclick="this.closest('tr').remove(); calcularTotales();" title="Eliminar">
                                         <i class="fas fa-trash"></i>
                                     </button>
@@ -702,6 +715,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         const currentValue = productSelect.value;
                         productSelect.innerHTML = '<option value="">Seleccione...</option>';
                         data.forEach(function(producto) {
+                        /* Header responsiveness for small screens */
+                        .page-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+                        .page-header .page-title { font-size: 1.25rem; }
+                        .page-header .page-title i { font-size: 1rem; }
+                        .page-header .btn-modern { width: 100%; justify-content: center; padding: 0.6rem; }
+                        .breadcrumb-custom { font-size: 0.85rem; }
                             const selected = currentValue == producto.id_producto ? 'selected' : '';
                             const codigoText = producto.codigo ? producto.codigo + ' - ' : '';
                             productSelect.innerHTML += `<option value="${producto.id_producto}" data-codigo="${producto.codigo || ''}" data-descripcion="${producto.descripcion}" ${selected}>${codigoText}${producto.descripcion}</option>`;

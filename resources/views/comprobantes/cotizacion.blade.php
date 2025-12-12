@@ -196,10 +196,10 @@
             <div class="company-info">
                 @include('comprobantes.partials.logo')
                 <div class="company-details">
-                    <h2>IRM MAQUINARIAS</h2>
-                    <p><strong>RUC:</strong> 20123456789</p>
-                    <p><strong>Dirección:</strong> Av. Industrial 123, Lima - Perú</p>
-                    <p><strong>Teléfono:</strong> (01) 234-5678</p>
+                    <h2>IRM Maquinarias S.R.L.</h2>
+                    <p><strong>RUC:</strong> 20570639553</p>
+                    <p><strong>Dirección:</strong> AV. ATAHUALPA NRO. 725, CAJAMARCA</p>
+                    <p><strong>Teléfono:</strong> 976390506 - 974179198</p>
                     <p><strong>Email:</strong> ventas@irmmaquinarias.com</p>
                 </div>
             </div>
@@ -250,13 +250,17 @@
                     <td style="text-align: left; padding-left: 10px;">
                         <strong>{{ $detalle->producto->descripcion ?? 'Producto no encontrado' }}</strong>
                         @php
-                            $mostrarCodigoParte = true;
+                            // Compatibilidad: aceptar el flag como variable top-level (desde controlador)
+                            // o dentro del array $datos (otras rutas). Valor por defecto: true
+                            $mc = true;
                             if (isset($datos) && array_key_exists('mostrarCodigoParte', $datos)) {
-                                $mostrarCodigoParte = $datos['mostrarCodigoParte'];
+                                $mc = $datos['mostrarCodigoParte'];
+                            } elseif (isset($mostrarCodigoParte)) {
+                                $mc = $mostrarCodigoParte;
                             }
                         @endphp
-                        <br><small>Código: {{ $mostrarCodigoParte ? ($detalle->producto->codigo ?? '-') : '-' }}</small>
-                        <br><small>P/N: {{ $mostrarCodigoParte ? ($detalle->producto->numero_parte ?? '-') : '-' }}</small>
+                        <br><small>Código: {{ $mc ? ($detalle->producto->codigo ?? '-') : '-' }}</small>
+                        <br><small>P/N: {{ $mc ? ($detalle->producto->numero_parte ?? '-') : '-' }}</small>
                     </td>
                     <td>{{ number_format($detalle->cantidad, 2) }}</td>
                     @php
@@ -336,8 +340,8 @@
             @if($venta->vendedor)
             <p><strong>Ejecutivo de Ventas:</strong> {{ $venta->vendedor->nombre }}</p>
             @endif
-            <p>¡Gracias por su confianza en IRM Maquinarias!</p>
-            <p>Sistema de Gestión IRM Maquinarias - Generado el {{ now()->format('d/m/Y H:i:s') }}</p>
+            <p>¡Gracias por su confianza en IRM Maquinarias S.R.L.!</p>
+            <p>Sistema de Gestión IRM Maquinarias S.R.L. - Generado el {{ now()->format('d/m/Y H:i:s') }}</p>
         </div>
     </div>
 </body>

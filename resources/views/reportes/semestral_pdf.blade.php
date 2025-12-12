@@ -4,47 +4,58 @@
     <meta charset="utf-8">
     <title>Reporte Semestral</title>
     <style>
-        body { font-family: Arial, sans-serif; }
-        .header { text-align: center; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+        @page { margin: 12mm; }
+        body { font-family: Arial, sans-serif; font-size: 12px; margin: 0; }
+        .header { text-align: center; margin-bottom: 12px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+        th, td { border: 1px solid #ccc; padding: 6px; text-align: left; vertical-align: top; }
         th { background: #2563eb; color: #fff; }
+        .months-table td { width: 33%; padding: 6px; }
+        .month-card { border:1px solid #ddd; border-radius:6px; padding:8px; box-shadow:1px 1px 4px #ccc; box-sizing:border-box; width:100%; font-size:11px; }
+        .summary-grid { display:block; width:100%; margin-bottom:10px; }
+        .summary-item { display:inline-block; width:32%; box-sizing:border-box; padding:8px; margin:0 1% 8px 0; border-radius:6px; font-size:11px; text-align:center; }
+        .products-table td, .products-table th { padding:6px; font-size:11px; }
     </style>
 </head>
 <body>
     <div class="header">
-        <img src="{{ config('app.logo_url') }}" alt="Logo" height="60">
+    <img src="{{ config('app.logo_url') }}" alt="Logo" class="img-fluid" style="height:60px;">
         <h2>Reporte Semestral</h2>
         <p><strong>Empresa:</strong> {{ config('app.name') }}</p>
         <p><strong>Año:</strong> {{ $year }} &nbsp; <strong>Semestre:</strong> {{ $semester == 1 ? 'Enero-Junio' : 'Julio-Diciembre' }}</p>
     </div>
     @php
-        $totalVentas = collect($months_data)->sum('total_ventas');
-        $totalCompras = collect($months_data)->sum('total_compras');
-        $totalGanancia = collect($months_data)->sum('ganancia');
+        // Totales por moneda (fallback to months_data if controller didn't provide sums)
+        $totalVentasPen = $sum_ventas_pen ?? collect($months_data)->sum('total_ventas_pen');
+        $totalVentasUsd = $sum_ventas_usd ?? collect($months_data)->sum('total_ventas_usd');
+        $totalComprasPen = $sum_compras_pen ?? collect($months_data)->sum('total_compras_pen');
+        $totalComprasUsd = $sum_compras_usd ?? collect($months_data)->sum('total_compras_usd');
+        $totalGananciaPen = $totalVentasPen - $totalComprasPen;
+        $totalGananciaUsd = $totalVentasUsd - $totalComprasUsd;
     @endphp
-    <div style="margin-bottom: 20px; display: flex; justify-content: center; gap: 24px;">
-        <div style="flex:1; padding: 16px; background: #eafaf1; border-radius: 8px; font-size: 1.1em; text-align:center; box-shadow: 1px 1px 6px #ccc;">
-            <strong>Total Ventas:</strong><br> S/ {{ number_format($totalVentas,2) }}
-        </div>
-        <div style="flex:1; padding: 16px; background: #fbeaf1; border-radius: 8px; font-size: 1.1em; text-align:center; box-shadow: 1px 1px 6px #ccc;">
-            <strong>Total Compras:</strong><br> S/ {{ number_format($totalCompras,2) }}
-        </div>
-        <div style="flex:1; padding: 16px; background: #eaf1fb; border-radius: 8px; font-size: 1.1em; text-align:center; box-shadow: 1px 1px 6px #ccc;">
-            <strong>Ganancia Total:</strong><br> S/ {{ number_format($totalGanancia,2) }}
-        </div>
+
+    <div class="summary-grid">
+        <div class="summary-item" style="background: #eafaf1;"> <strong>Total Ventas (PEN):</strong><br> S/ {{ number_format($totalVentasPen ?? 0,2) }}</div>
+        <div class="summary-item" style="background: #eef6ff;"> <strong>Total Ventas (USD):</strong><br> $ {{ number_format($totalVentasUsd ?? 0,2) }}</div>
+        <div class="summary-item" style="background: #fbeaf1;"> <strong>Total Compras (PEN):</strong><br> S/ {{ number_format($totalComprasPen ?? 0,2) }}</div>
+        <div class="summary-item" style="background: #fff5ea;"> <strong>Total Compras (USD):</strong><br> $ {{ number_format($totalComprasUsd ?? 0,2) }}</div>
+        <div class="summary-item" style="background: #eaf1fb;"> <strong>Ganancia (PEN):</strong><br> S/ {{ number_format($totalGananciaPen ?? 0,2) }}</div>
+        <div class="summary-item" style="background: #f0fff4;"> <strong>Ganancia (USD):</strong><br> $ {{ number_format($totalGananciaUsd ?? 0,2) }}</div>
     </div>
-    <table style="width:100%; margin-bottom:20px; border:none;">
+    <table class="months-table" style="width:100%; margin-bottom:12px; border:none;">
         <tr>
             @foreach($months_data as $i => $month)
-                <td style="vertical-align:top; padding:0 8px;">
-                    <div style="border:1px solid #ddd; border-radius:8px; padding:12px; min-width:160px; max-width:220px; box-shadow:1px 1px 6px #ccc;">
-                        <h4>{{ $month['name'] }}</h4>
-                        <p><strong>Ventas:</strong> S/ {{ number_format($month['total_ventas'],2) }}</p>
-                        <p><strong>Compras:</strong> S/ {{ number_format($month['total_compras'],2) }}</p>
-                        <p><strong>Ganancia:</strong> S/ {{ number_format($month['ganancia'],2) }}</p>
-                        <p><strong>Productos Vendidos:</strong> {{ $month['cantidad_productos_vendidos'] }}</p>
-                        <p><strong>Productos Comprados:</strong> {{ $month['cantidad_productos_comprados'] }}</p>
+                <td>
+                    <div class="month-card">
+                        <h4 style="margin:4px 0 6px 0;">{{ $month['name'] }}</h4>
+                        <p style="margin:2px 0;"><strong>Ventas (PEN):</strong> S/ {{ number_format($month['total_ventas_pen'] ?? 0,2) }}</p>
+                        <p style="margin:2px 0;"><strong>Ventas (USD):</strong> $ {{ number_format($month['total_ventas_usd'] ?? 0,2) }}</p>
+                        <p style="margin:2px 0;"><strong>Compras (PEN):</strong> S/ {{ number_format($month['total_compras_pen'] ?? 0,2) }}</p>
+                        <p style="margin:2px 0;"><strong>Compras (USD):</strong> $ {{ number_format($month['total_compras_usd'] ?? 0,2) }}</p>
+                        <p style="margin:2px 0;"><strong>Ganancia (PEN):</strong> S/ {{ number_format($month['ganancia_pen'] ?? 0,2) }}</p>
+                        <p style="margin:2px 0;"><strong>Ganancia (USD):</strong> $ {{ number_format($month['ganancia_usd'] ?? 0,2) }}</p>
+                        <p style="margin:2px 0;"><strong>Productos Vendidos:</strong> {{ $month['cantidad_productos_vendidos'] }}</p>
+                        <p style="margin:2px 0;"><strong>Productos Comprados:</strong> {{ $month['cantidad_productos_comprados'] }}</p>
                     </div>
                 </td>
                 @if(($i+1) % 3 == 0 && $i != 5)
@@ -53,7 +64,7 @@
             @endforeach
         </tr>
     </table>
-    <table>
+    <table class="products-table">
         <thead>
             <tr>
                 <th>Mes</th>

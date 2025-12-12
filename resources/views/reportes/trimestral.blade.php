@@ -104,21 +104,24 @@
                         <span class="stat-icon ventas"><i class="fas fa-arrow-up"></i></span>
                         <div class="stat-details">
                             <span class="stat-label">Ventas</span>
-                            <span class="stat-amount success">S/. {{ number_format($month['total_ventas'], 2) }}</span>
+                                <span class="stat-amount success">S/. {{ number_format($month['total_ventas_pen'] ?? 0, 2) }}</span>
+                                <span class="stat-meta">$ {{ number_format($month['total_ventas_usd'] ?? 0, 2) }}</span>
                         </div>
                     </div>
                     <div class="month-stat">
                         <span class="stat-icon compras"><i class="fas fa-arrow-down"></i></span>
                         <div class="stat-details">
                             <span class="stat-label">Compras</span>
-                            <span class="stat-amount danger">S/. {{ number_format($month['total_compras'], 2) }}</span>
+                                <span class="stat-amount danger">S/. {{ number_format($month['total_compras_pen'] ?? 0, 2) }}</span>
+                                <span class="stat-meta">$ {{ number_format($month['total_compras_usd'] ?? 0, 2) }}</span>
                         </div>
                     </div>
                     <div class="month-stat">
                         <span class="stat-icon ganancia"><i class="fas fa-chart-line"></i></span>
                         <div class="stat-details">
                             <span class="stat-label">Ganancia</span>
-                            <span class="stat-amount primary">S/. {{ number_format($month['ganancia'], 2) }}</span>
+                                <span class="stat-amount primary">S/. {{ number_format($month['ganancia_pen'] ?? 0, 2) }}</span>
+                                <span class="stat-meta">$ {{ number_format($month['ganancia_usd'] ?? 0, 2) }}</span>
                         </div>
                     </div>
                     <div class="month-divider"></div>
@@ -160,6 +163,14 @@
                 $totalGanancia = collect($months_data)->sum('ganancia');
                 $totalProductosVendidos = collect($months_data)->sum('cantidad_productos_vendidos');
                 $totalProductosComprados = collect($months_data)->sum('cantidad_productos_comprados');
+
+                // Totales por moneda (si vienen pasados desde el controlador)
+                $totalVentasPen = isset($totalVentasPen) ? $totalVentasPen : collect($months_data)->sum('total_ventas_pen');
+                $totalVentasUsd = isset($totalVentasUsd) ? $totalVentasUsd : collect($months_data)->sum('total_ventas_usd');
+                $totalComprasPen = isset($totalComprasPen) ? $totalComprasPen : collect($months_data)->sum('total_compras_pen');
+                $totalComprasUsd = isset($totalComprasUsd) ? $totalComprasUsd : collect($months_data)->sum('total_compras_usd');
+                $totalGananciaPen = isset($totalGananciaPen) ? $totalGananciaPen : collect($months_data)->sum('ganancia_pen');
+                $totalGananciaUsd = isset($totalGananciaUsd) ? $totalGananciaUsd : collect($months_data)->sum('ganancia_usd');
             @endphp
 
             <div class="card-modern">
@@ -175,7 +186,8 @@
                             </div>
                             <div class="financial-info">
                                 <span class="financial-label">Total Ventas</span>
-                                <span class="financial-value success">S/. {{ number_format($totalVentas, 2) }}</span>
+                                <span class="financial-value success">S/. {{ number_format($totalVentasPen ?? 0, 2) }}</span>
+                                <span class="financial-value" style="margin-top:6px; color:#ef4444;">$ {{ number_format($totalVentasUsd ?? 0, 2) }}</span>
                             </div>
                         </div>
 
@@ -185,7 +197,8 @@
                             </div>
                             <div class="financial-info">
                                 <span class="financial-label">Total Compras</span>
-                                <span class="financial-value danger">S/. {{ number_format($totalCompras, 2) }}</span>
+                                <span class="financial-value danger">S/. {{ number_format($totalComprasPen ?? 0, 2) }}</span>
+                                <span class="financial-value" style="margin-top:6px; color:#1e293b;">$ {{ number_format($totalComprasUsd ?? 0, 2) }}</span>
                             </div>
                         </div>
 
@@ -197,7 +210,8 @@
                             </div>
                             <div class="financial-info">
                                 <span class="financial-label">Ganancia Total</span>
-                                <span class="financial-value primary">S/. {{ number_format($totalGanancia, 2) }}</span>
+                                <span class="financial-value primary">S/. {{ number_format($totalGananciaPen ?? 0, 2) }}</span>
+                                <span class="financial-value" style="margin-top:6px; color:#667eea;">$ {{ number_format($totalGananciaUsd ?? 0, 2) }}</span>
                             </div>
                         </div>
 
@@ -938,21 +952,25 @@
             @endforeach
         ];
         
-        var ventas = [
+        // Datos por moneda
+        var ventasPen = [
             @foreach($months_data as $month)
-                {{ $month['total_ventas'] }},
+                {{ $month['total_ventas_pen'] ?? 0 }},
             @endforeach
         ];
-        
-        var compras = [
+        var comprasPen = [
             @foreach($months_data as $month)
-                {{ $month['total_compras'] }},
+                {{ $month['total_compras_pen'] ?? 0 }},
             @endforeach
         ];
-        
-        var ganancias = [
+        var ventasUsd = [
             @foreach($months_data as $month)
-                {{ $month['ganancia'] }},
+                {{ $month['total_ventas_usd'] ?? 0 }},
+            @endforeach
+        ];
+        var comprasUsd = [
+            @foreach($months_data as $month)
+                {{ $month['total_compras_usd'] ?? 0 }},
             @endforeach
         ];
 
@@ -962,28 +980,40 @@
                 labels: labels,
                 datasets: [
                     {
-                        label: 'Ventas',
-                        data: ventas,
-                        backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                        label: 'Ventas S/. (PEN)',
+                        data: ventasPen,
+                        backgroundColor: 'rgba(16, 185, 129, 0.85)',
                         borderColor: '#10b981',
-                        borderWidth: 2,
-                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        yAxisID: 'y'
                     },
                     {
-                        label: 'Compras',
-                        data: compras,
-                        backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                        label: 'Compras S/. (PEN)',
+                        data: comprasPen,
+                        backgroundColor: 'rgba(239, 68, 68, 0.85)',
                         borderColor: '#ef4444',
-                        borderWidth: 2,
-                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        yAxisID: 'y'
                     },
                     {
-                        label: 'Ganancia',
-                        data: ganancias,
-                        backgroundColor: 'rgba(139, 92, 246, 0.8)',
-                        borderColor: '#8b5cf6',
-                        borderWidth: 2,
-                        borderRadius: 8,
+                        label: 'Ventas $ (USD)',
+                        data: ventasUsd,
+                        backgroundColor: 'rgba(59, 130, 246, 0.85)',
+                        borderColor: '#3b82f6',
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        yAxisID: 'y1'
+                    },
+                    {
+                        label: 'Compras $ (USD)',
+                        data: comprasUsd,
+                        backgroundColor: 'rgba(99, 102, 241, 0.85)',
+                        borderColor: '#6366f1',
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        yAxisID: 'y1'
                     }
                 ]
             },
@@ -1006,20 +1036,18 @@
                     },
                     tooltip: {
                         backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        padding: 16,
-                        titleFont: {
-                            size: 16,
-                            weight: 'bold'
-                        },
-                        bodyFont: {
-                            size: 14
-                        },
+                        padding: 12,
+                        bodyFont: { size: 13 },
                         borderColor: '#8b5cf6',
-                        borderWidth: 2,
-                        cornerRadius: 10,
+                        borderWidth: 1,
+                        cornerRadius: 8,
                         callbacks: {
                             label: function(context) {
-                                return context.dataset.label + ': S/. ' + context.parsed.y.toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                const val = context.parsed.y !== undefined ? context.parsed.y : context.parsed;
+                                if (context.dataset && context.dataset.label && context.dataset.label.includes('S/.')) {
+                                    return context.dataset.label + ': S/. ' + Number(val).toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2});
+                                }
+                                return context.dataset.label + ': $ ' + Number(val).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
                             }
                         }
                     }
@@ -1030,33 +1058,20 @@
                 },
                 scales: {
                     x: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            font: {
-                                size: 14,
-                                weight: 'bold'
-                            },
-                            color: '#475569'
-                        }
+                        grid: { display: false },
+                        ticks: { font: { size: 14, weight: 'bold' }, color: '#475569' }
                     },
                     y: {
                         beginAtZero: true,
-                        grid: {
-                            color: '#f1f5f9',
-                            lineWidth: 2
-                        },
-                        ticks: {
-                            font: {
-                                size: 13,
-                                weight: '600'
-                            },
-                            color: '#64748b',
-                            callback: function(value) {
-                                return 'S/. ' + value.toLocaleString('es-PE');
-                            }
-                        }
+                        position: 'left',
+                        grid: { color: '#f1f5f9', lineWidth: 2 },
+                        ticks: { callback: function(v){ return 'S/. ' + v.toLocaleString('es-PE'); }, color: '#10b981', font: { size: 12, weight: '700'} }
+                    },
+                    y1: {
+                        beginAtZero: true,
+                        position: 'right',
+                        grid: { drawOnChartArea: false },
+                        ticks: { callback: function(v){ return '$ ' + v.toLocaleString('en-US'); }, color: '#3b82f6', font: { size: 12, weight: '700'} }
                     }
                 }
             }

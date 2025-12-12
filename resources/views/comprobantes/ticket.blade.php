@@ -140,10 +140,10 @@
     <!-- Header del ticket -->
     <div class="ticket-header">
         @include('comprobantes.partials.logo')
-        <div class="empresa-nombre">{{ $empresa['razon_social'] ?? 'IRM MAQUINARIAS S.A.C.' }}</div>
-        <div class="empresa-info">RUC: {{ $empresa['ruc'] ?? '20123456789' }}</div>
-        <div class="empresa-info">{{ $empresa['direccion'] ?? 'Av. Industrial 123, Lima, Perú' }}</div>
-        <div class="empresa-info">Tel: {{ $empresa['telefono'] ?? '(01) 234-5678' }}</div>
+    <div class="empresa-nombre">{{ $empresa['razon_social'] ?? 'IRM Maquinarias S.R.L.' }}</div>
+    <div class="empresa-info">RUC: {{ $empresa['ruc'] ?? '20570639553' }}</div>
+    <div class="empresa-info">{{ $empresa['direccion'] ?? 'AV. ATAHUALPA NRO. 725, CAJAMARCA' }}</div>
+    <div class="empresa-info">Tel: {{ $empresa['telefono'] ?? '976390506 - 974179198' }}</div>
     </div>
 
     <!-- Tipo y número de comprobante -->

@@ -26,13 +26,13 @@
     
     @if($logoExists && $logoBase64 && $gdAvailable)
         <!-- 🥇 PRIORIDAD 1: Logo PNG desde public/images/logo.png -->
-        <img src="{{ $logoBase64 }}" alt="IRM MAQUINARIAS SRL" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+    <img src="{{ $logoBase64 }}" alt="IRM Maquinarias S.R.L." class="img-fluid" style="max-width: 100%; max-height: 100%; object-fit: contain;">
     @elseif(isset($empresa['logo_base64']) && $empresa['logo_base64'])
         <!-- 🥈 PRIORIDAD 2: Logo desde configuración de empresa -->
-        <img src="{{ $empresa['logo_base64'] }}" alt="{{ $empresa['razon_social'] ?? 'IRM MAQUINARIAS SRL' }}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+    <img src="{{ $empresa['logo_base64'] }}" alt="{{ $empresa['razon_social'] ?? 'IRM Maquinarias S.R.L.' }}" class="img-fluid" style="max-width: 100%; max-height: 100%; object-fit: contain;">
     @else
         <!-- 🥉 PRIORIDAD 3: Logo SVG de fallback -->
-        <img src="data:image/svg+xml;base64,{{ base64_encode($logoSvgFallback) }}" alt="IRM MAQUINARIAS SRL" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+    <img src="data:image/svg+xml;base64,{{ base64_encode($logoSvgFallback) }}" alt="IRM Maquinarias S.R.L." class="img-fluid" style="max-width: 100%; max-height: 100%; object-fit: contain;">
     @endif
 </div>
 

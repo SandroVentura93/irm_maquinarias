@@ -1082,7 +1082,7 @@
 <div class="container">
     <div class="edit-glass animate__animated animate__fadeIn">
         <div class="d-flex flex-column align-items-center mb-3">
-            <img src="https://ui-avatars.com/api/?name={{ urlencode($usuario->nombre) }}&background=ff00cc&color=fff&size=128" alt="Avatar" class="edit-avatar">
+            <img src="https://ui-avatars.com/api/?name={{ urlencode($usuario->nombre) }}&background=ff00cc&color=fff&size=128" alt="Avatar" class="edit-avatar img-fluid">
             <div class="edit-title"><i class="fas fa-user-edit me-2"></i>Editar Usuario</div>
         </div>
         <form action="{{ route('usuarios.update', $usuario) }}" method="POST">

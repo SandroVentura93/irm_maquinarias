@@ -285,6 +285,13 @@
                 <span id="total">0.00</span>
                 <span id="totalUSD">0.00</span>
               </div>
+              <!-- Opción para mostrar código / número de parte en el PDF de cotización -->
+              <div id="mostrarCodigoParteContainer" style="display:none; margin-top:10px;">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="mostrarCodigoParteCheckbox" checked>
+                  <label class="form-check-label" for="mostrarCodigoParteCheckbox" style="font-size:0.95em;">Mostrar <strong>número de parte</strong> y <strong>código</strong> de producto en la cotización</label>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1035,13 +1042,24 @@ document.getElementById('btnGuardar').addEventListener('click', async ()=>{
 
   let data;
   try {
-    const res = await fetch('/api/ventas/guardar',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'},
+    const res = await fetch('/api/ventas/guardar',{ 
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+      },
+      credentials: 'same-origin',
       body: JSON.stringify(payload)
     });
     console.log('[VENTA] Respuesta HTTP:', res.status, res.statusText);
-    data = await res.json().catch(()=>({ ok:false, message:'Respuesta no válida del servidor'}));
+    if (!res.ok) {
+      const txt = await res.text().catch(() => 'No response body');
+      console.error('[VENTA] Error servidor:', res.status, txt);
+      data = { ok: false, message: `Error en el servidor: ${res.status} ${res.statusText}. Respuesta: ${txt}` };
+    } else {
+      data = await res.json().catch(() => ({ ok:false, message:'Respuesta no válida del servidor'}));
+    }
   } catch (e) {
     console.error('[VENTA] Error de red:', e);
     data = { ok:false, message:`No se pudo conectar al servidor: ${e.message}` };
@@ -1053,7 +1071,24 @@ document.getElementById('btnGuardar').addEventListener('click', async ()=>{
     const totalStr = (typeof data.total === 'number') ? data.total.toFixed(2) : Number(data.total || 0).toFixed(2);
     const lineaTC = (typeof data.tipo_cambio === 'number' && iso === 'USD') ? `\nTipo de cambio: ${Number(data.tipo_cambio).toFixed(2)}` : '';
     alert(`Venta registrada correctamente!\nComprobante: ${numeroCompleto}\nTotal: ${simbolo} ${totalStr} ${iso}${lineaTC}`);
-    location.reload();
+    // Si es una cotización, abrir el PDF con el parámetro mostrar_codigo_parte según el checkbox
+    try {
+      const tipo = document.getElementById('tipo_comprobante') ? document.getElementById('tipo_comprobante').value : '';
+      if (tipo === 'Cotización') {
+        const checkbox = document.getElementById('mostrarCodigoParteCheckbox');
+        const mostrar = (checkbox && checkbox.checked) ? '1' : '0';
+        const url = `/ventas/${data.id_venta}/pdf?mostrar_codigo_parte=${mostrar}`;
+        // Intentar abrir en nueva pestaña; algunas veces los navegadores bloquean popups si no es directamente desde el click, pero esto suele funcionar.
+        window.open(url, '_blank');
+        // Recargar la página después de un corto delay para permitir que la descarga/visualización inicie
+        setTimeout(() => { location.reload(); }, 700);
+      } else {
+        location.reload();
+      }
+    } catch (e) {
+      // Fallback: recargar si algo falla
+      location.reload();
+    }
   } else {
     // Mostrar error amigable en la parte superior del formulario
     const container = document.querySelector('.modern-container') || document.body;
@@ -1120,6 +1155,29 @@ document.getElementById('btnGuardar').addEventListener('click', async ()=>{
   btn.innerHTML = original;
   btn.disabled = false;
 });
+
+  // === Mostrar / ocultar opción de imprimir código en cotización ===
+  function actualizarMostrarCodigoParteOpt() {
+    try {
+      const tipo = document.getElementById('tipo_comprobante') ? document.getElementById('tipo_comprobante').value : '';
+      const cont = document.getElementById('mostrarCodigoParteContainer');
+      if (!cont) return;
+      if (tipo === 'Cotización') {
+        cont.style.display = 'block';
+      } else {
+        cont.style.display = 'none';
+      }
+    } catch (e) {
+      console.warn('Error actualizando mostrarCodigoParte:', e);
+    }
+  }
+
+  // Inicializar al cargar la página y suscribir al cambio de tipo de comprobante
+  document.addEventListener('DOMContentLoaded', function() {
+    actualizarMostrarCodigoParteOpt();
+    const sel = document.getElementById('tipo_comprobante');
+    if (sel) sel.addEventListener('change', actualizarMostrarCodigoParteOpt);
+  });
 
 // Mostrar modal para registrar cliente si no se encuentra
 function mostrarModalRegistrarCliente() {

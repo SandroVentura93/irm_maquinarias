@@ -228,10 +228,10 @@
             <div class="company-info">
                 @include('comprobantes.partials.logo')
                 <div class="company-details">
-                    <h2>IRM MAQUINARIAS</h2>
-                    <p><strong>RUC:</strong> 20123456789</p>
-                    <p><strong>Dirección:</strong> Av. Industrial 123, Lima - Perú</p>
-                    <p><strong>Teléfono:</strong> (01) 234-5678</p>
+                    <h2>IRM Maquinarias S.R.L.</h2>
+                    <p><strong>RUC:</strong> 20570639553</p>
+                    <p><strong>Dirección:</strong> AV. ATAHUALPA NRO. 725, CAJAMARCA</p>
+                    <p><strong>Teléfono:</strong> 976390506 - 974179198</p>
                     <p><strong>Email:</strong> ventas@irmmaquinarias.com</p>
                 </div>
             </div>
@@ -376,7 +376,7 @@
             <p><strong>Procesado por:</strong> {{ $venta->vendedor->nombre }}</p>
             @endif
             <p>Estado del Comprobante: {{ $venta->xml_estado }}</p>
-            <p>Sistema de Gestión IRM Maquinarias - Generado el {{ now()->format('d/m/Y H:i:s') }}</p>
+            <p>Sistema de Gestión IRM Maquinarias S.R.L. - Generado el {{ now()->format('d/m/Y H:i:s') }}</p>
         </div>
     </div>
 </body>

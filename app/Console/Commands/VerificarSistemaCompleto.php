@@ -18,7 +18,7 @@ class VerificarSistemaCompleto extends Command
 
     public function handle()
     {
-        $this->info('🔍 VERIFICACIÓN COMPLETA DEL SISTEMA IRM MAQUINARIAS');
+    $this->info('🔍 VERIFICACIÓN COMPLETA DEL SISTEMA IRM Maquinarias S.R.L.');
         
         try {
             $this->verificarBaseDatos();
