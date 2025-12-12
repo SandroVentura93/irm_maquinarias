@@ -3,7 +3,7 @@ deployment:
     - export DEPLOY_DIR=/home/irmmaquinarias/repositories/irm_maquinarias
     - cd $DEPLOY_DIR
     - git reset --hard
-    - git pull origin maestro
+    - git pull origin master
     - if [ ! -f .env ]; then cp .env.example .env; fi
     - composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
     - if [ -f package.json ]; then npm ci && npm run production || npm run build || true; fi
