@@ -570,9 +570,15 @@ function aplicarTipoCambioManual() {
         precioContainer.innerHTML = formatearPrecio(precio);
       }
     });
-    // Recalcular totales si hay detalles
+    // Recalcular totales/tabla si hay detalles
     if (detalle.length > 0) {
-      actualizarTabla();
+      try {
+        // renderTabla actualizará filas y totales
+        if (typeof renderTabla === 'function') renderTabla();
+        if (typeof actualizarVisualizacionMoneda === 'function') actualizarVisualizacionMoneda();
+      } catch (e) {
+        console.warn('No se pudo actualizar la tabla tras cambiar tipo de cambio:', e);
+      }
     }
   }
 }
@@ -1335,8 +1341,9 @@ document.getElementById('tipoCambioManual').addEventListener('input', function()
     const simboloSpan = document.getElementById('precioSimbolo');
     const colPrecioLabel = document.getElementById('colPrecioLabel');
     if (this.value === 'PEN') {
-      tipoCambioInput.disabled = true; // Bloquear tipo de cambio manual
-      tipoCambioInput.value = ''; // Limpiar el valor del tipo de cambio
+      // Mantener el tipo de cambio editable aunque la moneda sea PEN
+      // (el usuario podrá ingresar un TC y éste será usado para conversiones)
+      tipoCambioInput.disabled = false;
       if (simboloSpan) simboloSpan.textContent = 'S/';
       if (colPrecioLabel) colPrecioLabel.textContent = 'Precio Unitario (S/)';
       const hidden = document.getElementById('monedaHidden');
@@ -1355,11 +1362,11 @@ document.getElementById('tipoCambioManual').addEventListener('input', function()
     }
   });
 
-  // Inicializar estado del tipo de cambio manual
+  // Inicializar estado del tipo de cambio manual: siempre editable
   const monedaInicial = document.getElementById('moneda').value;
   const tipoCambioInput = document.getElementById('tipoCambioManual');
+  // Asegurar símbolo y etiqueta según moneda, pero no deshabilitar el campo
   if (monedaInicial === 'PEN') {
-    tipoCambioInput.disabled = true;
     const simboloSpan = document.getElementById('precioSimbolo');
     if (simboloSpan) simboloSpan.textContent = 'S/';
     const colPrecioLabel = document.getElementById('colPrecioLabel');

@@ -68,8 +68,8 @@
                     <i class="fas fa-dollar-sign"></i>
                 </div>
                 <div class="stats-content">
-                    <h3 class="stats-number">S/ {{ number_format($estadisticas['valor_total_inventario'], 2) }}</h3>
-                    <p class="stats-label">Valor Total Inventario</p>
+                    <h3 class="stats-number">${{ number_format($estadisticas['valor_total_inventario'] / $tipoCambio, 2) }}</h3>
+                    <p class="stats-label">Valor Total Inventario (USD)</p>
                     <div class="stats-trend">
                         <i class="fas fa-chart-line me-1"></i>
                         <small>Valor actual</small>
@@ -287,14 +287,14 @@
                                 </td>
                                 <td>
                                     <div class="price-info">
-                                        <div class="price-pen">S/ {{ number_format($producto->precio_compra, 2) }}</div>
-                                        <div class="price-usd">${{ number_format($producto->precio_compra / $tipoCambio, 2) }}</div>
-                                    </div>
+                                            <div class="price-usd">${{ number_format($producto->precio_compra / $tipoCambio, 2) }}</div>
+                                            <div class="price-pen text-muted small">S/ {{ number_format($producto->precio_compra, 2) }}</div>
+                                        </div>
                                 </td>
                                 <td>
                                     <div class="price-info">
-                                        <div class="price-pen price-sale">S/ {{ number_format($producto->precio_venta, 2) }}</div>
-                                        <div class="price-usd">${{ number_format($producto->precio_venta / $tipoCambio, 2) }}</div>
+                                        <div class="price-usd price-sale">${{ number_format($producto->precio_venta / $tipoCambio, 2) }}</div>
+                                        <div class="price-pen text-muted small">S/ {{ number_format($producto->precio_venta, 2) }}</div>
                                     </div>
                                 </td>
                                 <td class="text-center">
@@ -387,6 +387,20 @@
     border-radius: 15px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.1);
     border: 1px solid rgba(255,255,255,0.2);
+}
+
+/* Price emphasis */
+.price-info .price-usd {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #1a202c;
+}
+.price-info .price-pen {
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+.price-info .price-usd.price-sale {
+    color: #065f46;
 }
 
 .page-icon {

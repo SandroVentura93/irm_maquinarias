@@ -164,8 +164,8 @@
                                         Precio de Compra
                                     </div>
                                     <div class="price-value">
-                                        <span class="price-main">S/ {{ number_format($producto->precio_compra, 2) }}</span>
-                                        <span class="price-conversion">${{ number_format($producto->precio_compra / $tipoCambio, 2) }} USD</span>
+                                        <span class="price-main">${{ number_format($producto->precio_compra / $tipoCambio, 2) }} USD</span>
+                                        <div class="price-secondary text-muted small">S/ {{ number_format($producto->precio_compra, 2) }}</div>
                                     </div>
                                 </div>
 
@@ -175,8 +175,8 @@
                                         Precio de Venta
                                     </div>
                                     <div class="price-value">
-                                        <span class="price-main sale-price">S/ {{ number_format($producto->precio_venta, 2) }}</span>
-                                        <span class="price-conversion">${{ number_format($producto->precio_venta / $tipoCambio, 2) }} USD</span>
+                                        <span class="price-main sale-price">${{ number_format($producto->precio_venta / $tipoCambio, 2) }} USD</span>
+                                        <div class="price-secondary text-muted small">S/ {{ number_format($producto->precio_venta, 2) }}</div>
                                     </div>
                                 </div>
 
@@ -703,6 +703,13 @@
     color: #718096;
     display: block;
     margin-top: 5px;
+}
+
+.price-secondary {
+    font-size: 13px;
+    color: #6b7280;
+    display: block;
+    margin-top: 6px;
 }
 
 .margin-indicator {

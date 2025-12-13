@@ -111,6 +111,19 @@ class ProductoController extends Controller
             'activo' => 'required|boolean',
         ]);
 
+        // Interpretamos los precios enviados en la vista como USD (moneda principal).
+        // Guardamos en la base de datos en SOLES multiplicando por el tipo de cambio
+        $tipoCambio = $request->input('tipo_cambio', session('tipo_cambio', 3.80));
+        session(['tipo_cambio' => $tipoCambio]);
+
+        // Convertir precios de USD a PEN antes de guardar
+        if (isset($validated['precio_compra'])) {
+            $validated['precio_compra'] = round($validated['precio_compra'] * (float)$tipoCambio, 2);
+        }
+        if (isset($validated['precio_venta'])) {
+            $validated['precio_venta'] = round($validated['precio_venta'] * (float)$tipoCambio, 2);
+        }
+
         Producto::create($validated);
 
         return redirect()
@@ -164,6 +177,17 @@ class ProductoController extends Controller
             'importado' => 'required|boolean',
             'activo' => 'required|boolean',
         ]);
+
+        // Al igual que en store, interpretamos los precios como USD en el formulario
+        // y los convertimos a PEN según el tipo de cambio antes de actualizar.
+        $tipoCambio = $request->input('tipo_cambio', session('tipo_cambio', 3.80));
+        session(['tipo_cambio' => $tipoCambio]);
+        if (isset($validated['precio_compra'])) {
+            $validated['precio_compra'] = round($validated['precio_compra'] * (float)$tipoCambio, 2);
+        }
+        if (isset($validated['precio_venta'])) {
+            $validated['precio_venta'] = round($validated['precio_venta'] * (float)$tipoCambio, 2);
+        }
 
         $producto->update($validated);
 

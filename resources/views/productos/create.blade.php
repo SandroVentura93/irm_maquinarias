@@ -54,6 +54,7 @@
 
     <form action="{{ route('productos.store') }}" method="POST" id="productForm">
         @csrf
+            <input type="hidden" name="tipo_cambio" id="tipo_cambio_hidden" value="{{ $tipoCambio }}">
         <div class="row">
             <!-- Información Básica -->
             <div class="col-lg-8">
@@ -69,6 +70,8 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="modern-label required">
+                                    <i class="fas fa-hand-holding-usd me-1 text-success"></i>
+                                    Precio de Venta (USD)
                                     <i class="fas fa-barcode me-1"></i>
                                     Código del Producto
                                 </label>
@@ -257,9 +260,10 @@
                         <div class="mb-3">
                             <label class="modern-label required">
                                 <i class="fas fa-shopping-cart me-1 text-info"></i>
-                                Precio de Compra (S/)
+                                Precio de Compra (USD)
                             </label>
-                            <div class="price-input-group">
+                            <div class="input-group modern-input-group">
+                                <span class="input-group-text modern-input-addon">$</span>
                                 <input type="number" step="0.01" name="precio_compra" id="precio_compra" 
                                        class="form-control modern-input price-input" value="{{ old('precio_compra') }}" 
                                        required min="0" max="999999.99" placeholder="0.00">
@@ -267,7 +271,7 @@
                             <div class="price-conversion">
                                 <small class="text-muted">
                                     <i class="fas fa-equals me-1"></i>
-                                    ≈ $<span id="precio_compra_usd" class="fw-bold">0.00</span> USD
+                                    ≈ S/<span id="precio_compra_pen" class="fw-bold">0.00</span>
                                 </small>
                             </div>
                         </div>
@@ -275,9 +279,10 @@
                         <div class="mb-3">
                             <label class="modern-label required">
                                 <i class="fas fa-hand-holding-usd me-1 text-success"></i>
-                                Precio de Venta (S/)
+                                Precio de Venta (USD)
                             </label>
-                            <div class="price-input-group">
+                            <div class="input-group modern-input-group">
+                                <span class="input-group-text modern-input-addon">$</span>
                                 <input type="number" step="0.01" name="precio_venta" id="precio_venta" 
                                        class="form-control modern-input price-input" value="{{ old('precio_venta') }}" 
                                        required min="0" max="999999.99" placeholder="0.00">
@@ -285,7 +290,7 @@
                             <div class="price-conversion">
                                 <small class="text-muted">
                                     <i class="fas fa-equals me-1"></i>
-                                    ≈ $<span id="precio_venta_usd" class="fw-bold">0.00</span> USD
+                                    ≈ S/<span id="precio_venta_pen" class="fw-bold">0.00</span>
                                 </small>
                             </div>
                         </div>
@@ -680,11 +685,12 @@
 <script>
 // JavaScript mejorado para crear productos
 document.addEventListener('DOMContentLoaded', function() {
-    const tipoCambio = {{ $tipoCambio }};
+    const tipoCambioInput = document.getElementById('tipo_cambio_form');
+    const tipoCambioHidden = document.getElementById('tipo_cambio_hidden');
     const precioCompraInput = document.getElementById('precio_compra');
     const precioVentaInput = document.getElementById('precio_venta');
-    const precioCompraUsd = document.getElementById('precio_compra_usd');
-    const precioVentaUsd = document.getElementById('precio_venta_usd');
+    const precioCompraPen = document.getElementById('precio_compra_pen');
+    const precioVentaPen = document.getElementById('precio_venta_pen');
     const margenInfo = document.getElementById('margen_info');
     const margenPorcentaje = document.getElementById('margen_porcentaje');
     const stockActual = document.getElementById('stock_actual');
@@ -692,17 +698,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const stockIndicator = document.getElementById('stockIndicator');
 
     // Función para calcular conversiones y márgenes
+    function getTipoCambio() {
+        return parseFloat(tipoCambioInput.value) || parseFloat(tipoCambioHidden.value) || {{ $tipoCambio }};
+    }
+
     function calcularConversiones() {
-        const precioCompra = parseFloat(precioCompraInput.value) || 0;
-        const precioVenta = parseFloat(precioVentaInput.value) || 0;
-        
-        // Conversiones a USD
-        precioCompraUsd.textContent = (precioCompra / tipoCambio).toFixed(2);
-        precioVentaUsd.textContent = (precioVenta / tipoCambio).toFixed(2);
-        
-        // Calcular y mostrar margen
-        if (precioCompra > 0 && precioVenta > 0) {
-            const margen = ((precioVenta - precioCompra) / precioCompra * 100);
+        const tc = getTipoCambio();
+        const precioCompraUsd = parseFloat(precioCompraInput.value) || 0;
+        const precioVentaUsd = parseFloat(precioVentaInput.value) || 0;
+
+        // Conversiones a PEN
+        const compraPen = precioCompraUsd * tc;
+        const ventaPen = precioVentaUsd * tc;
+        precioCompraPen.textContent = compraPen.toFixed(2);
+        precioVentaPen.textContent = ventaPen.toFixed(2);
+
+        // Calcular y mostrar margen (en PEN)
+        if (compraPen > 0 && ventaPen > 0) {
+            const margen = ((ventaPen - compraPen) / compraPen * 100);
             margenPorcentaje.innerHTML = margen.toFixed(1);
             margenInfo.style.display = 'block';
             
@@ -765,6 +778,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event listeners
     precioCompraInput.addEventListener('input', calcularConversiones);
     precioVentaInput.addEventListener('input', calcularConversiones);
+    // Sync tipo de cambio
+    tipoCambioInput.addEventListener('input', function() {
+        tipoCambioHidden.value = this.value;
+        calcularConversiones();
+    });
     stockActual.addEventListener('input', validarStock);
     stockMinimo.addEventListener('input', validarStock);
 

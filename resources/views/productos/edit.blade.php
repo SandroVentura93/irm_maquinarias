@@ -68,6 +68,7 @@
     <form action="{{ route('productos.update', $producto) }}" method="POST" class="modern-form" id="productForm">
         @csrf
         @method('PUT')
+        <input type="hidden" name="tipo_cambio" id="tipo_cambio_hidden" value="{{ $tipoCambio }}">
         <div class="row">
             <!-- Información Principal -->
             <div class="col-lg-8">
@@ -542,25 +543,25 @@
                         <div class="form-section">
                             <label class="modern-label required">
                                 <i class="fas fa-shopping-cart text-info me-2"></i>
-                                Precio de Compra
+                                Precio de Compra (USD)
                             </label>
                             <div class="input-group modern-input-group">
                                 <span class="input-group-text modern-input-addon">
-                                    S/
+                                    $
                                 </span>
                                 <input type="number" 
                                        step="0.01" 
                                        name="precio_compra" 
                                        id="precio_compra" 
                                        class="form-control modern-input @error('precio_compra') is-invalid @enderror" 
-                                       value="{{ old('precio_compra', $producto->precio_compra) }}" 
+                                       value="{{ old('precio_compra', number_format(($producto->precio_compra ?? 0) / $tipoCambio, 2, '.', '')) }}" 
                                        required 
                                        min="0">
                             </div>
                             <div class="currency-conversion">
                                 <small class="text-muted">
                                     <i class="fas fa-exchange-alt me-1"></i>
-                                    ≈ $<span id="precio_compra_usd">0.00</span> USD
+                                    ≈ S/<span id="precio_compra_pen">0.00</span>
                                 </small>
                             </div>
                             @error('precio_compra')
@@ -571,25 +572,25 @@
                         <div class="form-section">
                             <label class="modern-label required">
                                 <i class="fas fa-hand-holding-usd text-success me-2"></i>
-                                Precio de Venta
+                                Precio de Venta (USD)
                             </label>
                             <div class="input-group modern-input-group">
                                 <span class="input-group-text modern-input-addon">
-                                    S/
+                                    $
                                 </span>
                                 <input type="number" 
                                        step="0.01" 
                                        name="precio_venta" 
                                        id="precio_venta" 
                                        class="form-control modern-input @error('precio_venta') is-invalid @enderror" 
-                                       value="{{ old('precio_venta', $producto->precio_venta) }}" 
+                                       value="{{ old('precio_venta', number_format(($producto->precio_venta ?? 0) / $tipoCambio, 2, '.', '')) }}" 
                                        required 
                                        min="0">
                             </div>
                             <div class="currency-conversion">
                                 <small class="text-muted">
                                     <i class="fas fa-exchange-alt me-1"></i>
-                                    ≈ $<span id="precio_venta_usd">0.00</span> USD
+                                    ≈ S/<span id="precio_venta_pen">0.00</span>
                                 </small>
                             </div>
                             @error('precio_venta')
@@ -1281,11 +1282,12 @@
 <script>
 // JavaScript para la edición de productos
 document.addEventListener('DOMContentLoaded', function() {
-    const tipoCambio = {{ $tipoCambio }};
+    const tipoCambioInput = document.getElementById('tipo_cambio_form');
+    const tipoCambioHidden = document.getElementById('tipo_cambio_hidden');
     const precioCompraInput = document.getElementById('precio_compra');
     const precioVentaInput = document.getElementById('precio_venta');
-    const precioCompraUsd = document.getElementById('precio_compra_usd');
-    const precioVentaUsd = document.getElementById('precio_venta_usd');
+    const precioCompraPen = document.getElementById('precio_compra_pen');
+    const precioVentaPen = document.getElementById('precio_venta_pen');
     const margenInfo = document.getElementById('margen_info');
     const margenPorcentaje = document.getElementById('margen_porcentaje');
     const gananciaAmount = document.getElementById('ganancia_amount');
@@ -1298,19 +1300,26 @@ document.addEventListener('DOMContentLoaded', function() {
     const updateBtn = document.getElementById('updateBtn');
 
     // Cálculo de conversiones y márgenes
+    function getTipoCambio() {
+        return parseFloat(tipoCambioInput.value) || parseFloat(tipoCambioHidden.value) || {{ $tipoCambio }};
+    }
+
     function calcularConversiones() {
-        const precioCompra = parseFloat(precioCompraInput.value) || 0;
-        const precioVenta = parseFloat(precioVentaInput.value) || 0;
-        
-        // Conversiones a USD
-        precioCompraUsd.textContent = (precioCompra / tipoCambio).toFixed(2);
-        precioVentaUsd.textContent = (precioVenta / tipoCambio).toFixed(2);
-        
-        // Calcular margen
-        if (precioCompra > 0 && precioVenta > 0) {
-            const margen = ((precioVenta - precioCompra) / precioCompra * 100);
-            const ganancia = precioVenta - precioCompra;
-            
+        const tc = getTipoCambio();
+        const precioCompraUsd = parseFloat(precioCompraInput.value) || 0;
+        const precioVentaUsd = parseFloat(precioVentaInput.value) || 0;
+
+        // Conversiones a PEN
+        const compraPen = precioCompraUsd * tc;
+        const ventaPen = precioVentaUsd * tc;
+        precioCompraPen.textContent = compraPen.toFixed(2);
+        precioVentaPen.textContent = ventaPen.toFixed(2);
+
+        // Calcular margen (en PEN)
+        if (compraPen > 0 && ventaPen > 0) {
+            const margen = ((ventaPen - compraPen) / compraPen * 100);
+            const ganancia = ventaPen - compraPen;
+
             margenPorcentaje.textContent = margen.toFixed(1);
             gananciaAmount.textContent = ganancia.toFixed(2);
             
@@ -1400,6 +1409,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (stockMinimo) {
         stockMinimo.addEventListener('input', validarStock);
         stockMinimo.addEventListener('blur', function() { validateField(this); });
+    }
+
+    if (typeof tipoCambioInput !== 'undefined' && tipoCambioInput) {
+        tipoCambioInput.addEventListener('input', function() {
+            tipoCambioHidden.value = this.value;
+            calcularConversiones();
+        });
     }
     
     if (descripcionInput) {
