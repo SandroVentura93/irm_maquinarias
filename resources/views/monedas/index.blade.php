@@ -83,6 +83,7 @@
                 <a href="{{ route('monedas.edit', $moneda->id_moneda) }}" class="btn-edit" title="Editar">
                     <i class="fas fa-edit"></i>
                 </a>
+                @if(auth()->check() && auth()->user()->id_rol === 1)
                 <form action="{{ route('monedas.destroy', $moneda->id_moneda) }}" method="POST" style="display:inline-block;" onsubmit="return confirm('¿Estás seguro de eliminar esta moneda?')">
                     @csrf
                     @method('DELETE')
@@ -90,6 +91,7 @@
                         <i class="fas fa-trash-alt"></i>
                     </button>
                 </form>
+                @endif
             </div>
         </div>
         @empty
@@ -137,6 +139,7 @@
                                 <a href="{{ route('monedas.edit', $moneda->id_moneda) }}" class="btn-action btn-action-edit" title="Editar">
                                     <i class="fas fa-edit"></i>
                                 </a>
+                                @if(auth()->check() && auth()->user()->id_rol === 1)
                                 <form action="{{ route('monedas.destroy', $moneda->id_moneda) }}" method="POST" style="display:inline-block;" onsubmit="return confirm('¿Estás seguro de eliminar esta moneda?')">
                                     @csrf
                                     @method('DELETE')
@@ -144,6 +147,7 @@
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </form>
+                                @endif
                             </div>
                         </td>
                     </tr>

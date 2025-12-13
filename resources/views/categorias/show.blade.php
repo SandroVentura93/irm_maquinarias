@@ -149,6 +149,7 @@
                             <i class="fas fa-edit me-2"></i>
                             Editar Categoría
                         </a>
+                        @if(auth()->check() && auth()->user()->id_rol === 1)
                         <form action="{{ route('categorias.destroy', $categoria->id_categoria) }}" method="POST" onsubmit="return confirmDelete()">
                             @csrf
                             @method('DELETE')
@@ -157,6 +158,7 @@
                                 Eliminar Categoría
                             </button>
                         </form>
+                        @endif
                     </div>
                 </div>
             </div>

@@ -30,11 +30,13 @@
                     <td>{{ $rol->activo ? 'Sí' : 'No' }}</td>
                     <td>
                         <a href="{{ route('roles.edit', $rol) }}" class="btn btn-warning btn-sm">Editar</a>
+                        @if(auth()->check() && auth()->user()->id_rol === 1)
                         <form action="{{ route('roles.destroy', $rol) }}" method="POST" style="display:inline;">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Estás seguro?')">Eliminar</button>
                         </form>
+                        @endif
                     </td>
                 </tr>
             @endforeach

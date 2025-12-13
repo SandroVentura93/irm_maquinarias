@@ -6,9 +6,15 @@ use App\Models\Usuario;
 use App\Models\Rol;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 
 class UsuarioController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('admin')->only(['create', 'store', 'destroy']);
+    }
+
     public function index()
     {
         $usuarios = Usuario::with('rol')->get();
@@ -23,6 +29,10 @@ class UsuarioController extends Controller
 
     public function store(Request $request)
     {
+        if (!Auth::check() || Auth::user()->id_rol !== 1) {
+            return redirect()->route('usuarios.index')->with('error', 'Acceso denegado. Solo administradores pueden crear usuarios.');
+        }
+
         $request->validate([
             'id_rol' => 'required|exists:roles,id_rol',
             'nombre' => 'required|string|max:100',
@@ -74,6 +84,10 @@ class UsuarioController extends Controller
 
     public function destroy(Usuario $usuario)
     {
+        if (!Auth::check() || Auth::user()->id_rol !== 1) {
+            return redirect()->route('usuarios.index')->with('error', 'Acceso denegado. Solo administradores pueden eliminar usuarios.');
+        }
+
         $usuario->delete();
 
         return redirect()->route('usuarios.index')->with('success', 'Usuario eliminado exitosamente.');

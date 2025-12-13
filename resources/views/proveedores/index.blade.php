@@ -108,6 +108,7 @@
                 <a href="{{ route('proveedores.edit', $proveedor->id_proveedor) }}" class="btn-edit" title="Editar">
                     <i class="fas fa-edit"></i>
                 </a>
+                @if(auth()->check() && auth()->user()->id_rol === 1)
                 <form action="{{ route('proveedores.destroy', $proveedor->id_proveedor) }}" method="POST" style="display:inline-block;" onsubmit="return confirm('¿Estás seguro de eliminar este proveedor?')">
                     @csrf
                     @method('DELETE')
@@ -115,6 +116,7 @@
                         <i class="fas fa-trash-alt"></i>
                     </button>
                 </form>
+                @endif
             </div>
         </div>
         @empty
@@ -175,6 +177,7 @@
                                 <a href="{{ route('proveedores.edit', $proveedor->id_proveedor) }}" class="btn-action btn-action-edit" title="Editar">
                                     <i class="fas fa-edit"></i>
                                 </a>
+                                @if(auth()->check() && auth()->user()->id_rol === 1)
                                 <form action="{{ route('proveedores.destroy', $proveedor->id_proveedor) }}" method="POST" style="display:inline-block;" onsubmit="return confirm('¿Estás seguro de eliminar este proveedor?')">
                                     @csrf
                                     @method('DELETE')
@@ -182,6 +185,7 @@
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </form>
+                                @endif
                             </div>
                         </td>
                     </tr>

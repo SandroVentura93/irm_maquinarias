@@ -330,6 +330,7 @@
                 </div>
                 <div class="modal-footer border-0">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    @if(auth()->check() && auth()->user()->id_rol === 1)
                     <form id="deleteForm" method="POST" style="display: inline;">
                         @csrf
                         @method('DELETE')
@@ -338,6 +339,7 @@
                             Eliminar Cliente
                         </button>
                     </form>
+                    @endif
                 </div>
             </div>
         </div>

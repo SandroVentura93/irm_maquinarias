@@ -7,6 +7,10 @@ use App\Models\Marca;
 
 class MarcaController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('admin')->only(['destroy']);
+    }
     /**
      * Display a listing of the resource.
      *

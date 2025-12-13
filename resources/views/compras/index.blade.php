@@ -496,6 +496,7 @@
                                            data-bs-toggle="tooltip">
                                             <i class="fas fa-edit"></i>
                                         </a>
+                                        @if(auth()->check() && auth()->user()->id_rol === 1)
                                         <form action="{{ route('compras.destroy', $compra->id_compra) }}" 
                                               method="POST" 
                                               class="d-inline"
@@ -509,6 +510,7 @@
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>

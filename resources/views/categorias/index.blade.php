@@ -176,6 +176,7 @@
                                            class="btn btn-warning btn-modern-sm" title="Editar categoría">
                                             <i class="fas fa-edit"></i>
                                         </a>
+                                        @if(auth()->check() && auth()->user()->id_rol === 1)
                                         <form action="{{ route('categorias.destroy', $categoria->id_categoria) }}" 
                                               method="POST" style="display:inline;" 
                                               onsubmit="return confirmDelete('{{ $categoria->nombre }}')">
@@ -185,6 +186,7 @@
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>

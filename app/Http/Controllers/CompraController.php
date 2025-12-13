@@ -11,6 +11,10 @@ use Illuminate\Http\Request;
 
 class CompraController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('admin')->only(['destroy']);
+    }
     public function index()
     {
         $compras = Compra::with(['proveedor', 'moneda'])->orderByDesc('fecha')->paginate(15);

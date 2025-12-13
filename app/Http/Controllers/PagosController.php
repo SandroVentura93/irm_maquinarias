@@ -7,6 +7,10 @@ use App\Models\Venta;
 
 class PagosController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('admin')->only(['destroy']);
+    }
     /**
      * Muestra la lista de pagos.
      */

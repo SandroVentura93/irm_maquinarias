@@ -297,6 +297,7 @@
                             <span>Enviar Email</span>
                         </a>
                         @endif
+                        @if(auth()->check() && auth()->user()->id_rol === 1)
                         <form action="{{ route('proveedores.destroy', $proveedor->id_proveedor) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar este proveedor?')">
                             @csrf
                             @method('DELETE')
@@ -305,6 +306,7 @@
                                 <span>Eliminar</span>
                             </button>
                         </form>
+                        @endif
                     </div>
                 </div>
             </div>

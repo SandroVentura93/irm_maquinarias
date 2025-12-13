@@ -333,6 +333,7 @@
                                 <i class="fas fa-exclamation-triangle text-danger me-2"></i>
                                 <span>Zona de Peligro</span>
                             </div>
+                            @if(auth()->check() && auth()->user()->id_rol === 1)
                             <form action="{{ route('productos.destroy', $producto) }}" method="POST" 
                                   onsubmit="return confirmDelete('{{ $producto->descripcion }}')">
                                 @csrf
@@ -341,6 +342,7 @@
                                     <i class="fas fa-trash me-2"></i>Eliminar Producto
                                 </button>
                             </form>
+                            @endif
                         </div>
                     </div>
                 </div>

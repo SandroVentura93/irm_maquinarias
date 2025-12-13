@@ -305,6 +305,7 @@
                                         <a href="{{ route('productos.edit', $producto) }}" class="btn btn-warning btn-modern-sm" title="Editar">
                                             <i class="fas fa-edit"></i>
                                         </a>
+                                        @if(auth()->check() && auth()->user()->id_rol === 1)
                                         <form action="{{ route('productos.destroy', $producto) }}" method="POST" style="display:inline;" 
                                               onsubmit="return confirmDelete('{{ $producto->descripcion }}')">
                                             @csrf
@@ -313,6 +314,7 @@
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>

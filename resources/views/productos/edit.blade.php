@@ -724,10 +724,12 @@
     </form>
 
     <!-- Modal de confirmación para eliminar -->
-    <form action="{{ route('productos.destroy', $producto) }}" method="POST" id="deleteForm" style="display: none;">
-        @csrf
-        @method('DELETE')
-    </form>
+        @if(auth()->check() && auth()->user()->id_rol === 1)
+        <form action="{{ route('productos.destroy', $producto) }}" method="POST" id="deleteForm" style="display: none;">
+            @csrf
+            @method('DELETE')
+        </form>
+        @endif
 </div>
 
 <style>

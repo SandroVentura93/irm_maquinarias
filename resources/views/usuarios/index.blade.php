@@ -647,10 +647,12 @@
                         </div>
                     </div>
                 </div>
+                @if(auth()->check() && auth()->user()->id_rol === 1)
                 <a href="{{ route('usuarios.create') }}" class="btn-create">
                     <i class="fas fa-user-plus"></i>
                     Nuevo Usuario
                 </a>
+                @endif
             </div>
         </div>
 
@@ -734,6 +736,7 @@
                         <i class="fas fa-edit"></i>
                         Editar
                     </a>
+                    @if(auth()->check() && auth()->user()->id_rol === 1)
                     <form action="{{ route('usuarios.destroy', $usuario) }}" method="POST" style="flex: 1; margin: 0;">
                         @csrf
                         @method('DELETE')
@@ -742,6 +745,7 @@
                             Eliminar
                         </button>
                     </form>
+                    @endif
                 </div>
             </div>
             @endforeach
@@ -785,6 +789,7 @@
                     <a href="{{ route('usuarios.edit', $usuario) }}" class="action-btn btn-edit" title="Editar">
                         <i class="fas fa-edit"></i>
                     </a>
+                    @if(auth()->check() && auth()->user()->id_rol === 1)
                     <form action="{{ route('usuarios.destroy', $usuario) }}" method="POST" style="margin: 0;">
                         @csrf
                         @method('DELETE')
@@ -792,6 +797,7 @@
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </form>
+                    @endif
                 </div>
             </div>
             @endforeach

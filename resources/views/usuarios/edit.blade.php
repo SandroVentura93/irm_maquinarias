@@ -265,6 +265,7 @@
                                 Se eliminarán todos los datos asociados a este usuario.
                             </p>
                         </div>
+                        @if(auth()->check() && auth()->user()->id_rol === 1)
                         <form action="{{ route('usuarios.destroy', $usuario) }}" 
                               method="POST" 
                               onsubmit="return confirm('¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer.')">
@@ -275,6 +276,7 @@
                                 Eliminar Usuario
                             </button>
                         </form>
+                        @endif
                     </div>
                 </div>
             </div>

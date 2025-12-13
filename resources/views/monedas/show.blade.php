@@ -185,6 +185,7 @@
                             <i class="fas fa-edit"></i>
                             <span>Editar Moneda</span>
                         </a>
+                        @if(auth()->check() && auth()->user()->id_rol === 1)
                         <form action="{{ route('monedas.destroy', $moneda->id_moneda) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar esta moneda?')">
                             @csrf
                             @method('DELETE')
@@ -193,6 +194,7 @@
                                 <span>Eliminar</span>
                             </button>
                         </form>
+                        @endif
                     </div>
                 </div>
             </div>

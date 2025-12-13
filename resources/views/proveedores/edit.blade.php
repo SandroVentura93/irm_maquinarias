@@ -266,6 +266,7 @@
                             <h6 class="danger-title">Eliminar Proveedor</h6>
                             <p class="danger-text">Una vez eliminado, este proveedor no podrá ser recuperado. Esta acción es permanente.</p>
                         </div>
+                        @if(auth()->check() && auth()->user()->id_rol === 1)
                         <form action="{{ route('proveedores.destroy', $proveedor->id_proveedor) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar este proveedor? Esta acción no se puede deshacer.')">
                             @csrf
                             @method('DELETE')
@@ -274,6 +275,7 @@
                                 Eliminar Proveedor
                             </button>
                         </form>
+                        @endif
                     </div>
                 </div>
             </div>

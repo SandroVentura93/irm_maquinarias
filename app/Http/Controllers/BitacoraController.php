@@ -7,6 +7,10 @@ use Illuminate\Http\Request;
 
 class BitacoraController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('admin')->only(['destroy']);
+    }
     public function index()
     {
         $bitacoras = Bitacora::all();

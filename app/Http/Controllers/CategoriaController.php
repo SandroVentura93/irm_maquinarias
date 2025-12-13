@@ -7,6 +7,10 @@ use Illuminate\Http\Request;
 
 class CategoriaController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('admin')->only(['destroy']);
+    }
     /**
      * Muestra todas las categorías.
      */

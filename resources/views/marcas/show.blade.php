@@ -237,6 +237,7 @@
                 <p class="danger-description">
                     Eliminar esta marca es una acción permanente
                 </p>
+                @if(auth()->check() && auth()->user()->id_rol === 1)
                 <form action="{{ route('marcas.destroy', $marca->id_marca) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar esta marca? Esta acción no se puede deshacer.')">
                     @csrf
                     @method('DELETE')
@@ -245,6 +246,7 @@
                         Eliminar Marca
                     </button>
                 </form>
+                @endif
             </div>
         </div>
     </div>

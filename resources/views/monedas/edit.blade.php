@@ -146,6 +146,7 @@
                             <h6 class="danger-title">Eliminar Moneda</h6>
                             <p class="danger-text">Una vez eliminada, esta moneda no podrá ser recuperada. Esta acción es permanente.</p>
                         </div>
+                        @if(auth()->check() && auth()->user()->id_rol === 1)
                         <form action="{{ route('monedas.destroy', $moneda->id_moneda) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar esta moneda? Esta acción no se puede deshacer.')">
                             @csrf
                             @method('DELETE')
@@ -154,6 +155,7 @@
                                 Eliminar Moneda
                             </button>
                         </form>
+                        @endif
                     </div>
                 </div>
             </div>

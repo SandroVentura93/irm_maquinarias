@@ -467,6 +467,7 @@
                 <i class="fas fa-edit"></i>
                 Editar Compra
             </a>
+            @if(auth()->check() && auth()->user()->id_rol === 1)
             <form action="{{ route('compras.destroy', $compra->id_compra) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de eliminar esta compra?')">
                 @csrf
                 @method('DELETE')
@@ -475,6 +476,7 @@
                     Eliminar
                 </button>
             </form>
+            @endif
         </div>
     </div>
 

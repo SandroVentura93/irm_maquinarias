@@ -190,6 +190,7 @@
                     <i class="fas fa-exclamation-triangle"></i> Zona de Peligro
                 </h4>
                 <p class="danger-text">Esta acción es irreversible</p>
+                @if(auth()->check() && auth()->user()->id_rol === 1)
                 <form action="{{ route('marcas.destroy', $marca->id_marca) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar esta marca? Esta acción no se puede deshacer.')">
                     @csrf
                     @method('DELETE')
@@ -197,6 +198,7 @@
                         <i class="fas fa-trash-alt"></i> Eliminar Marca
                     </button>
                 </form>
+                @endif
             </div>
         </div>
     </div>

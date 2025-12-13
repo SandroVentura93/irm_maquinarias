@@ -16,6 +16,10 @@ use Illuminate\Support\Facades\DB;
 
 class VentaController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('admin')->only(['destroy']);
+    }
     // Método para obtener tipo de cambio actual
     private function obtenerTipoCambio()
     {
