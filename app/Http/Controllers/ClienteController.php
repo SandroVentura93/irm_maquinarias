@@ -49,7 +49,10 @@ class ClienteController extends Controller
         // Paginar los resultados
         $clientes = $query->paginate(12);
 
-        return view('clientes.index', compact('clientes'));
+        // Cargar ubigeos para los formularios/modales en la vista de clientes
+        $ubigeos = DB::table('ubigeos')->select('id_ubigeo', 'departamento', 'provincia', 'distrito')->get();
+
+        return view('clientes.index', compact('clientes', 'ubigeos'));
     }
 
     /**

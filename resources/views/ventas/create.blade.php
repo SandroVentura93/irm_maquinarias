@@ -339,7 +339,7 @@
                 <select class="form-select" id="nuevoUbigeo">
                   <option value="">Seleccione un Ubigeo</option>
                   @foreach($ubigeos as $ubigeo)
-                    <option value="{{ $ubigeo->id_ubigeo }}">{{ $ubigeo->descripcion }}</option>
+                    <option value="{{ $ubigeo->id_ubigeo }}">📍 {{ $ubigeo->departamento }} - {{ $ubigeo->provincia }} - {{ $ubigeo->distrito }}</option>
                   @endforeach
                 </select>
               </div>
