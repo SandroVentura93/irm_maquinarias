@@ -139,7 +139,7 @@
                                 <select name="id_categoria" id="id_categoria" class="form-select modern-select">
                                     <option value="">🏷️ Seleccione categoría</option>
                                     @foreach ($categorias as $categoria)
-                                        <option value="{{ $categoria->id }}" {{ old('id_categoria') == $categoria->id ? 'selected' : '' }}>
+                                        <option value="{{ $categoria->id_categoria }}" {{ old('id_categoria') == $categoria->id_categoria ? 'selected' : '' }}>
                                             {{ $categoria->descripcion }}
                                         </option>
                                     @endforeach

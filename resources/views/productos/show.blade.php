@@ -157,14 +157,22 @@
                             </h5>
                         </div>
                         <div class="card-body">
-                            <div class="pricing-grid">
+                                        <div class="pricing-grid">
+                                            @php
+                                                $usdCompra = ($producto->precio_compra_usd && $producto->precio_compra_usd > 0)
+                                                    ? $producto->precio_compra_usd
+                                                    : ($tipoCambio ? $producto->precio_compra / $tipoCambio : 0);
+                                                $usdVenta = ($producto->precio_venta_usd && $producto->precio_venta_usd > 0)
+                                                    ? $producto->precio_venta_usd
+                                                    : ($tipoCambio ? $producto->precio_venta / $tipoCambio : 0);
+                                            @endphp
                                 <div class="price-item purchase">
                                     <div class="price-label">
                                         <i class="fas fa-shopping-cart text-info"></i>
                                         Precio de Compra
                                     </div>
                                     <div class="price-value">
-                                        <span class="price-main">${{ number_format($producto->precio_compra / $tipoCambio, 2) }} USD</span>
+                                        <span class="price-main">${{ number_format($usdCompra, 2) }} USD</span>
                                         <div class="price-secondary text-muted small">S/ {{ number_format($producto->precio_compra, 2) }}</div>
                                     </div>
                                 </div>
@@ -175,7 +183,7 @@
                                         Precio de Venta
                                     </div>
                                     <div class="price-value">
-                                        <span class="price-main sale-price">${{ number_format($producto->precio_venta / $tipoCambio, 2) }} USD</span>
+                                        <span class="price-main sale-price">${{ number_format($usdVenta, 2) }} USD</span>
                                         <div class="price-secondary text-muted small">S/ {{ number_format($producto->precio_venta, 2) }}</div>
                                     </div>
                                 </div>
@@ -286,14 +294,18 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="value-grid">
+                            <div class="value-grid">
+                                @php
+                                    $usdValorCompra = $usdCompra * $producto->stock_actual;
+                                    $usdValorVenta = $usdVenta * $producto->stock_actual;
+                                @endphp
                         <div class="value-item purchase">
                             <div class="value-header">
                                 <i class="fas fa-shopping-cart text-info"></i>
                                 <span>Valor Total de Compra</span>
                             </div>
-                            <div class="value-main">S/ {{ number_format($producto->precio_compra * $producto->stock_actual, 2) }}</div>
-                            <div class="value-conversion">${{ number_format(($producto->precio_compra * $producto->stock_actual) / $tipoCambio, 2) }} USD</div>
+                                <div class="value-main">S/ {{ number_format($producto->precio_compra * $producto->stock_actual, 2) }}</div>
+                                <div class="value-conversion">${{ number_format($usdValorCompra, 2) }} USD</div>
                         </div>
                         
                         <div class="value-item sale">
@@ -302,7 +314,7 @@
                                 <span>Valor Estimado de Venta</span>
                             </div>
                             <div class="value-main sale-value">S/ {{ number_format($producto->precio_venta * $producto->stock_actual, 2) }}</div>
-                            <div class="value-conversion">${{ number_format(($producto->precio_venta * $producto->stock_actual) / $tipoCambio, 2) }} USD</div>
+                            <div class="value-conversion">${{ number_format($usdValorVenta, 2) }} USD</div>
                         </div>
                     </div>
                 </div>
@@ -389,7 +401,7 @@
                     <div class="footer-info">
                         <i class="fas fa-exchange-alt text-info me-2"></i>
                         <strong>Tipo de Cambio:</strong>
-                        Los precios en dólares son calculados automáticamente con el TC actual:
+                        Los precios en dólares son los valores fijos registrados en USD; el TC mostrado es referencial:
                         <span class="badge bg-info">S/ {{ number_format($tipoCambio, 2) }} por USD</span>
                         <small class="text-muted d-block mt-1">
                             Los valores pueden variar según el tipo de cambio del momento.

@@ -286,14 +286,14 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <div class="price-info">
-                                            <div class="price-usd">${{ number_format($producto->precio_compra / $tipoCambio, 2) }}</div>
+                                        <div class="price-info">
+                                            <div class="price-usd">${{ number_format($producto->precio_compra_usd ?? ($producto->precio_compra / $tipoCambio), 2) }}</div>
                                             <div class="price-pen text-muted small">S/ {{ number_format($producto->precio_compra, 2) }}</div>
                                         </div>
                                 </td>
                                 <td>
                                     <div class="price-info">
-                                        <div class="price-usd price-sale">${{ number_format($producto->precio_venta / $tipoCambio, 2) }}</div>
+                                        <div class="price-usd price-sale">${{ number_format($producto->precio_venta_usd ?? ($producto->precio_venta / $tipoCambio), 2) }}</div>
                                         <div class="price-pen text-muted small">S/ {{ number_format($producto->precio_venta, 2) }}</div>
                                     </div>
                                 </td>

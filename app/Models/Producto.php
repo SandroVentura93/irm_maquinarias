@@ -25,6 +25,8 @@ class Producto extends Model
         'stock_minimo',
         'precio_compra',
         'precio_venta',
+        'precio_compra_usd',
+        'precio_venta_usd',
         'importado',
         'activo',
     ];

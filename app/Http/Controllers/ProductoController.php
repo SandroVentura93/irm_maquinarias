@@ -112,17 +112,23 @@ class ProductoController extends Controller
         ]);
 
         // Interpretamos los precios enviados en la vista como USD (moneda principal).
-        // Guardamos en la base de datos en SOLES multiplicando por el tipo de cambio
         $tipoCambio = $request->input('tipo_cambio', session('tipo_cambio', 3.80));
         session(['tipo_cambio' => $tipoCambio]);
 
-        // Convertir precios de USD a PEN antes de guardar
+        // Guardar también los valores en USD en las nuevas columnas
+        $precioCompraUsd = isset($validated['precio_compra']) ? round($validated['precio_compra'], 2) : 0.00;
+        $precioVentaUsd = isset($validated['precio_venta']) ? round($validated['precio_venta'], 2) : 0.00;
+
+        // Convertir precios de USD a PEN antes de guardar en los campos existentes
         if (isset($validated['precio_compra'])) {
-            $validated['precio_compra'] = round($validated['precio_compra'] * (float)$tipoCambio, 2);
+            $validated['precio_compra'] = round($precioCompraUsd * (float)$tipoCambio, 2);
         }
         if (isset($validated['precio_venta'])) {
-            $validated['precio_venta'] = round($validated['precio_venta'] * (float)$tipoCambio, 2);
+            $validated['precio_venta'] = round($precioVentaUsd * (float)$tipoCambio, 2);
         }
+
+        $validated['precio_compra_usd'] = $precioCompraUsd;
+        $validated['precio_venta_usd'] = $precioVentaUsd;
 
         Producto::create($validated);
 
@@ -178,16 +184,23 @@ class ProductoController extends Controller
             'activo' => 'required|boolean',
         ]);
 
-        // Al igual que en store, interpretamos los precios como USD en el formulario
-        // y los convertimos a PEN según el tipo de cambio antes de actualizar.
+        // Como en store, interpretamos los precios como USD en el formulario
+        // y guardamos tanto PEN (convertido) como USD en los campos nuevos.
         $tipoCambio = $request->input('tipo_cambio', session('tipo_cambio', 3.80));
         session(['tipo_cambio' => $tipoCambio]);
+
+        $precioCompraUsd = isset($validated['precio_compra']) ? round($validated['precio_compra'], 2) : $producto->precio_compra_usd ?? 0.00;
+        $precioVentaUsd = isset($validated['precio_venta']) ? round($validated['precio_venta'], 2) : $producto->precio_venta_usd ?? 0.00;
+
         if (isset($validated['precio_compra'])) {
-            $validated['precio_compra'] = round($validated['precio_compra'] * (float)$tipoCambio, 2);
+            $validated['precio_compra'] = round($precioCompraUsd * (float)$tipoCambio, 2);
         }
         if (isset($validated['precio_venta'])) {
-            $validated['precio_venta'] = round($validated['precio_venta'] * (float)$tipoCambio, 2);
+            $validated['precio_venta'] = round($precioVentaUsd * (float)$tipoCambio, 2);
         }
+
+        $validated['precio_compra_usd'] = $precioCompraUsd;
+        $validated['precio_venta_usd'] = $precioVentaUsd;
 
         $producto->update($validated);
 
@@ -214,12 +227,11 @@ class ProductoController extends Controller
     public function buscar(Request $request)
     {
         $query = $request->query('query');
-
         $productos = Producto::where('codigo', 'like', "%$query%")
             ->orWhere('numero_parte', 'like', "%$query%")
             ->orWhere('descripcion', 'like', "%$query%")
             ->orWhere('modelo', 'like', "%$query%")
-            ->get(['id_producto', 'codigo', 'numero_parte', 'descripcion', 'modelo', 'precio_venta']);
+            ->get(['id_producto', 'codigo', 'numero_parte', 'descripcion', 'modelo', 'precio_venta', 'precio_compra', 'precio_compra_usd', 'precio_venta_usd']);
 
         return response()->json($productos);
     }
@@ -239,6 +251,9 @@ class ProductoController extends Controller
             'id_producto' => $producto->id_producto,
             'descripcion' => $producto->descripcion,
             'precio_venta' => $producto->precio_venta,
+            'precio_compra' => $producto->precio_compra,
+            'precio_compra_usd' => $producto->precio_compra_usd ?? 0,
+            'precio_venta_usd' => $producto->precio_venta_usd ?? 0,
         ]);
     }
 
@@ -257,7 +272,7 @@ class ProductoController extends Controller
         // Sin caché: siempre devolver stock actualizado
         $productos = Producto::with(['categoria', 'marca', 'proveedor'])
             ->select(
-                'id_producto', 'codigo', 'numero_parte', 'descripcion', 'modelo', 'precio_venta', 'precio_compra',
+                'id_producto', 'codigo', 'numero_parte', 'descripcion', 'modelo', 'precio_venta', 'precio_compra', 'precio_compra_usd', 'precio_venta_usd',
                 'stock_actual', 'stock_minimo', 'ubicacion', 'peso', 'importado', 'activo', 'id_categoria', 'id_marca', 'id_proveedor'
             )
             ->where(function($q) use ($query) {
@@ -278,6 +293,8 @@ class ProductoController extends Controller
                     'modelo' => $producto->modelo ?? '',
                     'precio_venta' => number_format($producto->precio_venta ?? 0, 2, '.', ''),
                     'precio_compra' => number_format($producto->precio_compra ?? 0, 2, '.', ''),
+                    'precio_compra_usd' => number_format($producto->precio_compra_usd ?? 0, 2, '.', ''),
+                    'precio_venta_usd' => number_format($producto->precio_venta_usd ?? 0, 2, '.', ''),
                     'stock_actual' => intval($producto->stock_actual ?? 0),
                     'stock_minimo' => intval($producto->stock_minimo ?? 0),
                     'ubicacion' => $producto->ubicacion ?? 'Sin ubicación',

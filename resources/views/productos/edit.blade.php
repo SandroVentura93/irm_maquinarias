@@ -549,14 +549,14 @@
                                 <span class="input-group-text modern-input-addon">
                                     $
                                 </span>
-                                <input type="number" 
-                                       step="0.01" 
-                                       name="precio_compra" 
-                                       id="precio_compra" 
-                                       class="form-control modern-input @error('precio_compra') is-invalid @enderror" 
-                                       value="{{ old('precio_compra', number_format(($producto->precio_compra ?? 0) / $tipoCambio, 2, '.', '')) }}" 
-                                       required 
-                                       min="0">
+                                    <input type="number" 
+                                        step="0.01" 
+                                        name="precio_compra" 
+                                        id="precio_compra" 
+                                        class="form-control modern-input @error('precio_compra') is-invalid @enderror" 
+                                        value="{{ old('precio_compra', number_format($producto->precio_compra_usd ?? 0, 2, '.', '')) }}" 
+                                        required 
+                                        min="0">
                             </div>
                             <div class="currency-conversion">
                                 <small class="text-muted">
@@ -578,14 +578,14 @@
                                 <span class="input-group-text modern-input-addon">
                                     $
                                 </span>
-                                <input type="number" 
-                                       step="0.01" 
-                                       name="precio_venta" 
-                                       id="precio_venta" 
-                                       class="form-control modern-input @error('precio_venta') is-invalid @enderror" 
-                                       value="{{ old('precio_venta', number_format(($producto->precio_venta ?? 0) / $tipoCambio, 2, '.', '')) }}" 
-                                       required 
-                                       min="0">
+                                    <input type="number" 
+                                        step="0.01" 
+                                        name="precio_venta" 
+                                        id="precio_venta" 
+                                        class="form-control modern-input @error('precio_venta') is-invalid @enderror" 
+                                        value="{{ old('precio_venta', number_format($producto->precio_venta_usd ?? 0, 2, '.', '')) }}" 
+                                        required 
+                                        min="0">
                             </div>
                             <div class="currency-conversion">
                                 <small class="text-muted">

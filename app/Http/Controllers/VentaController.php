@@ -66,7 +66,7 @@ class VentaController extends Controller
                 'id_producto', 'id_categoria', 'id_marca', 'id_proveedor',
                 'codigo', 'numero_parte', 'descripcion', 'modelo', 
                 'peso', 'ubicacion', 'stock_actual', 'stock_minimo',
-                'precio_compra', 'precio_venta', 'importado', 'activo'
+                'precio_compra', 'precio_venta', 'precio_compra_usd', 'precio_venta_usd', 'importado', 'activo'
             )
             ->limit(15)
             ->get()
@@ -83,6 +83,8 @@ class VentaController extends Controller
                     'stock_minimo' => $producto->stock_minimo ?? 0,
                     'precio_compra' => number_format($producto->precio_compra ?? 0, 2, '.', ''),
                     'precio_venta' => number_format($producto->precio_venta ?? 0, 2, '.', ''),
+                    'precio_compra_usd' => number_format($producto->precio_compra_usd ?? 0, 2, '.', ''),
+                    'precio_venta_usd' => number_format($producto->precio_venta_usd ?? 0, 2, '.', ''),
                     'importado' => $producto->importado ? 'Sí' : 'No',
                     'activo' => $producto->activo ? 'Activo' : 'Inactivo',
                     // Información básica sin relaciones por ahora
@@ -251,6 +253,7 @@ class VentaController extends Controller
                 // Vendedor: si no hay sesión, usar null (o un usuario sistema)
                 'id_vendedor' => optional(auth()->user())->id_usuario ?? null,
                 'id_moneda' => $id_moneda,
+                'tipo_cambio' => $tipoCambio,
                 'id_tipo_comprobante' => $id_tipo_comprobante,
                 'serie' => $data['serie'],
                 'numero' => $numero_formateado, // Usar formato con prefijo
@@ -707,6 +710,7 @@ class VentaController extends Controller
                 'id_cliente' => $data['id_cliente'],
                 'id_vendedor' => auth()->user()->id_usuario ?? 1, // fallback a 1 si no hay usuario
                 'id_moneda' => $id_moneda,
+                'tipo_cambio' => $tipoCambio,
                 'id_tipo_comprobante' => $id_tipo_comprobante,
                 'serie' => $data['serie'],
                 'numero' => $numero_formateado,

@@ -231,6 +231,14 @@
             Esta cotización es válida por 30 días calendario desde la fecha de emisión
         </div>
 
+        @php
+            // Determinar moneda y símbolo para toda la vista
+            $codigoIso = isset($datos['moneda']['iso']) ? $datos['moneda']['iso']
+                : (optional($venta->moneda)->codigo_iso ?? (isset($moneda->codigo_iso) ? $moneda->codigo_iso : 'PEN'));
+            $simbolo = isset($datos['moneda']['simbolo']) ? $datos['moneda']['simbolo']
+                : ($codigoIso === 'USD' ? '$' : 'S/');
+        @endphp
+
         <!-- Detalle de productos/servicios -->
         <table class="details-table">
             <thead>
@@ -238,9 +246,9 @@
                     <th style="width: 8%;">ITEM</th>
                     <th style="width: 40%;">DESCRIPCIÓN</th>
                     <th style="width: 8%;">CANT.</th>
-                    <th style="width: 17%;">PRECIO UNIT.</th>
+                    <th style="width: 17%;">PRECIO UNIT. ({{ $simbolo }} / {{ $codigoIso }})</th>
                     <th style="width: 8%;">DESC. %</th>
-                    <th style="width: 19%;">IMPORTE</th>
+                    <th style="width: 19%;">IMPORTE ({{ $simbolo }} / {{ $codigoIso }})</th>
                 </tr>
             </thead>
             <tbody>
@@ -309,7 +317,7 @@
                 <tr>
                     <td class="total-label">Son:</td>
                     <td>
-                        {{ $datos['total_en_letras'] ?? ($total_en_letras ?? '') }}
+                        {{ strtoupper($totalEnLetras ?? $datos['total_en_letras'] ?? ($total_en_letras ?? '')) }}
                     </td>
                 </tr>
             </table>
@@ -328,7 +336,7 @@
                 @endphp
                 <li><strong>Moneda:</strong> {{ $descripcionMoneda }} <span style="display:inline-block; padding:2px 6px; background:#2c5aa0; color:white; border-radius:4px; font-size:10px;">{{ $codigoIso }}</span></li>
                 @if(($codigoIso ?? 'PEN') === 'USD' && isset($tipoCambio))
-                    <li><strong>Tipo de Cambio (referencial):</strong> S/ {{ number_format($tipoCambio, 2) }} por USD</li>
+                    <li><strong>Tipo de Cambio (referencial):</strong> S/ {{ number_format($venta->tipo_cambio ?? $tipoCambio ?? 0, 2) }} por USD</li>
                 @endif
                 <li><strong>Incluye:</strong> IGV, instalación básica y capacitación de uso</li>
                 <li><strong>No Incluye:</strong> Flete, seguros, obras civiles</li>

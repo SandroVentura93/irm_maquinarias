@@ -17,6 +17,7 @@ class Venta extends Model
         'id_cliente',
         'id_vendedor',
         'id_moneda',
+        'tipo_cambio',
         'id_tipo_comprobante',
         'serie',
         'numero',

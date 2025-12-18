@@ -325,11 +325,9 @@
                     <td>{{ $simbolo }} {{ number_format($venta->total, 2) }}</td>
                 </tr>
             </table>
-            @if(($moneda->codigo_iso ?? 'PEN') === 'USD')
             <p style="margin-top: 10px; font-size: 10px; color: #666;">
-                <strong>Tipo de Cambio (referencial):</strong> S/ {{ number_format($tipoCambio, 2) }} por USD
+                <strong>Tipo de Cambio (referencial):</strong> S/ {{ number_format($venta->tipo_cambio ?? $tipoCambio ?? 0, 2) }} por USD
             </p>
-            @endif
         </div>
 
         <!-- Información de pago -->

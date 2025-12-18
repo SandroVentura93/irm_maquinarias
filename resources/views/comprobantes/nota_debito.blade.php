@@ -257,9 +257,7 @@
                     $simbolo = $codigoIso === 'USD' ? '$' : 'S/';
                 @endphp
                 <p><strong>Moneda:</strong> {{ $codigoIso === 'USD' ? 'Dólares Americanos' : 'Soles Peruanos' }} <span style="display:inline-block; padding:2px 6px; background:#2c5aa0; color:white; border-radius:4px; font-size:10px;">{{ $codigoIso }}</span></p>
-                @if($codigoIso === 'USD')
-                    <p><strong>Tipo de Cambio (referencial):</strong> S/ {{ number_format($venta->tipo_cambio ?? 3.75, 2) }} por USD</p>
-                @endif
+                    <p><strong>Tipo de Cambio (referencial):</strong> S/ {{ number_format($venta->tipo_cambio ?? $tipoCambio ?? 0, 2) }} por USD</p>
             </div>
             <div style="display: table-cell; width: 33.33%; padding: 5px;">
                 <p><strong>Usuario:</strong> {{ auth()->user()->name ?? 'Sistema' }}</p>

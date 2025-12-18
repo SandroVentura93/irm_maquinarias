@@ -30,11 +30,9 @@
             margin-bottom: 20px;
             border-bottom: 2px solid #dc3545;
             padding-bottom: 15px;
-        }
-        
-        .company-info {
-            display: table-cell;
-            width: 60%;
+            <p style="margin-top: 10px; font-size: 10px; color: #666;">
+                <strong>Tipo de Cambio (referencial):</strong> S/ {{ number_format($venta->tipo_cambio ?? $tipoCambio ?? 0, 2) }} por USD
+            </p>
             vertical-align: top;
         }
         
@@ -354,11 +352,9 @@
                     </td>
                 </tr>
             </table>
-            @if(($codigoIso ?? 'PEN') === 'USD')
             <p style="margin-top: 10px; font-size: 10px; color: #666;">
-                <strong>Tipo de Cambio (referencial):</strong> S/ {{ number_format($tipoCambio, 2) }} por USD
+                <strong>Tipo de Cambio (referencial):</strong> S/ {{ number_format($venta->tipo_cambio ?? $tipoCambio ?? 0, 2) }} por USD
             </p>
-            @endif
         </div>
 
         <!-- Información legal -->
