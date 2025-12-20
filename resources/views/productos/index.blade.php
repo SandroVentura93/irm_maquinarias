@@ -344,7 +344,12 @@
                         </small>
                     </div>
                     <div class="pagination-wrapper">
-                        {{ $productos->appends(request()->query())->links() }}
+                        @php
+                            $paginationView = \View::exists('pagination::bootstrap-5')
+                                ? 'pagination::bootstrap-5'
+                                : 'pagination::bootstrap-4';
+                        @endphp
+                        {{ $productos->onEachSide(1)->appends(request()->query())->links($paginationView) }}
                     </div>
                 </div>
             </div>
@@ -783,6 +788,10 @@
     font-size: 12px;
     padding: 8px 12px;
 }
+
+/* Pagination tweaks */
+.pagination-wrapper nav { display: flex; justify-content: flex-end; }
+.pagination { margin-bottom: 0; }
 
 /* Animaciones */
 @keyframes pulse {

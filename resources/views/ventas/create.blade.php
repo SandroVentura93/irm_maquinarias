@@ -203,6 +203,9 @@
           <table class="table modern-table" id="tablaDetalle">
             <thead class="table-header">
               <tr>
+                <th style="width: 12%;" class="text-center">
+                  <i class="fas fa-barcode me-1"></i> N/P
+                </th>
                 <th style="width: 40%;">
                   <i class="fas fa-box me-1"></i> Producto
                 </th>
@@ -836,9 +839,12 @@ document.getElementById('agregar').addEventListener('click',()=>{
 
   // Preferir datos desde productoSeleccionado si existe
   let idProd = null, descProd = textoProducto, precio = 0, moneda = 'PEN', precio_usd = null;
+  let codigoProd = null, numeroParteProd = null;
   if (productoSeleccionado) {
     idProd = productoSeleccionado.id;
     descProd = productoSeleccionado.desc;
+    codigoProd = productoSeleccionado.codigo || null;
+    numeroParteProd = productoSeleccionado.numero_parte || null;
     // Use displayed moneda (selected at top) as the currency for the line
     moneda = document.getElementById('moneda')?.value || 'USD';
     // Determinar precio por defecto según moneda
@@ -889,6 +895,8 @@ document.getElementById('agregar').addEventListener('click',()=>{
 
   detalle.push({
     id_producto: idProd,
+    codigo: codigoProd,
+    numero_parte: numeroParteProd,
     descripcion: descProd,
     cantidad: cant,
     precio_unitario: Number(precio),
@@ -929,8 +937,10 @@ function renderTabla(){
     const precioUsd = (moneda === 'USD') ? precio : (d.precio_unitario_usd ? d.precio_unitario_usd : (precio / TIPO_CAMBIO));
     const precioDisplay = moneda === 'USD' ? `$ ${precioUsd.toFixed(2)}` : `S/ ${precioPen.toFixed(2)}`;
     const subtotalDisplay = moneda === 'USD' ? `$ ${subtotalProducto.toFixed(2)}` : `S/ ${subtotalProducto.toFixed(2)}`;
+    const npValor = (d.numero_parte && String(d.numero_parte).trim()) ? d.numero_parte : ((d.codigo && String(d.codigo).trim()) ? d.codigo : '—');
     const tr = document.createElement('tr');
     tr.innerHTML = `
+      <td class="text-center" title="Código: ${d.codigo || ''} | N/P: ${d.numero_parte || ''}"><span class="badge bg-secondary" style="font-size:0.85rem;">${npValor}</span></td>
       <td>${d.descripcion}</td>
       <td>${d.cantidad}</td>
       <td class="precio-unitario" data-pen="${precioPen.toFixed(2)}" data-usd="${precioUsd.toFixed(2)}">${precioDisplay}</td>

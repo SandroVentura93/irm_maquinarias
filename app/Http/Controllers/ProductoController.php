@@ -93,6 +93,7 @@ class ProductoController extends Controller
      */
     public function store(Request $request)
     {
+        \Log::info('Request recibido en productos.store', $request->all());
         $validated = $request->validate([
             'id_categoria' => 'nullable|exists:categorias,id_categoria',
             'id_marca' => 'nullable|exists:marcas,id_marca',

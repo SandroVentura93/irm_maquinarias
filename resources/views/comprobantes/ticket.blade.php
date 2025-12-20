@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TICKET - {{ $venta->numero }}</title>
-    <style>
+    <title>TICKET DE VENTA - {{ $venta->numero }}</title>
+       <style>
         * {
             margin: 0;
             padding: 0;
@@ -12,29 +12,39 @@
         }
         
         body {
-            font-family: 'Courier New', monospace;
-            font-size: 9px;
-            line-height: 1.3;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
             color: #333;
-            max-width: 8cm;
-            margin: 0 auto;
-            padding: 0.3cm;
         }
         
-        .ticket-header {
-            text-align: center;
-            border-bottom: 1px dashed #666;
-            padding-bottom: 8px;
-            margin-bottom: 8px;
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            display: table;
+            width: 100%;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #4309c8ff;
+            padding-bottom: 15px;
+        }
+        
+        .company-info {
+            display: table-cell;
+            width: 60%;
+            vertical-align: top;
         }
         
         .company-logo {
-            width: 60px;
-            height: 40px;
+            width: 120px;
+            height: 80px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 5px auto;
+            margin-bottom: 10px;
         }
         
         .company-logo img {
@@ -43,174 +53,237 @@
             object-fit: contain;
         }
         
-        .empresa-nombre {
-            font-size: 12px;
-            font-weight: bold;
-            margin-bottom: 3px;
+        .company-details h2 {
+            color: #4309c8ff;
+            margin-bottom: 5px;
+            font-size: 18px;
         }
         
-        .empresa-info {
-            font-size: 8px;
-            margin-bottom: 1px;
-        }
-        
-        .ticket-tipo {
-            background: #20c997;
-            color: white;
-            padding: 5px;
-            margin: 8px 0;
+        .document-info {
+            display: table-cell;
+            width: 35%;
+            vertical-align: top;
             text-align: center;
-            font-weight: bold;
-            font-size: 10px;
+            border: 2px solid #4309c8ff;
+            padding: 15px;
+            background: #f8f9fa;
         }
         
-        .ticket-numero {
+        .document-info h1 {
+            color: #4309c8ff;
+            margin-bottom: 10px;
+            font-size: 20px;
+        }
+        
+        .document-number {
+            font-size: 16px;
+            font-weight: bold;
+            color: rgba(59, 124, 228, 1);
+            margin-bottom: 10px;
+        }
+        
+        .client-info {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 20px 0;
+            border-left: 4px solid rgba(59, 124, 228, 1);
+        }
+        
+        .client-info h3 {
+            color: rgba(59, 124, 228, 1);
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .details-table th {
+            background: rgba(59, 124, 228, 1);
+            color: white;
+            padding: 10px 8px;
             text-align: center;
             font-size: 11px;
+            border: 1px solid #1e7e34;
+        }
+        
+        .details-table td {
+            padding: 8px;
+            border: 1px solid #dee2e6;
+            text-align: center;
+            font-size: 11px;
+        }
+        
+        .details-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .totals {
+            margin-top: 20px;
+            text-align: right;
+        }
+        
+        .totals table {
+            margin-left: auto;
+            border-collapse: collapse;
+            min-width: 300px;
+        }
+        
+        .totals td {
+            padding: 8px 15px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .totals .total-label {
+            background: #f8f9fa;
             font-weight: bold;
-            margin-bottom: 8px;
+            text-align: right;
         }
         
-        .cliente-info {
-            margin-bottom: 8px;
-            font-size: 8px;
+        .totals .total-final {
+            background: rgba(59, 124, 228, 1);
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
         }
         
-        .separador {
-            border-top: 1px dashed #666;
-            margin: 8px 0;
+        .legal-info {
+            margin-top: 30px;
+            background: #e9f7ef;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 5px;
         }
         
-        .productos {
-            margin-bottom: 8px;
+        .legal-info h4 {
+            color: #155724;
+            margin-bottom: 10px;
+            font-size: 14px;
         }
         
-        .producto-item {
+        .legal-info p {
+            color: #155724;
+            font-size: 11px;
             margin-bottom: 5px;
-            font-size: 8px;
-        }
-        
-        .producto-nombre {
-            font-weight: bold;
-            margin-bottom: 1px;
-        }
-        
-        .producto-detalle {
-            display: flex;
-            justify-content: space-between;
-        }
-        
-        .totales {
-            border-top: 1px dashed #666;
-            padding-top: 5px;
-            font-size: 9px;
-        }
-        
-        .total-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 2px;
-        }
-        
-        .total-final {
-            border-top: 1px solid #333;
-            padding-top: 3px;
-            margin-top: 3px;
-            font-weight: bold;
-            font-size: 10px;
         }
         
         .footer {
+            margin-top: 30px;
             text-align: center;
-            margin-top: 10px;
-            font-size: 7px;
-            color: #666;
+            font-size: 10px;
+            color: #6c757d;
+            border-top: 1px solid #dee2e6;
+            padding-top: 15px;
         }
         
-        .agradecimiento {
-            border-top: 1px dashed #666;
-            padding-top: 5px;
-            margin-top: 8px;
-            text-align: center;
-            font-size: 8px;
+        .amount-words {
+            background: #f8f9fa;
+            padding: 10px;
+            margin: 15px 0;
+            border-left: 4px solid rgba(59, 124, 228, 1);
+            font-weight: bold;
+            color: #155724;
+        }
+        
+        .tax-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        
+        .tax-info h5 {
+            color: #856404;
+            margin-bottom: 5px;
+            font-size: 12px;
         }
     </style>
 </head>
 <body>
-    <!-- Header del ticket -->
-    <div class="ticket-header">
-        @include('comprobantes.partials.logo')
-    <div class="empresa-nombre">{{ $empresa['razon_social'] ?? 'IRM Maquinarias S.R.L.' }}</div>
-    <div class="empresa-info">RUC: {{ $empresa['ruc'] ?? '20570639553' }}</div>
-    <div class="empresa-info">{{ $empresa['direccion'] ?? 'AV. ATAHUALPA NRO. 725, CAJAMARCA' }}</div>
-    <div class="empresa-info">Tel: {{ $empresa['telefono'] ?? '976390506 - 974179198' }}</div>
-    </div>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="company-info">
+                @include('comprobantes.partials.logo')
+                <div class="company-details">
+                    <h2 style="color: rgba(59, 124, 228, 1; font-size: 18px; margin-bottom: 5px;">{{ $empresa['razon_social'] ?? 'IRM Maquinarias S.R.L.' }}</h2>
+                    <p><strong>RUC:</strong> {{ $empresa['ruc'] ?? '20570639553' }}</p>
+                    <p><strong>Dirección:</strong> {{ $empresa['direccion'] ?? 'AV. ATAHUALPA NRO. 725, CAJAMARCA' }}</p>
+                    <p><strong>Teléfono:</strong> {{ $empresa['telefono'] ?? '976390506 - 974179198' }}</p>
+                    <p><strong>Email:</strong> {{ $empresa['email'] ?? 'ventas@irmmaquinarias.com' }}</p>
+                </div>
+            </div>
+            <div class="document-info" style="border: 2px solid rgba(59, 124, 228, 1; background: #f8f9fa; padding: 15px; text-align: center;">
+                <h1 style="color: rgba(59, 124, 228, 1; font-size: 20px; margin-bottom: 10px;">TICKET DE VENTA</h1>
+                <div class="document-number" style="font-size: 16px; font-weight: bold; color: rgba(59, 124, 228, 1); margin-bottom: 10px;">{{ $venta->numero }}</div>
+                <p><strong>Fecha:</strong> {{ date('d/m/Y', strtotime($venta->fecha)) }}</p>
+                <p><strong>Moneda:</strong> {{ $moneda->descripcion }} <span style="display:inline-block; padding:2px 6px; background:rgba(59, 124, 228, 1); color:white; border-radius:4px; font-size:10px;">{{ $moneda->codigo_iso ?? 'PEN' }}</span></p>
+            </div>
+        </div>
 
-    <!-- Tipo y número de comprobante -->
-    <div class="ticket-tipo">{{ $tipoConfig['titulo'] ?? 'TICKET DE MÁQUINA REGISTRADORA' }}</div>
-    <div class="ticket-numero">{{ $venta->numero }}</div>
+        <!-- Información del Cliente -->
+        <div class="client-info">
+            <h3>CLIENTE</h3>
+            <div style="display: table; width: 100%;">
+                <div style="display: table-cell; width: 50%;">
+                    <p><strong>Nombre:</strong> {{ $cliente->nombre }}</p>
+                    <p><strong>{{ strlen($cliente->numero_documento) == 8 ? 'DNI' : 'RUC' }}:</strong> {{ $cliente->numero_documento }}</p>
+                </div>
+                <div style="display: table-cell; width: 50%;">
+                    <p><strong>Dirección:</strong> {{ $cliente->direccion ?: 'No especificada' }}</p>
+                    <p><strong>Teléfono:</strong> {{ $cliente->telefono ?: 'No especificado' }}</p>
+                </div>
+            </div>
+        </div>
 
-    <!-- Información básica -->
-    <div class="cliente-info">
-        <div>Fecha: {{ $venta->fecha->format('d/m/Y H:i:s') }}</div>
-        <div>Cliente: {{ $venta->cliente->nombre ?? 'Cliente General' }}</div>
-        @if($venta->cliente->numero_documento)
-        <div>Doc: {{ $venta->cliente->numero_documento }}</div>
-        @endif
-        <div>Cajero: {{ auth()->user()->name ?? 'Sistema' }}</div>
-    </div>
-
-    <!-- Línea separadora -->
-    <div class="separador"></div>
-
-    <!-- Productos -->
-    <div class="productos">
         @php
-            $codigoIso = optional($venta->moneda)->codigo_iso ?? (is_string($venta->moneda) ? $venta->moneda : 'PEN');
+            $codigoIso = $moneda->codigo_iso ?? 'PEN';
             $simbolo = $codigoIso === 'USD' ? '$' : 'S/';
         @endphp
-        @foreach($venta->detalleVenta as $detalle)
-        <div class="producto-item">
-            <div class="producto-nombre">{{ $detalle->producto->descripcion }}</div>
-            <div class="producto-detalle">
-                <span>{{ $detalle->cantidad }} x {{ $simbolo }} {{ number_format($detalle->precio_unitario, 2) }}</span>
-                <span>{{ $simbolo }} {{ number_format($detalle->cantidad * $detalle->precio_unitario * (1 - $detalle->descuento_porcentaje/100), 2) }}</span>
-            </div>
-            @if($detalle->descuento_porcentaje > 0)
-            <div style="font-size: 7px; color: #666;">Desc: {{ $detalle->descuento_porcentaje }}%</div>
+
+        <!-- Detalle estandarizado y totales -->
+        @include('comprobantes.partials.detalle_estandar')
+
+        <!-- Aviso al consumidor -->
+        <div class="consumer-notice">
+            <h5>INFORMACIÓN PARA EL CONSUMIDOR</h5>
+            <p style="color: #856404; font-size: 11px;">
+                Para consultas o reclamos acuda a nuestras oficinas o llame al teléfono indicado.
+                Libro de Reclamaciones disponible en nuestras instalaciones.
+            </p>
+        </div>
+
+        <!-- Importe en palabras -->
+        <div class="amount-words">
+            <strong>SON:</strong> {{ strtoupper($totalEnLetras) }}
+        </div>
+
+        <!-- Totales integrados en el bloque estandarizado -->
+
+        <!-- Información de pago -->
+        <div class="payment-info">
+            <h4>INFORMACIÓN DE PAGO</h4>
+            <p>• Este ticket no tiene valor tributario para efectos del Impuesto General a las Ventas</p>
+            <p>• Conserve este documento para cualquier reclamo posterior</p>
+            <p>• En caso de devolución, deberá presentar este comprobante</p>
+            <p>• Para garantías, conserve este documento y la factura de compra original</p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            @if($venta->vendedor)
+            <p><strong>Atendido por:</strong> {{ $venta->vendedor->nombre }}</p>
             @endif
+            <p>¡Gracias por su compra!</p>
+                <p>Sistema de Gestión IRM Maquinarias S.R.L. - Generado el {{ now()->format('d/m/Y H:i:s') }}</p>
+                @if(strtoupper($venta->xml_estado) === 'PENDIENTE')
+                    <p style="color: #d9534f; font-weight: bold;">Saldo pendiente: {{ $simbolo }} {{ number_format($venta->saldo, 2) }}</p>
+                @endif
         </div>
-        @endforeach
-    </div>
-
-    <!-- Totales -->
-    <div class="totales">
-        <div class="total-row">
-            <span>Subtotal:</span>
-            <span>{{ $simbolo }} {{ number_format($venta->subtotal, 2) }}</span>
-        </div>
-        <div class="total-row">
-            <span>IGV (18%):</span>
-            <span>{{ $simbolo }} {{ number_format(($venta->total - $venta->subtotal), 2) }}</span>
-        </div>
-        <div class="total-row total-final">
-            <span>TOTAL:</span>
-            <span>{{ $simbolo }} {{ number_format($venta->total, 2) }}</span>
-        </div>
-    </div>
-
-    <!-- Agradecimiento -->
-    <div class="agradecimiento">
-        <div>¡Gracias por su compra!</div>
-        <div>{{ $empresa['web'] ?? 'www.irmmaquinarias.com' }}</div>
-        <div>Conserve su ticket</div>
-    </div>
-
-    <!-- Footer -->
-    <div class="footer">
-        <div class="separador"></div>
-        <div>Ticket generado: {{ now()->format('d/m/Y H:i:s') }}</div>
-        <div>{{ $tipoConfig['subtitulo'] ?? 'Comprobante emitido por máquina registradora' }}</div>
     </div>
 </body>
 </html>

@@ -4,54 +4,34 @@
 <div class="container mt-4">
     <h1 class="text-primary">Registrar Pago</h1>
 
-    <!-- Información del saldo -->
+    <!-- Información del saldo (unificado a la moneda de la venta) -->
+    @php
+        $codigoIso = strtoupper(optional($venta->moneda)->codigo_iso ?? 'PEN');
+        $simbolo = $codigoIso === 'USD' ? '$' : 'S/';
+        $icono = $codigoIso === 'USD' ? 'fas fa-dollar-sign' : 'fas fa-money-bill-wave';
+        $saldoMostrado = (float)($venta->saldo_calculado ?? $venta->saldo ?? 0);
+    @endphp
     <div class="alert alert-info mb-3">
-        <div class="row">
-            <div class="col-md-6" id="colSaldoSoles">
-                <h6 class="mb-0">
-                    <i class="fas fa-flag-pe me-2"></i>
-                    <strong>Soles:</strong> <span id="saldoPendienteSoles" class="fw-bold fs-5">S/ 0.00</span>
-                </h6>
-            </div>
-            <div class="col-md-6" id="colSaldoDolares">
-                <h6 class="mb-0">
-                    <i class="fas fa-flag-usa me-2"></i>
-                    <strong>Dólares:</strong> <span id="saldoPendienteDolares" class="fw-bold fs-5">$ 0.00</span>
-                </h6>
-            </div>
-        </div>
-
-        <div class="mt-2 text-muted small d-flex align-items-center justify-content-between">
-            <span>
-                <i class="fas fa-exchange-alt me-1"></i>
-                Tipo de cambio: S/ <span id="tipoCambioDisplay" class="fw-bold">...</span> por USD
+        <h6 class="mb-0">
+            <strong>Saldo pendiente:</strong>
+            <span class="fw-bold fs-5" id="saldoPendienteUnified">
+                <i class="{{ $icono }} me-1"></i>{{ $simbolo }} {{ number_format($saldoMostrado, 2) }}
             </span>
-            <span class="badge bg-info" id="fuenteTipoCambio">
-                <i class="fas fa-sync-alt"></i> Cargando...
-            </span>
-        </div>
-
-        <!-- Tipo de cambio -->
-        <div class="input-group input-group-sm mt-3" id="grupoTipoCambio">
-            <span class="input-group-text">TC USD</span>
-            <input type="number" step="0.0001" min="0" class="form-control" id="tipoCambioManual" placeholder="3.8000">
-            <button type="button" class="btn btn-outline-primary btn-sm" id="aplicarTipoCambio">
-                <i class="fas fa-check"></i> Aplicar
-            </button>
-        </div>
+            <span class="badge bg-light text-dark ms-2" id="badgeMoneda">{{ $codigoIso }}</span>
+        </h6>
     </div>
 
     <form id="formPago" method="POST" action="{{ url('/ventas/' . ($venta->id_venta ?? '') . '/pago') }}">
         @csrf
 
         <input type="hidden" name="id_venta" id="pago_id_venta" value="{{ $venta->id_venta ?? '' }}">
-        <input type="hidden" id="pago_moneda" name="moneda" value="{{ $venta->moneda ?? 'PEN' }}">
+        <input type="hidden" id="pago_moneda" name="pago_moneda" value="{{ $codigoIso }}">
         <input type="hidden" id="pago_tipo_cambio" name="tipo_cambio" value="{{ $venta->tipo_cambio ?? 1 }}">
 
         <div class="mb-3">
             <label for="pago_monto" class="form-label">Monto a Pagar</label>
             <div class="input-group">
-                <span class="input-group-text" id="pagoSimbolo">S/</span>
+                <span class="input-group-text" id="pagoSimbolo">{{ $simbolo }}</span>
                 <input type="number" step="0.01" class="form-control" id="pago_monto" name="monto" required>
             </div>
         </div>
@@ -80,8 +60,8 @@
         </div>
     </form>
 
-    <!-- Historial -->
-    <div class="mt-4">
+    <!-- Historial (opcional) -->
+    <div class="mt-4 d-none" id="historialPagosWrapper">
         <h6>Historial de Pagos</h6>
         <ul id="historialPagos" class="list-group"></ul>
     </div>
@@ -101,48 +81,11 @@
     window.__pagosInit = true;
 
     // Namespace único para evitar conflictos
-    const PAGO = {
-
-        cargarHistorial() {
-            const lista = document.getElementById('historialPagos');
-            if (!lista) return;
-
-            const pagos = [
-                { id: 1, monto: 'S/ 100.00', metodo: 'Efectivo', fecha: '2025-12-08' },
-                { id: 2, monto: '$ 50.00', metodo: 'Transferencia', fecha: '2025-12-07' }
-            ];
-
-            lista.innerHTML = "";
-            pagos.forEach(pago => {
-                const li = document.createElement('li');
-                li.className = 'list-group-item';
-                li.textContent = `${pago.fecha} - ${pago.metodo}: ${pago.monto}`;
-                lista.appendChild(li);
-            });
-        },
-
-        configurarTipoCambio() {
-            const input = document.getElementById('tipoCambioManual');
-            const btn = document.getElementById('aplicarTipoCambio');
-            const display = document.getElementById('tipoCambioDisplay');
-
-            if (!input || !btn || !display) return;
-
-            btn.addEventListener('click', () => {
-                const valor = parseFloat(input.value);
-                if (valor > 0) {
-                    display.textContent = valor.toFixed(4);
-                } else {
-                    alert("Ingrese un tipo de cambio válido.");
-                }
-            });
-        }
-    };
+    const PAGO = {};
 
     // DOM listo — se ejecuta UNA sola vez
     document.addEventListener("DOMContentLoaded", () => {
-        PAGO.cargarHistorial();
-        PAGO.configurarTipoCambio();
+        // Inicialización mínima sin cargar componentes extra
     });
 
 })();

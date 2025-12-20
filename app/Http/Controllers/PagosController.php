@@ -12,6 +12,17 @@ class PagosController extends Controller
         $this->middleware('admin')->only(['destroy']);
     }
     /**
+     * Normaliza etiquetas de moneda variadas a códigos estándar.
+     */
+    private function normalizeMoneda($m)
+    {
+        $raw = strtoupper(trim((string) $m));
+        if ($raw === '$' || str_contains($raw, 'USD') || str_contains($raw, 'DOLAR') || str_contains($raw, 'DÓLAR')) {
+            return 'USD';
+        }
+        return 'PEN';
+    }
+    /**
      * Muestra la lista de pagos.
      */
     public function index(Request $request)
@@ -46,6 +57,12 @@ class PagosController extends Controller
         ]);
 
         $venta = Venta::findOrFail($request->venta_id);
+        // Asegurar que la moneda del pago coincide con la moneda de la venta
+        $codigoVenta = ($venta->id_moneda === 2) ? 'USD' : 'PEN';
+        $codigoPago = $this->normalizeMoneda($request->pago_moneda ?? $codigoVenta);
+        if ($codigoPago !== $codigoVenta) {
+            return back()->withErrors(['error' => 'La moneda del pago (' . $codigoPago . ') debe coincidir con la moneda de la venta (' . $codigoVenta . ').'])->withInput();
+        }
 
         // Depuración: Verificar datos recibidos
         \Log::info('Datos recibidos para registrar pago:', $request->all());
@@ -68,9 +85,16 @@ class PagosController extends Controller
         // Depuración: Confirmar registro del pago
         \Log::info('Pago registrado correctamente para la venta ID: ' . $venta->id_venta);
 
-        // Actualizar el saldo de la venta
-        $totalPagado = $venta->pagos()->sum('monto');
-        $venta->saldo = max($venta->total - $totalPagado, 0);
+        // Actualizar el saldo de la venta: sumar solo pagos en la misma moneda
+        $pagos = $venta->pagos()->get();
+        $totalPagado = 0.0;
+        foreach ($pagos as $pago) {
+            $monedaPago = $this->normalizeMoneda($pago->moneda ?? $codigoVenta);
+            if ($monedaPago === $codigoVenta) {
+                $totalPagado += (float) ($pago->monto ?? 0);
+            }
+        }
+        $venta->saldo = max(round($venta->total - $totalPagado, 2), 0);
         $venta->save();
 
         return redirect()->route('ventas.index')->with('success', 'Pago registrado exitosamente.');
@@ -87,9 +111,16 @@ class PagosController extends Controller
             return redirect()->route('ventas.index')->with('error', 'Venta no encontrada.');
         }
 
-        // Calcular el saldo
-        $totalPagado = $venta->pagos->sum('monto');
-        $saldo = $venta->total - $totalPagado;
+        // Calcular el saldo (sumando solo pagos en la misma moneda de la venta)
+        $codigoVenta = ($venta->id_moneda === 2) ? 'USD' : 'PEN';
+        $totalPagado = 0.0;
+        foreach ($venta->pagos as $pago) {
+            $monedaPago = $this->normalizeMoneda($pago->moneda ?? $codigoVenta);
+            if ($monedaPago === $codigoVenta) {
+                $totalPagado += (float) ($pago->monto ?? 0);
+            }
+        }
+        $saldo = round($venta->total - $totalPagado, 2);
 
         // Determinar la moneda basada en la relación de la venta
         $monedaNombre = $venta->moneda ? ($venta->moneda->nombre === 'Dólar Estadounidense' ? 'Dolares' : $venta->moneda->nombre) : 'Soles';

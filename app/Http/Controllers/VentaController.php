@@ -491,6 +491,7 @@ class VentaController extends Controller
                 'subtotal' => 'required|numeric|min:0',
                 'igv' => 'required|numeric|min:0',
                 'total' => 'required|numeric|min:0',
+                'moneda' => 'nullable|string|in:PEN,USD',
                 'detalle' => 'required|array|min:1',
                 'detalle.*.id_producto' => 'required|exists:productos,id_producto',
                 'detalle.*.cantidad' => 'required|numeric|min:0.01',
@@ -541,6 +542,19 @@ class VentaController extends Controller
             
             if ($venta->total != $data['total']) {
                 $campos_modificados['total'] = $data['total'];
+            }
+
+            // Moneda: actualizar id_moneda si el usuario la cambió en la edición
+            if (isset($data['moneda'])) {
+                $monedaSeleccionada = strtoupper($data['moneda']);
+                $id_moneda_nueva = ($monedaSeleccionada === 'USD') ? 2 : 1; // 1=PEN, 2=USD
+                if ($venta->id_moneda != $id_moneda_nueva) {
+                    $campos_modificados['id_moneda'] = $id_moneda_nueva;
+                }
+                // Asegurar tipo de cambio si no existe
+                if (empty($venta->tipo_cambio)) {
+                    $campos_modificados['tipo_cambio'] = $this->obtenerTipoCambio();
+                }
             }
             
             // Solo actualizar si hay cambios
@@ -596,10 +610,65 @@ class VentaController extends Controller
                 if ($venta->comprobanteElectronico->monto_total != $data['total']) {
                     $comp_modificados['monto_total'] = $data['total'];
                 }
+                // Actualizar moneda del comprobante si cambia la de la venta
+                if (isset($campos_modificados['id_moneda'])) {
+                    $comp_modificados['moneda_id'] = $campos_modificados['id_moneda'];
+                }
                 
                 if (!empty($comp_modificados)) {
                     $venta->comprobanteElectronico->update($comp_modificados);
                 }
+            }
+
+            // Recalcular y actualizar el saldo de la venta en base a pagos existentes
+            try {
+                // Convertir pagos a la moneda de la venta antes de sumar (normalizando valores de moneda)
+                $idMonedaVenta = $campos_modificados['id_moneda'] ?? $venta->id_moneda; // 1=PEN,2=USD
+                $tc = $venta->tipo_cambio ?? $campos_modificados['tipo_cambio'] ?? $this->obtenerTipoCambio();
+                $pagos = $venta->pagos()->get();
+                $totalPagadoConvertido = 0;
+                $normalizarMoneda = function ($m) {
+                    $raw = strtoupper(trim((string) $m));
+                    $raw = str_replace(['\u00f3', 'Ó'], 'O', $raw); // normalizar acentos comunes
+                    // USD variantes
+                    $usdKeys = ['USD', 'DOLLAR', '$', 'DOLAR', 'DOLARES', 'DOLARES US', 'DOLARES US$', 'DOLARES USD'];
+                    // PEN variantes
+                    $penKeys = ['PEN', 'S/', 'SOLES', 'SOL', 'S', 'SOLES (PEN)'];
+                    if (in_array($raw, $usdKeys) || str_contains($raw, 'DOLAR') || str_contains($raw, 'USD') || $raw === '$') {
+                        return 'USD';
+                    }
+                    return 'PEN';
+                };
+                foreach ($pagos as $pago) {
+                    $monedaPago = $normalizarMoneda($pago->moneda ?? 'PEN');
+                    $monto = (float) ($pago->monto ?? 0);
+                    if ($idMonedaVenta === 2) { // Venta en USD
+                        // Pago en PEN -> convertir a USD
+                        $totalPagadoConvertido += ($monedaPago === 'PEN' && $tc > 0) ? ($monto / $tc) : $monto;
+                    } else { // Venta en PEN
+                        // Pago en USD -> convertir a PEN
+                        $totalPagadoConvertido += ($monedaPago === 'USD' && $tc > 0) ? ($monto * $tc) : $monto;
+                    }
+                }
+                $nuevoSaldo = max(($data['total'] ?? $venta->total) - $totalPagadoConvertido, 0);
+                $nuevoSaldo = round($nuevoSaldo, 2);
+                \Log::info('[SALDO] Recalculando saldo en actualización', [
+                    'id_venta' => $venta->id_venta,
+                    'total' => $data['total'] ?? $venta->total,
+                    'total_pagado_convertido' => $totalPagadoConvertido,
+                    'id_moneda_venta' => $idMonedaVenta,
+                    'saldo_anterior' => $venta->saldo,
+                    'saldo_nuevo' => $nuevoSaldo,
+                ]);
+                if (round($venta->saldo, 2) != $nuevoSaldo) {
+                    $venta->saldo = $nuevoSaldo;
+                    $venta->save();
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('[SALDO] No se pudo recalcular saldo en update', [
+                    'id_venta' => $venta->id_venta,
+                    'error' => $e->getMessage()
+                ]);
             }
 
             DB::commit();
@@ -902,7 +971,8 @@ class VentaController extends Controller
                 'Cotizacion' => 'comprobantes.cotizacion',
                 'Factura' => 'comprobantes.factura',
                 'Boleta' => 'comprobantes.boleta',
-                'Nota de Crédito' => 'comprobantes.nota_credito'
+                'Nota de Crédito' => 'comprobantes.nota_credito',
+                'Ticket' => 'comprobantes.ticket'
             ];
             $vista = $vistaMap[$tipoComprobante] ?? 'comprobantes.pdf';
 
@@ -915,7 +985,8 @@ class VentaController extends Controller
                 'Cotizacion' => 'COT',
                 'Factura' => 'FAC',
                 'Boleta' => 'BOL',
-                'Nota de Crédito' => 'NC'
+                'Nota de Crédito' => 'NC',
+                'Ticket' => 'TIC'
             ];
             $prefijo = $prefijos[$tipoComprobante] ?? 'COMP';
             $numero = str_replace(['-', $venta->serie], '', $venta->numero);
@@ -1575,13 +1646,29 @@ class VentaController extends Controller
 
         $codigoIso = strtoupper(optional($venta->moneda)->codigo_iso ?? 'PEN');
         $nombreMoneda = $codigoIso === 'USD' ? 'Dolares' : 'Soles';
+        $simbolo = optional($venta->moneda)->simbolo ?? ($codigoIso === 'USD' ? '$' : 'S/');
+        $saldoCalculado = $venta->saldo_calculado; // Alineado con edit.blade
+
         return view('ventas.pagos.show', [
             'venta' => $venta,
             'id' => $venta->id_venta,
-            'saldo' => $venta->saldo,
-            'simbolo' => optional($venta->moneda)->simbolo ?? 'S/',
-            'moneda' => $nombreMoneda
+            'saldo' => $saldoCalculado,
+            'simbolo' => $simbolo,
+            'moneda' => $nombreMoneda,
+            'codigoIso' => $codigoIso
         ]);
+    }
+
+    /**
+     * Normaliza etiquetas de moneda a códigos estándar ('USD' o 'PEN').
+     */
+    private function normalizeMoneda($m)
+    {
+        $raw = strtoupper(trim((string) $m));
+        if ($raw === '$' || str_contains($raw, 'USD') || str_contains($raw, 'DOLAR') || str_contains($raw, 'DÓLAR')) {
+            return 'USD';
+        }
+        return 'PEN';
     }
 
     public function registrarPagoConId(Request $request, $id)
@@ -1606,22 +1693,20 @@ class VentaController extends Controller
             $pago->metodo = $request->metodo;
             $pago->numero_operacion = $request->numero_operacion;
             $pago->fecha = now();
-            $pago->moneda = $request->pago_moneda;
+            $pago->moneda = $this->normalizeMoneda($request->pago_moneda);
             $pago->save();
             \Log::info('Pago registrado', ['pago' => $pago]);
 
-            // Actualizar el saldo correctamente
-            $venta->saldo -= $request->monto;
-            // Si el saldo es 0 o menor, cambiar estado a 'ACEPTADO'
-            if ($venta->saldo <= 0) {
-                $venta->saldo = 0;
-                $venta->xml_estado = 'ACEPTADO';
-            }
+            // Recalcular saldo y estado conforme a pagos registrados
+            $venta->refresh();
+            $saldoAnterior = round((float) $venta->saldo, 2);
+            $nuevoSaldo = $venta->calcularSaldoActual();
+            $venta->saldo = round($nuevoSaldo, 2);
+            $venta->xml_estado = ($venta->saldo <= 0) ? 'ACEPTADO' : 'PENDIENTE';
             $venta->save();
             \Log::info('Saldo y estado actualizados', ['venta' => $venta]);
 
-            $saldoAnterior = $venta->saldo + $request->monto;
-            $saldoActual = $venta->saldo;
+            $saldoActual = round((float) $venta->saldo, 2);
             $mensaje = 'Pago registrado correctamente. Saldo anterior: ' . number_format($saldoAnterior, 2) . ', monto pagado: ' . number_format($request->monto, 2) . ', saldo actual: ' . number_format($saldoActual, 2);
             return redirect('/ventas')->with('success', $mensaje);
         } catch (\Exception $e) {
@@ -1645,5 +1730,60 @@ class VentaController extends Controller
         return view('ventas.index', compact('ventas'));
     }
 
+    /**
+     * Cambia la moneda de la venta (USD <-> PEN) y convierte totales.
+     */
+    public function cambiarMoneda(Request $request, $id)
+    {
+        $venta = Venta::findOrFail($id);
+        $target = strtoupper(trim($request->input('moneda')));
+        if (!in_array($target, ['USD', 'PEN'])) {
+            return back()->with('error', 'Moneda objetivo inválida.');
+        }
+
+        $current = strtoupper(optional($venta->moneda)->codigo_iso ?? ($venta->id_moneda === 2 ? 'USD' : 'PEN'));
+        if ($current === $target) {
+            return back()->with('info', 'La venta ya está en ' . $target . '.');
+        }
+
+        $tc = (float) ($venta->tipo_cambio ?? 0);
+        if ($tc <= 0) {
+            return back()->with('error', 'Tipo de cambio inválido. Configure un tipo de cambio mayor a 0.');
+        }
+
+        // Convertir totales
+        if ($current === 'PEN' && $target === 'USD') {
+            $venta->subtotal = round(((float)$venta->subtotal) / $tc, 2);
+            $venta->igv = round(((float)$venta->igv) / $tc, 2);
+            $venta->total = round(((float)$venta->total) / $tc, 2);
+        } elseif ($current === 'USD' && $target === 'PEN') {
+            $venta->subtotal = round(((float)$venta->subtotal) * $tc, 2);
+            $venta->igv = round(((float)$venta->igv) * $tc, 2);
+            $venta->total = round(((float)$venta->total) * $tc, 2);
+        }
+
+        // Actualizar moneda
+        $monedaObj = \App\Models\Moneda::where('codigo_iso', $target)->first();
+        if ($monedaObj) {
+            $venta->id_moneda = $monedaObj->id_moneda ?? $venta->id_moneda;
+        } else {
+            // fallback por si no existe registro
+            $venta->id_moneda = ($target === 'USD') ? 2 : 1;
+        }
+
+        // Recalcular saldo según pagos registrados y nueva moneda
+        $nuevoSaldo = $venta->calcularSaldoActual();
+        $venta->saldo = round($nuevoSaldo, 2);
+
+        // Actualizar comprobante electrónico si existe
+        if ($venta->comprobanteElectronico) {
+            $venta->comprobanteElectronico->moneda_id = $venta->id_moneda;
+            $venta->comprobanteElectronico->save();
+        }
+
+        $venta->save();
+
+        return back()->with('success', 'Moneda cambiada a ' . $target . ' y totales convertidos correctamente.');
+    }
 }
     

@@ -239,98 +239,19 @@
                 : ($codigoIso === 'USD' ? '$' : 'S/');
         @endphp
 
-        <!-- Detalle de productos/servicios -->
-        <table class="details-table">
-            <thead>
-                <tr>
-                    <th style="width: 8%;">ITEM</th>
-                    <th style="width: 40%;">DESCRIPCIÓN</th>
-                    <th style="width: 8%;">CANT.</th>
-                    <th style="width: 17%;">PRECIO UNIT. ({{ $simbolo }} / {{ $codigoIso }})</th>
-                    <th style="width: 8%;">DESC. %</th>
-                    <th style="width: 19%;">IMPORTE ({{ $simbolo }} / {{ $codigoIso }})</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($detalles as $index => $detalle)
-                <tr>
-                    <td>{{ $index + 1 }}</td>
-                    <td style="text-align: left; padding-left: 10px;">
-                        <strong>{{ $detalle->producto->descripcion ?? 'Producto no encontrado' }}</strong>
-                        @php
-                            // Compatibilidad: aceptar el flag como variable top-level (desde controlador)
-                            // o dentro del array $datos (otras rutas). Valor por defecto: true
-                            $mc = true;
-                            if (isset($datos) && array_key_exists('mostrarCodigoParte', $datos)) {
-                                $mc = $datos['mostrarCodigoParte'];
-                            } elseif (isset($mostrarCodigoParte)) {
-                                $mc = $mostrarCodigoParte;
-                            }
-                        @endphp
-                        <br><small>Código: {{ $mc ? ($detalle->producto->codigo ?? '-') : '-' }}</small>
-                        <br><small>P/N: {{ $mc ? ($detalle->producto->numero_parte ?? '-') : '-' }}</small>
-                    </td>
-                    <td>{{ number_format($detalle->cantidad, 2) }}</td>
-                    @php
-                        // Prioritize injected datos['moneda'] from controller; fallback to related venta->moneda or legacy $moneda
-                        $codigoIso = isset($datos['moneda']['iso']) ? $datos['moneda']['iso']
-                            : (optional($venta->moneda)->codigo_iso ?? (isset($moneda->codigo_iso) ? $moneda->codigo_iso : 'PEN'));
-                        $simbolo = isset($datos['moneda']['simbolo']) ? $datos['moneda']['simbolo']
-                            : ($codigoIso === 'USD' ? '$' : 'S/');
-                    @endphp
-                    <td>
-                        {{ $simbolo }} {{ number_format($detalle->precio_unitario, 2) }}
-                    </td>
-                    <td>{{ $detalle->descuento_porcentaje ?? 0 }}%</td>
-                    <td>
-                        @php
-                            $importe = $detalle->cantidad * $detalle->precio_unitario * (1 - ($detalle->descuento_porcentaje ?? 0)/100);
-                        @endphp
-                        {{ $simbolo }} {{ number_format($importe, 2) }}
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
+        <!-- Detalle estandarizado y totales -->
+        @include('comprobantes.partials.detalle_estandar')
 
-        <!-- Totales -->
-        <div class="totals">
-            <table>
-                <tr>
-                    <td class="total-label">SUBTOTAL:</td>
-                    <td>
-                        {{ $simbolo }} {{ number_format($venta->subtotal, 2) }}
-                    </td>
-                </tr>
-                <tr>
-                    <td class="total-label">IGV (18%):</td>
-                    <td>
-                        {{ $simbolo }} {{ number_format(($venta->total - $venta->subtotal), 2) }}
-                    </td>
-                </tr>
-                <tr class="total-final">
-                    <td>TOTAL:</td>
-                    <td>
-                        {{ $simbolo }} {{ number_format($venta->total, 2) }}
-                    </td>
-                </tr>
-                <tr>
-                    <td class="total-label">Son:</td>
-                    <td>
-                        {{ strtoupper($totalEnLetras ?? $datos['total_en_letras'] ?? ($total_en_letras ?? '')) }}
-                    </td>
-                </tr>
-            </table>
-        </div>
+        <!-- Totales integrados en el bloque estandarizado; SON en condiciones -->
 
         <!-- Condiciones comerciales -->
         <div class="conditions">
             <h4>CONDICIONES COMERCIALES</h4>
             <ul>
                 <li><strong>Forma de Pago:</strong> 50% adelanto, 50% contra entrega</li>
-                <li><strong>Tiempo de Entrega:</strong> 15 a 30 días hábiles según disponibilidad</li>
-                <li><strong>Garantía:</strong> 12 meses por defectos de fabricación</li>
-                <li><strong>Validez de Precios:</strong> 30 días calendario</li>
+                <li><strong>Tiempo de Entrega:</strong> 10 días hábiles según disponibilidad</li>
+                <!-- <li><strong>Garantía:</strong> 12 meses por defectos de fabricación</li> -->
+                <li><strong>Validez de Precios:</strong> 15 días calendarios</li>
                 @php
                     $descripcionMoneda = ($codigoIso === 'USD') ? 'Dólares Americanos' : 'Soles Peruanos';
                 @endphp
@@ -338,8 +259,8 @@
                 @if(($codigoIso ?? 'PEN') === 'USD' && isset($tipoCambio))
                     <li><strong>Tipo de Cambio (referencial):</strong> S/ {{ number_format($venta->tipo_cambio ?? $tipoCambio ?? 0, 2) }} por USD</li>
                 @endif
-                <li><strong>Incluye:</strong> IGV, instalación básica y capacitación de uso</li>
-                <li><strong>No Incluye:</strong> Flete, seguros, obras civiles</li>
+                <!-- <li><strong>Incluye:</strong> IGV, instalación básica y capacitación de uso</li>
+                <li><strong>No Incluye:</strong> Flete, seguros, obras civiles</li> -->
             </ul>
         </div>
 

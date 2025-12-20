@@ -138,16 +138,9 @@
                                         <div class="row">
                                             <div class="col-md-4">
                                                 <label>Producto <span class="text-danger">*</span></label>
-                                                <select class="form-control producto-select" name="detalle[{{ $index }}][id_producto]" required>
-                                                    <option value="">Seleccionar producto</option>
-                                                    @foreach($productos as $producto)
-                                                    <option value="{{ $producto->id_producto }}" 
-                                                            data-precio="{{ $producto->precio_venta }}"
-                                                            {{ $detalle->id_producto == $producto->id_producto ? 'selected' : '' }}>
-                                                        {{ $producto->descripcion }} - S/ {{ number_format($producto->precio_venta, 2) }}
-                                                    </option>
-                                                    @endforeach
-                                                </select>
+                                                <input type="text" class="form-control buscador-producto-edit" placeholder="Buscar por código o descripción..." value="{{ ($detalle->producto->codigo ?? '') ? (($detalle->producto->codigo ?? '') . ' - ') : '' }}{{ $detalle->producto->descripcion ?? '' }}" data-index="{{ $index }}" autocomplete="off">
+                                                <input type="hidden" class="producto-id-input" name="detalle[{{ $index }}][id_producto]" value="{{ $detalle->id_producto }}">
+                                                <div class="resultados-producto-edit list-group" id="resultados-producto-edit-{{ $index }}"></div>
                                             </div>
                                             <div class="col-md-2">
                                                 <label>Cantidad <span class="text-danger">*</span></label>
@@ -223,6 +216,12 @@
                                                 <td><strong>Total:</strong></td>
                                                 <td class="text-right"><strong><span id="total-display"><i class="{{ $icono }} me-1"></i>{{ $simboloMoneda }} 0.00</span></strong></td>
                                             </tr>
+                                            <tr>
+                                                <td><strong>Saldo Pendiente:</strong></td>
+                                                <td class="text-right">
+                                                    <span id="saldo-display"><i class="{{ $icono }} me-1"></i>{{ $simboloMoneda }} 0.00</span>
+                                                </td>
+                                            </tr>
                                         </table>
                                         
                                         <!-- Campos ocultos para los totales -->
@@ -252,8 +251,11 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    let productoIndex = {{ $venta->detalleVentas->count() }};
+    // Inicializar productoIndex correctamente según las filas existentes
+    let productoIndex = document.querySelectorAll('.producto-row').length;
     const TIPO_CAMBIO = parseFloat(document.getElementById('tipoCambio')?.value || '3.75');
+    // Pagos existentes de la venta para cálculo de saldo en tiempo real
+    const PAGOS_VENTA = @json(($venta->pagos ?? collect())->map(function($p){ return ['monto' => (float)($p->monto ?? 0), 'moneda' => $p->moneda ?? 'PEN']; }));
     
     // Manejar envío del formulario
     document.getElementById('ventaForm').addEventListener('submit', function(e) {
@@ -310,6 +312,20 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('subtotal-display').innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${subtotal.toFixed(2)}`;
         document.getElementById('igv-display').innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${igv.toFixed(2)}`;
         document.getElementById('total-display').innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${total.toFixed(2)}`;
+
+        // Calcular saldo pendiente en tiempo real considerando pagos
+        let totalPagadoConv = 0;
+        PAGOS_VENTA.forEach(function(p){
+            const monto = parseFloat(p.monto) || 0;
+            const mon = (p.moneda || 'PEN').toUpperCase();
+            if (codigoIso === 'USD') {
+                totalPagadoConv += (mon === 'PEN' && TIPO_CAMBIO > 0) ? (monto / TIPO_CAMBIO) : monto;
+            } else {
+                totalPagadoConv += (mon === 'USD' && TIPO_CAMBIO > 0) ? (monto * TIPO_CAMBIO) : monto;
+            }
+        });
+        const saldo = Math.max(total - totalPagadoConv, 0);
+        document.getElementById('saldo-display').innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${saldo.toFixed(2)}`;
         
         // Actualizar campos ocultos para el formulario
         document.getElementById('subtotal-input').value = subtotal.toFixed(2);
@@ -328,53 +344,31 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Event listeners para productos existentes
     document.querySelectorAll('.producto-row').forEach(function(row) {
-        const productoSelect = row.querySelector('.producto-select');
-        const cantidadInput = row.querySelector('.cantidad-input');
-        const descuentoInput = row.querySelector('.descuento-input');
-        
-        productoSelect.addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            const precioCatalogoPen = parseFloat(selectedOption.getAttribute('data-precio') || '0');
-            const monedaVenta = document.getElementById('moneda')?.value || 'PEN';
-            // Convertir precio de catálogo (PEN) a moneda de la venta
-            const precioUnit = monedaVenta === 'USD' ? (precioCatalogoPen / TIPO_CAMBIO) : precioCatalogoPen;
-            row.querySelector('.precio-input').value = precioUnit.toFixed(2);
-            calcularPrecioFinal(row);
-        });
-        
-        cantidadInput.addEventListener('input', function() {
-            calcularTotales();
-        });
-        
-        descuentoInput.addEventListener('input', function() {
-            calcularPrecioFinal(row);
-        });
+            const cantidadInput = row.querySelector('.cantidad-input');
+            const descuentoInput = row.querySelector('.descuento-input');
+            cantidadInput.addEventListener('input', function() {
+                calcularTotales();
+            });
+            descuentoInput.addEventListener('input', function() {
+                calcularPrecioFinal(row);
+            });
     });
     
-    // Generar opciones de productos
-    const productosOptions = `
-        <option value="">Seleccionar producto</option>
-        @foreach($productos as $producto)
-        <option value="{{ $producto->id_producto }}" data-precio="{{ $producto->precio_venta }}">
-            {{ $producto->descripcion }} - S/ {{ number_format($producto->precio_venta, 2) }}
-        </option>
-        @endforeach
-    `;
-
-    // Agregar producto
+    // Agregar producto al hacer clic en el botón
     document.getElementById('add-product').addEventListener('click', function() {
         const container = document.getElementById('productos-container');
         const newRow = document.createElement('div');
         newRow.className = 'producto-row border p-3 mb-3';
         newRow.setAttribute('data-index', productoIndex);
-        
+        const monedaVentaActual = document.getElementById('moneda')?.value || 'PEN';
+        const simboloActual = monedaVentaActual === 'USD' ? '$' : 'S/';
         newRow.innerHTML = `
             <div class="row">
                 <div class="col-md-4">
                     <label>Producto <span class="text-danger">*</span></label>
-                    <select class="form-control producto-select" name="detalle[${productoIndex}][id_producto]" required>
-                        ${productosOptions}
-                    </select>
+                    <input type="text" class="form-control buscador-producto-edit" placeholder="Buscar por descripción o código..." data-index="${productoIndex}" autocomplete="off">
+                    <input type="hidden" class="producto-id-input" name="detalle[${productoIndex}][id_producto]">
+                    <div class="resultados-producto-edit list-group" id="resultados-producto-edit-${productoIndex}"></div>
                 </div>
                 <div class="col-md-2">
                     <label>Cantidad <span class="text-danger">*</span></label>
@@ -383,7 +377,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="col-md-2">
                     <label>Precio Unit.</label>
                     <div class="input-group input-group-sm">
-                        <span class="input-group-text" id="simboloDetalle${productoIndex}">S/</span>
+                        <span class="input-group-text" id="simboloDetalle${productoIndex}">${simboloActual}</span>
                         <input type="number" class="form-control precio-input" name="detalle[${productoIndex}][precio_unitario]" step="0.01" readonly>
                     </div>
                 </div>
@@ -400,38 +394,91 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
         `;
-        
         container.appendChild(newRow);
-        
-        // Agregar event listeners al nuevo row
-        const productoSelect = newRow.querySelector('.producto-select');
+
+        // Activar autocompletado en el nuevo buscador
+        const input = newRow.querySelector('.buscador-producto-edit');
+        const resultados = newRow.querySelector('.resultados-producto-edit');
+        let timeout = null;
+        input.addEventListener('input', function() {
+            clearTimeout(timeout);
+            const q = input.value.trim();
+            if (q.length < 2) {
+                resultados.innerHTML = '';
+                return;
+            }
+            timeout = setTimeout(async () => {
+                resultados.innerHTML = '<div class="p-2 text-muted">Buscando...';
+                try {
+                    const res = await fetch(`/api/productos/search?q=${encodeURIComponent(q)}`);
+                    if (!res.ok) throw new Error('Error en la búsqueda');
+                    const items = await res.json();
+                    if (!items.length) {
+                        resultados.innerHTML = '<div class="p-2 text-muted">No se encontraron productos</div>';
+                        return;
+                    }
+                    resultados.innerHTML = items.map(it => `
+                        <button type="button" class="list-group-item list-group-item-action"
+                                data-id="${it.id_producto}"
+                                data-desc="${it.descripcion}"
+                                data-precio-pen="${it.precio_venta}"
+                                data-precio-usd="${it.precio_venta_usd}"
+                                data-codigo="${it.codigo || ''}">
+                            <strong>${(it.codigo || '-') + ' - ' + it.descripcion}</strong><br>
+                            <small>S/ ${Number(it.precio_venta).toFixed(2)} | $ ${Number(it.precio_venta_usd).toFixed(2)}</small>
+                        </button>
+                    `).join('');
+                } catch (err) {
+                    resultados.innerHTML = '<div class="p-2 text-danger">Error al buscar productos</div>';
+                }
+            }, 400);
+        });
+        resultados.addEventListener('click', function(e) {
+            const btn = e.target.closest('button[data-id]');
+            if (!btn) return;
+            input.value = (btn.dataset.codigo ? (btn.dataset.codigo + ' - ') : '') + btn.dataset.desc;
+            newRow.querySelector('.producto-id-input').value = btn.dataset.id;
+            // Guardar precios catálogo
+            newRow.dataset.precioPen = btn.dataset.precioPen;
+            newRow.dataset.precioUsd = btn.dataset.precioUsd;
+            // Asignar precio unitario según moneda seleccionada (preferir precio nativo si existe)
+            const monedaVenta = document.getElementById('moneda')?.value || 'PEN';
+            const precioPen = parseFloat(btn.dataset.precioPen || '0') || 0;
+            const precioUsd = parseFloat(btn.dataset.precioUsd || '0') || 0;
+            let unit = 0;
+            if (monedaVenta === 'USD') {
+                unit = precioUsd > 0 ? precioUsd : (precioPen > 0 ? (precioPen / TIPO_CAMBIO) : 0);
+            } else {
+                unit = precioPen > 0 ? precioPen : (precioUsd > 0 ? (precioUsd * TIPO_CAMBIO) : 0);
+            }
+            const precioInput = newRow.querySelector('.precio-input');
+            if (precioInput) precioInput.value = unit.toFixed(2);
+            // Actualizar precio final inmediato
+            const descInput = newRow.querySelector('.descuento-input');
+            const descuento = parseFloat(descInput?.value || '0');
+            const final = unit * (1 - descuento/100);
+            newRow.querySelector('.precio-final-input').value = final.toFixed(2);
+            resultados.innerHTML = '';
+            if (typeof calcularTotales === 'function') calcularTotales();
+        });
+        // Listeners para cantidad, descuento, etc.
         const cantidadInput = newRow.querySelector('.cantidad-input');
         const descuentoInput = newRow.querySelector('.descuento-input');
-        // Ajustar símbolo inicial según moneda actual
-        const monedaActual = document.getElementById('moneda')?.value || 'PEN';
-        const simboloInicial = monedaActual === 'USD' ? '$' : 'S/';
-        const simboloSpan = newRow.querySelector(`#simboloDetalle${productoIndex}`);
-        if (simboloSpan) simboloSpan.textContent = simboloInicial;
-        
-        productoSelect.addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            const precioCatalogoPen = parseFloat(selectedOption.getAttribute('data-precio') || '0');
-            const monedaVenta = document.getElementById('moneda')?.value || 'PEN';
-            const precioUnit = monedaVenta === 'USD' ? (precioCatalogoPen / TIPO_CAMBIO) : precioCatalogoPen;
-            newRow.querySelector('.precio-input').value = precioUnit.toFixed(2);
-            calcularPrecioFinal(newRow);
-        });
-        
         cantidadInput.addEventListener('input', function() {
-            calcularTotales();
+            if (typeof calcularTotales === 'function') calcularTotales();
         });
-        
+        // Al cambiar el descuento, recalcular el precio final de la fila
         descuentoInput.addEventListener('input', function() {
-            calcularPrecioFinal(newRow);
+            if (typeof calcularPrecioFinal === 'function') {
+                calcularPrecioFinal(newRow);
+            } else if (typeof calcularTotales === 'function') {
+                // Fallback por si no existe la función
+                calcularTotales();
+            }
         });
-        
         productoIndex++;
     });
+    
     
     // Remover producto
     document.addEventListener('click', function(e) {
@@ -454,18 +501,34 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('[id^="simboloDetalle"]').forEach(function(span){
                 span.textContent = simboloChar;
             });
-            // Reconvertir todos los precios unitarios a la moneda de la venta
+            // Reconvertir precios unitarios usando precios nativos si existen (USD/PEN)
             document.querySelectorAll('.producto-row').forEach(function(row) {
-                const select = row.querySelector('.producto-select');
-                if (!select) return;
-                const selectedOption = select.options[select.selectedIndex];
-                const precioCatalogoPen = parseFloat(selectedOption.getAttribute('data-precio') || '0');
-                const precioUnit = codigoIso === 'USD' ? (precioCatalogoPen / TIPO_CAMBIO) : precioCatalogoPen;
-                row.querySelector('.precio-input').value = precioUnit.toFixed(2);
-                // Recalcular precio final para cada fila
+                const precioPen = parseFloat(row.dataset.precioPen || 'NaN');
+                const precioUsd = parseFloat(row.dataset.precioUsd || 'NaN');
+                const precioInput = row.querySelector('.precio-input');
+                if (precioInput) {
+                    let unit;
+                    if (codigoIso === 'USD') {
+                        if (!isNaN(precioUsd) && precioUsd > 0) {
+                            unit = precioUsd;
+                        } else if (!isNaN(precioPen) && precioPen > 0) {
+                            unit = precioPen / TIPO_CAMBIO;
+                        }
+                    } else {
+                        if (!isNaN(precioPen) && precioPen > 0) {
+                            unit = precioPen;
+                        } else if (!isNaN(precioUsd) && precioUsd > 0) {
+                            unit = precioUsd * TIPO_CAMBIO;
+                        }
+                    }
+                    if (typeof unit !== 'undefined') {
+                        precioInput.value = Number(unit).toFixed(2);
+                    }
+                }
+                const precio = parseFloat(precioInput?.value || '0');
                 const descuentoInput = row.querySelector('.descuento-input');
                 const descuento = parseFloat(descuentoInput?.value || '0');
-                const precioFinal = precioUnit * (1 - (descuento / 100));
+                const precioFinal = precio * (1 - (descuento / 100));
                 row.querySelector('.precio-final-input').value = precioFinal.toFixed(2);
             });
             calcularTotales();
@@ -510,6 +573,21 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('igv-display').innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${igv.toFixed(2)}`;
         document.getElementById('total-display').innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${total.toFixed(2)}`;
 
+        // Saldo pendiente en tiempo real (duplicado para este bloque que redefine calcularTotales)
+        const PAGOS_VENTA2 = @json(($venta->pagos ?? collect())->map(function($p){ return ['monto' => (float)($p->monto ?? 0), 'moneda' => $p->moneda ?? 'PEN']; }));
+        let totalPagadoConv2 = 0;
+        PAGOS_VENTA2.forEach(function(p){
+            const monto = parseFloat(p.monto) || 0;
+            const mon = (p.moneda || 'PEN').toUpperCase();
+            if (codigoIso === 'USD') {
+                totalPagadoConv2 += (mon === 'PEN' && TIPO_CAMBIO > 0) ? (monto / TIPO_CAMBIO) : monto;
+            } else {
+                totalPagadoConv2 += (mon === 'USD' && TIPO_CAMBIO > 0) ? (monto * TIPO_CAMBIO) : monto;
+            }
+        });
+        const saldo2 = Math.max(total - totalPagadoConv2, 0);
+        document.getElementById('saldo-display').innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${saldo2.toFixed(2)}`;
+
         // Actualizar campos ocultos para el formulario
         document.getElementById('subtotal-input').value = subtotal.toFixed(2);
         document.getElementById('igv-input').value = igv.toFixed(2);
@@ -551,3 +629,72 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Buscador de producto en cada fila de edición
+    document.querySelectorAll('.buscador-producto-edit').forEach(function(input) {
+        const index = input.getAttribute('data-index');
+        const resultados = document.getElementById('resultados-producto-edit-' + index);
+        let timeout = null;
+        input.addEventListener('input', function() {
+            clearTimeout(timeout);
+            const q = input.value.trim();
+            if (q.length < 2) {
+                resultados.innerHTML = '';
+                return;
+            }
+            timeout = setTimeout(async () => {
+                resultados.innerHTML = '<div class="p-2 text-muted">Buscando...';
+                try {
+                    const res = await fetch(`/api/productos/search?q=${encodeURIComponent(q)}`);
+                    if (!res.ok) throw new Error('Error en la búsqueda');
+                    const items = await res.json();
+                    if (!items.length) {
+                        resultados.innerHTML = '<div class="p-2 text-muted">No se encontraron productos</div>';
+                        return;
+                    }
+                    resultados.innerHTML = items.map(it => `
+                        <button type="button" class="list-group-item list-group-item-action" data-id="${it.id_producto}" data-desc="${it.descripcion}" data-precio-pen="${it.precio_venta}" data-precio-usd="${it.precio_venta_usd}" data-codigo="${it.codigo || ''}" data-nparte="${it.numero_parte || ''}">
+                            <strong>${(it.codigo || '-') + ' - ' + it.descripcion}</strong><br>
+                            <small>N° Parte: ${it.numero_parte || '-'} | S/ ${Number(it.precio_venta).toFixed(2)} | $ ${Number(it.precio_venta_usd).toFixed(2)}</small>
+                        </button>
+                    `).join('');
+                } catch (err) {
+                    resultados.innerHTML = '<div class="p-2 text-danger">Error al buscar productos</div>';
+                }
+            }, 400);
+        });
+        resultados.addEventListener('click', function(e) {
+            const btn = e.target.closest('button[data-id]');
+            if (!btn) return;
+            input.value = (btn.dataset.codigo ? (btn.dataset.codigo + ' - ') : '') + btn.dataset.desc;
+            // Asignar id_producto al input hidden
+            input.parentElement.querySelector('.producto-id-input').value = btn.dataset.id;
+            // Guardar precios de catálogo (PEN y USD) y convertir según moneda actual
+            const row = input.closest('.producto-row');
+            row.dataset.precioPen = btn.dataset.precioPen;
+            row.dataset.precioUsd = btn.dataset.precioUsd;
+            const monedaVenta = document.getElementById('moneda')?.value || 'PEN';
+            const pen = parseFloat(btn.dataset.precioPen || '0') || 0;
+            const usd = parseFloat(btn.dataset.precioUsd || '0') || 0;
+            let unit = 0;
+            if (monedaVenta === 'USD') {
+                unit = usd > 0 ? usd : (pen > 0 ? (pen / TIPO_CAMBIO) : 0);
+            } else {
+                unit = pen > 0 ? pen : (usd > 0 ? (usd * TIPO_CAMBIO) : 0);
+            }
+            const precioInput = row.querySelector('.precio-input');
+            if (precioInput) precioInput.value = unit.toFixed(2);
+            // Recalcular precio final inmediato
+            const descInput = row.querySelector('.descuento-input');
+            const descuento = parseFloat(descInput?.value || '0');
+            row.querySelector('.precio-final-input').value = (unit * (1 - descuento/100)).toFixed(2);
+            resultados.innerHTML = '';
+            if (typeof calcularTotales === 'function') calcularTotales();
+        });
+    });
+});
+</script>
+@endpush

@@ -452,4 +452,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Ruta para mostrar la vista de pago para una venta específica
     Route::get('ventas/{venta}/pago', [VentaController::class, 'pago'])->name('ventas.pago');
+
+    // Ruta para cambiar la moneda de una venta
+    Route::post('ventas/{venta}/cambiar-moneda', [VentaController::class, 'cambiarMoneda'])->name('ventas.cambiar-moneda');
 });

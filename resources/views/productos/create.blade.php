@@ -70,8 +70,8 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="modern-label required">
-                                    <i class="fas fa-hand-holding-usd me-1 text-success"></i>
-                                    Precio de Venta (USD)
+                                    <!-- <i class="fas fa-hand-holding-usd me-1 text-success"></i>
+                                    Precio de Venta (USD) -->
                                     <i class="fas fa-barcode me-1"></i>
                                     Código del Producto
                                 </label>
@@ -696,6 +696,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const stockActual = document.getElementById('stock_actual');
     const stockMinimo = document.getElementById('stock_minimo');
     const stockIndicator = document.getElementById('stockIndicator');
+    const codigoInput = document.getElementById('codigo');
+    const numeroParteInput = document.getElementById('numero_parte');
+
+    // Sincroniza Número de Parte con Código en tiempo real (siempre refleja lo escrito)
+    function syncNumeroParteConCodigo() {
+        if (!codigoInput || !numeroParteInput) return;
+        numeroParteInput.value = codigoInput.value;
+    }
+
+    if (codigoInput && numeroParteInput) {
+        // Reflejar en cada cambio y al cargar
+        codigoInput.addEventListener('input', syncNumeroParteConCodigo);
+        codigoInput.addEventListener('change', syncNumeroParteConCodigo);
+        syncNumeroParteConCodigo();
+    }
 
     // Función para calcular conversiones y márgenes
     function getTipoCambio() {

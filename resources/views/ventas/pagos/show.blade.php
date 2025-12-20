@@ -134,15 +134,17 @@
                             <label for="pago_monto" class="pago-form-label">Monto a Pagar</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light text-primary fw-bold">{{ $simbolo }}</span>
-                                <input type="number" step="0.01" class="form-control pago-form-control" id="pago_monto" name="monto" required value="{{ number_format($saldo, 2) }}">
+                                <input type="number" step="0.01" min="0" class="form-control pago-form-control" id="pago_monto" name="monto" required value="{{ number_format($saldo, 2, '.', '') }}" placeholder="{{ number_format($saldo, 2, '.', '') }}">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <label for="pago_moneda" class="pago-form-label">Moneda del Pago</label>
-                            <select class="form-select pago-form-control" id="pago_moneda" name="pago_moneda" required disabled>
+                            <select class="form-select pago-form-control" id="pago_moneda" name="pago_moneda_label" required disabled>
                                 <option value="Soles" {{ $moneda === 'Soles' ? 'selected' : '' }}>Soles</option>
                                 <option value="Dolares" {{ $moneda === 'Dolares' ? 'selected' : '' }}>Dólares</option>
                             </select>
+                            <!-- Hidden field to ensure currency code is submitted even when select is disabled -->
+                            <input type="hidden" name="pago_moneda" value="{{ $codigoIso }}">
                         </div>
                         <div class="col-md-6">
                             <label for="metodo" class="pago-form-label">Tipo de Pago</label>
@@ -173,13 +175,19 @@
             <div class="pago-historial-list">
                 <ul class="list-group list-group-flush">
                     @forelse ($venta->pagos as $pago)
+                        @php
+                            $rawMon = strtoupper(trim((string)($pago->moneda ?? 'PEN')));
+                            $esUSD = ($rawMon === '$') || str_contains($rawMon, 'USD') || str_contains($rawMon, 'DOLAR') || str_contains($rawMon, 'DÓLAR');
+                            $labelMon = $esUSD ? 'Dólares' : 'Soles';
+                            $simboloMon = $esUSD ? '$' : 'S/';
+                        @endphp
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             <span>
                                 <i class="fas fa-calendar-alt me-1 text-muted"></i>
                                 <span class="fw-semibold">{{ $pago->fecha }}</span>
-                                <span class="badge ms-2">{{ $pago->moneda }}</span>
+                                <span class="badge ms-2">{{ $labelMon }}</span>
                             </span>
-                            <span class="fw-bold text-success">{{ number_format($pago->monto, 2) }}</span>
+                            <span class="fw-bold text-success">{{ $simboloMon }} {{ number_format($pago->monto, 2) }}</span>
                         </li>
                     @empty
                         <li class="list-group-item text-center text-muted">No hay pagos registrados.</li>

@@ -93,4 +93,64 @@ class Venta extends Model
         }
         return '';
     }
+
+    /**
+     * Normaliza etiquetas de moneda a códigos estándar.
+     */
+    private function normalizeMoneda($m)
+    {
+        $raw = strtoupper(trim((string) $m));
+        if ($raw === '$' || str_contains($raw, 'USD') || str_contains($raw, 'DOLAR') || str_contains($raw, 'DÓLAR')) {
+            return 'USD';
+        }
+        return 'PEN';
+    }
+
+    /**
+     * Calcula el saldo actual en tiempo real, replicando la lógica de `edit.blade`:
+     * - Si la moneda del pago coincide con la de la venta, se suma tal cual.
+     * - Si difiere, se convierte usando `tipo_cambio`:
+     *   - Venta en USD: pagos en PEN se convierten a USD (monto / tipo_cambio).
+     *   - Venta en PEN: pagos en USD se convierten a PEN (monto * tipo_cambio).
+     * - Si `tipo_cambio` es 0 o no válido, se suma el monto sin convertir (fallback).
+     */
+    public function calcularSaldoActual(): float
+    {
+        $idMonedaVenta = $this->id_moneda; // 1=PEN, 2=USD
+        $codigoVenta = ($idMonedaVenta === 2) ? 'USD' : 'PEN';
+        $tc = (float) ($this->tipo_cambio ?? 0);
+
+        $totalPagadoConv = 0.0;
+        foreach ($this->pagos as $pago) {
+            $monto = (float) ($pago->monto ?? 0);
+            $monedaPago = $this->normalizeMoneda($pago->moneda ?? 'PEN');
+
+            if ($codigoVenta === 'USD') {
+                // Venta en USD: convertir pagos en PEN a USD
+                if ($monedaPago === 'PEN' && $tc > 0) {
+                    $totalPagadoConv += ($monto / $tc);
+                } else {
+                    $totalPagadoConv += $monto;
+                }
+            } else {
+                // Venta en PEN: convertir pagos en USD a PEN
+                if ($monedaPago === 'USD' && $tc > 0) {
+                    $totalPagadoConv += ($monto * $tc);
+                } else {
+                    $totalPagadoConv += $monto;
+                }
+            }
+        }
+
+        $saldo = max(round(((float) $this->total) - $totalPagadoConv, 2), 0);
+        return $saldo;
+    }
+
+    /**
+     * Accessor: `saldo_calculado` para usar en vistas sin depender del almacenado.
+     */
+    public function getSaldoCalculadoAttribute(): float
+    {
+        return $this->calcularSaldoActual();
+    }
 }

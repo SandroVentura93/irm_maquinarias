@@ -304,8 +304,20 @@
                             <td data-label="Moneda">
                                 @php
                                     $codigoMoneda = $codigoMoneda ?? 'PEN';
+                                    $toggleTarget = $codigoMoneda === 'USD' ? 'PEN' : 'USD';
+                                    $toggleLabel = $toggleTarget === 'USD' ? 'Cambiar a USD' : 'Cambiar a PEN';
+                                    $toggleIcon = $toggleTarget === 'USD' ? 'fa-dollar-sign' : 'fa-money-bill-wave';
                                 @endphp
-                                <span class="badge bg-secondary">{{ $codigoMoneda }}</span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-secondary">{{ $codigoMoneda }}</span>
+                                    <form method="POST" action="{{ route('ventas.cambiar-moneda', $venta->id_venta) }}" onsubmit="return confirm('¿Cambiar moneda de la venta a {{ $toggleTarget }}? Se convertirán los totales usando el tipo de cambio.');">
+                                        @csrf
+                                        <input type="hidden" name="moneda" value="{{ $toggleTarget }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="{{ $toggleLabel }}">
+                                            <i class="fas {{ $toggleIcon }}"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                             <td data-label="Estado">
                                 <span class="status-badge status-{{ strtolower($venta->xml_estado) }}">
@@ -317,7 +329,7 @@
                                         $codigoMoneda = optional($venta->moneda)->codigo_iso ?? 'PEN';
                                         $simboloMoneda = optional($venta->moneda)->simbolo ?? ($codigoMoneda === 'USD' ? '$' : 'S/');
                                     @endphp
-                                    <div class="text-danger small mt-1">Saldo pendiente: <b>{{ $simboloMoneda }} {{ number_format($venta->saldo, 2) }}</b> <span class="badge bg-light text-dark ms-1">{{ $codigoMoneda }}</span></div>
+                                    <div class="text-danger small mt-1">Saldo pendiente: <b>{{ $simboloMoneda }} {{ number_format($venta->saldo_calculado, 2) }}</b> <span class="badge bg-light text-dark ms-1">{{ $codigoMoneda }}</span></div>
                                 @endif
                             </td>
                             <td data-label="Acciones">

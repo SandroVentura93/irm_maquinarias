@@ -246,83 +246,15 @@
             $simbolo = $codigoIso === 'USD' ? '$' : 'S/';
         @endphp
 
-        <!-- Detalle de productos/servicios -->
-        <table class="details-table">
-            <thead>
-                <tr>
-                    <th style="width: 8%;">ITEM</th>
-                    <th style="width: 45%;">DESCRIPCIÓN</th>
-                    <th style="width: 8%;">CANT.</th>
-                    <th style="width: 17%;">VALOR UNIT.</th>
-                    <th style="width: 8%;">DESC. %</th>
-                    <th style="width: 19%;">VALOR VENTA</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($detalles as $index => $detalle)
-                <tr>
-                    <td>{{ $index + 1 }}</td>
-                    <td style="text-align: left; padding-left: 10px;">
-                        <strong>{{ $detalle->producto->descripcion ?? 'Producto no encontrado' }}</strong>
-                        @if($detalle->producto->codigo)
-                            <br><small>Código: {{ $detalle->producto->codigo }}</small>
-                        @endif
-                        @if($detalle->producto->numero_parte)
-                            <br><small>Número de Parte: {{ $detalle->producto->numero_parte }}</small>
-                        @endif
-                        @if($detalle->producto->modelo)
-                            <br><small>Modelo: {{ $detalle->producto->modelo }}</small>
-                        @endif
-                    </td>
-                    <td>{{ number_format($detalle->cantidad, 2) }}</td>
-                    <td>
-                        {{ $simbolo }} {{ number_format($detalle->precio_unitario, 2) }}
-                    </td>
-                    <td>{{ $detalle->descuento_porcentaje ?? 0 }}%</td>
-                    <td>
-                        @php
-                            $valorVenta = $detalle->cantidad * $detalle->precio_unitario * (1 - ($detalle->descuento_porcentaje ?? 0)/100);
-                        @endphp
-                        {{ $simbolo }} {{ number_format($valorVenta, 2) }}
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-
-        <!-- Información tributaria -->
-        <div class="tax-info">
-            <h5>INFORMACIÓN TRIBUTARIA</h5>
-            <p><strong>Tipo de Operación:</strong> Venta interna</p>
-            <p><strong>Base Imponible:</strong> {{ $simbolo }} {{ number_format($venta->subtotal, 2) }}</p>
-            <p><strong>IGV (18%):</strong> {{ $simbolo }} {{ number_format(($venta->total - $venta->subtotal), 2) }}</p>
-        </div>
+        <!-- Detalle estandarizado y totales -->
+        @include('comprobantes.partials.detalle_estandar')
 
         <!-- Importe en palabras -->
         <div class="amount-words">
             <strong>SON:</strong> {{ strtoupper($totalEnLetras) }}
         </div>
 
-        <!-- Totales -->
-        <div class="totals">
-            <table>
-                <tr>
-                    <td class="total-label">SUB TOTAL:</td>
-                    <td>{{ $simbolo }} {{ number_format($venta->subtotal, 2) }}</td>
-                </tr>
-                <tr>
-                    <td class="total-label">IGV (18%):</td>
-                    <td>{{ $simbolo }} {{ number_format(($venta->total - $venta->subtotal), 2) }}</td>
-                </tr>
-                <tr class="total-final">
-                    <td>TOTAL A PAGAR:</td>
-                    <td>{{ $simbolo }} {{ number_format($venta->total, 2) }}</td>
-                </tr>
-            </table>
-            <p style="margin-top: 10px; font-size: 10px; color: #666;">
-                <strong>Tipo de Cambio (referencial):</strong> S/ {{ number_format($venta->tipo_cambio ?? $tipoCambio ?? 0, 2) }} por USD
-            </p>
-        </div>
+        <!-- Totales integrados en el bloque estandarizado -->
 
         <!-- Información legal -->
         <div class="legal-info">

@@ -245,47 +245,8 @@
             $simbolo = $codigoIso === 'USD' ? '$' : 'S/';
         @endphp
 
-        <!-- Detalle de productos/servicios -->
-        <table class="details-table">
-            <thead>
-                <tr>
-                    <th style="width: 8%;">ITEM</th>
-                    <th style="width: 45%;">DESCRIPCIÓN</th>
-                    <th style="width: 10%;">CANTIDAD</th>
-                    <th style="width: 18%;">PRECIO UNIT.</th>
-                    <th style="width: 19%;">IMPORTE</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($detalles as $index => $detalle)
-                <tr>
-                    <td>{{ $index + 1 }}</td>
-                    <td style="text-align: left; padding-left: 10px;">
-                        <strong>{{ $detalle->producto->descripcion ?? 'Producto no encontrado' }}</strong>
-                        @if($detalle->producto->codigo)
-                            <br><small>Código: {{ $detalle->producto->codigo }}</small>
-                        @endif
-                        @if($detalle->producto->numero_parte)
-                            <br><small>P/N: {{ $detalle->producto->numero_parte }}</small>
-                        @endif
-                        @if($detalle->descuento_porcentaje > 0)
-                            <br><small class="text-success">Descuento: {{ $detalle->descuento_porcentaje }}%</small>
-                        @endif
-                    </td>
-                    <td>{{ number_format($detalle->cantidad, 2) }}</td>
-                    <td>
-                        {{ $simbolo }} {{ number_format($detalle->precio_unitario, 2) }}
-                    </td>
-                    <td>
-                        @php
-                            $importe = $detalle->cantidad * $detalle->precio_unitario * (1 - ($detalle->descuento_porcentaje ?? 0)/100);
-                        @endphp
-                        {{ $simbolo }} {{ number_format($importe, 2) }}
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
+        <!-- Detalle estandarizado y totales -->
+        @include('comprobantes.partials.detalle_estandar')
 
         <!-- Aviso al consumidor -->
         <div class="consumer-notice">
@@ -301,34 +262,7 @@
             <strong>SON:</strong> {{ strtoupper($totalEnLetras) }}
         </div>
 
-        <!-- Totales -->
-        <div class="totals">
-            <table>
-                <tr>
-                    <td class="total-label">SUB TOTAL:</td>
-                    <td>{{ $simbolo }} {{ number_format($venta->subtotal, 2) }}</td>
-                </tr>
-                <tr>
-                    <td class="total-label">IGV (18%):</td>
-                    <td>{{ $simbolo }} {{ number_format(($venta->total - $venta->subtotal), 2) }}</td>
-                </tr>
-                @if($descuentoTotal > 0)
-                <tr>
-                    <td class="total-label">DESCUENTO:</td>
-                    <td>
-                        {{ $simbolo }} {{ number_format($descuentoTotal, 2) }}
-                    </td>
-                </tr>
-                @endif
-                <tr class="total-final">
-                    <td>TOTAL A PAGAR:</td>
-                    <td>{{ $simbolo }} {{ number_format($venta->total, 2) }}</td>
-                </tr>
-            </table>
-            <p style="margin-top: 10px; font-size: 10px; color: #666;">
-                <strong>Tipo de Cambio (referencial):</strong> S/ {{ number_format($venta->tipo_cambio ?? $tipoCambio ?? 0, 2) }} por USD
-            </p>
-        </div>
+        <!-- Totales integrados en el bloque estandarizado -->
 
         <!-- Información de pago -->
         <div class="payment-info">
