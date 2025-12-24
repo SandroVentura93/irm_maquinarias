@@ -80,7 +80,14 @@
                 $marca = $prod->marca->nombre ?? ($prod->marca ?? '');
                 $peso = (float)($prod->peso ?? 0);
                 $cant = (float)($detalle->cantidad ?? 0);
-                $pu = (float)($detalle->precio_unitario ?? 0);
+                // Precio unitario debe reflejar EXACTAMENTE lo mostrado en el editor:
+                // usar el precio registrado del producto según la MONEDA del comprobante,
+                // sin convertir por tipo de cambio.
+                if ($codigoIso === 'USD') {
+                    $pu = (float)($prod->precio_venta_usd ?? $detalle->precio_unitario ?? 0);
+                } else {
+                    $pu = (float)($prod->precio_venta ?? $detalle->precio_unitario ?? 0);
+                }
                 $descPct = (float)($detalle->descuento_porcentaje ?? 0);
                 $descUnit = $pu * $descPct / 100.0;
                 $netUnit = $pu - $descUnit;
@@ -121,40 +128,23 @@
     </div>
     <div class="right">
         @php
-            // Use model totals if available, else computed baseCalc
+            // Usar los totales del modelo si existen; si no, calcular desde baseCalc
             $subtotal = isset($venta->subtotal) ? (float)$venta->subtotal : $baseCalc;
-            $total = isset($venta->total) ? (float)$venta->total : $baseCalc * 1.18; // fallback with IGV 18%
+            $total = isset($venta->total) ? (float)$venta->total : $baseCalc * 1.18; // fallback con IGV 18%
             $igv = $total - $subtotal;
-
-            $totalUSD = null; $totalPEN = null; $tcLabel = $tc ? number_format($tc, 3) : '-';
-            if ($codigoIso === 'USD') {
-                $totalUSD = $total;
-                $totalPEN = $tc ? $total * $tc : null;
-            } else { // PEN
-                $totalPEN = $total;
-                $totalUSD = $tc ? ($tc > 0 ? $total / $tc : null) : null;
-            }
         @endphp
         <table>
             <tr>
-                <td class="label w50">P. BASE</td>
+                <td class="label w50">SUBTOTAL</td>
                 <td>{{ $simbolo }} {{ number_format($subtotal, 2) }}</td>
             </tr>
             <tr>
                 <td class="label">IGV (18%)</td>
                 <td>{{ $simbolo }} {{ number_format($igv, 2) }}</td>
             </tr>
-            <tr>
-                <td class="label">TOTAL DÓLARES (USD)</td>
-                <td>{{ $totalUSD !== null ? ('$ ' . number_format($totalUSD, 2)) : '-' }}</td>
-            </tr>
-            <tr>
-                <td class="label">TIPO DE CAMBIO</td>
-                <td>{{ $tcLabel }}</td>
-            </tr>
             <tr class="final">
-                <td class="final">TOTAL SOLES (PEN)</td>
-                <td class="final">{{ $totalPEN !== null ? ('S/ ' . number_format($totalPEN, 2)) : '-' }}</td>
+                <td class="final">TOTAL {{ $codigoIso }}</td>
+                <td class="final">{{ $simbolo }} {{ number_format($total, 2) }}</td>
             </tr>
         </table>
     </div>

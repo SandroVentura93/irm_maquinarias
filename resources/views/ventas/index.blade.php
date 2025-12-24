@@ -290,15 +290,11 @@
                             </td>
                             <td data-label="Total">
                                 @php
-                                    $codigoMoneda = optional($venta->moneda)->codigo_iso;
-                                    $simboloMoneda = optional($venta->moneda)->simbolo;
+                                    $codigoMoneda = optional($venta->moneda)->codigo_iso ?? 'PEN';
+                                    $simboloMoneda = optional($venta->moneda)->simbolo ?? ($codigoMoneda === 'USD' ? '$' : 'S/');
                                 @endphp
                                 <div class="amount-info">
-                                    @if($codigoMoneda === 'USD')
-                                        <div class="amount-single">{{ $simboloMoneda ?? '$' }} {{ number_format($venta->total, 2) }} <span class="badge bg-light text-dark ms-1">USD</span></div>
-                                    @else
-                                        <div class="amount-single">{{ $simboloMoneda ?? 'S/' }} {{ number_format($venta->total, 2) }} <span class="badge bg-light text-dark ms-1">PEN</span></div>
-                                    @endif
+                                    <div class="amount-single">{{ $simboloMoneda }} {{ number_format($venta->total, 2) }} <span class="badge bg-light text-dark ms-1">{{ $codigoMoneda }}</span></div>
                                 </div>
                             </td>
                             <td data-label="Moneda">
@@ -326,10 +322,19 @@
                                 </span>
                                 @if($venta->xml_estado === 'PENDIENTE')
                                     @php
+                                        // Calcular saldo pendiente sin tipo de cambio: solo pagos en misma moneda
                                         $codigoMoneda = optional($venta->moneda)->codigo_iso ?? 'PEN';
                                         $simboloMoneda = optional($venta->moneda)->simbolo ?? ($codigoMoneda === 'USD' ? '$' : 'S/');
+                                        $totalPagado = 0;
+                                        foreach (($venta->pagos ?? []) as $pago) {
+                                            $monPago = strtoupper($pago->moneda ?? 'PEN');
+                                            if ($monPago === strtoupper($codigoMoneda)) {
+                                                $totalPagado += (float)($pago->monto ?? 0);
+                                            }
+                                        }
+                                        $saldoCalculado = max(((float)($venta->total ?? 0)) - $totalPagado, 0);
                                     @endphp
-                                    <div class="text-danger small mt-1">Saldo pendiente: <b>{{ $simboloMoneda }} {{ number_format($venta->saldo_calculado, 2) }}</b> <span class="badge bg-light text-dark ms-1">{{ $codigoMoneda }}</span></div>
+                                    <div class="text-danger small mt-1">Saldo pendiente: <b>{{ $simboloMoneda }} {{ number_format($saldoCalculado, 2) }}</b> <span class="badge bg-light text-dark ms-1">{{ $codigoMoneda }}</span></div>
                                 @endif
                             </td>
                             <td data-label="Acciones">

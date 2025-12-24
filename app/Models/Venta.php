@@ -107,42 +107,25 @@ class Venta extends Model
     }
 
     /**
-     * Calcula el saldo actual en tiempo real, replicando la lógica de `edit.blade`:
-     * - Si la moneda del pago coincide con la de la venta, se suma tal cual.
-     * - Si difiere, se convierte usando `tipo_cambio`:
-     *   - Venta en USD: pagos en PEN se convierten a USD (monto / tipo_cambio).
-     *   - Venta en PEN: pagos en USD se convierten a PEN (monto * tipo_cambio).
-     * - Si `tipo_cambio` es 0 o no válido, se suma el monto sin convertir (fallback).
+     * Calcula el saldo actual en tiempo real siguiendo la regla de negocio vigente:
+     * - Se suman ÚNICAMENTE los pagos en la misma moneda del comprobante.
+     * - No se realiza ningún tipo de conversión por tipo de cambio.
+     * Esto alinea el saldo con las vistas de edición e índice.
      */
     public function calcularSaldoActual(): float
     {
         $idMonedaVenta = $this->id_moneda; // 1=PEN, 2=USD
         $codigoVenta = ($idMonedaVenta === 2) ? 'USD' : 'PEN';
-        $tc = (float) ($this->tipo_cambio ?? 0);
-
-        $totalPagadoConv = 0.0;
+        $totalPagado = 0.0;
         foreach ($this->pagos as $pago) {
             $monto = (float) ($pago->monto ?? 0);
             $monedaPago = $this->normalizeMoneda($pago->moneda ?? 'PEN');
-
-            if ($codigoVenta === 'USD') {
-                // Venta en USD: convertir pagos en PEN a USD
-                if ($monedaPago === 'PEN' && $tc > 0) {
-                    $totalPagadoConv += ($monto / $tc);
-                } else {
-                    $totalPagadoConv += $monto;
-                }
-            } else {
-                // Venta en PEN: convertir pagos en USD a PEN
-                if ($monedaPago === 'USD' && $tc > 0) {
-                    $totalPagadoConv += ($monto * $tc);
-                } else {
-                    $totalPagadoConv += $monto;
-                }
+            if ($monedaPago === $codigoVenta) {
+                $totalPagado += $monto;
             }
         }
 
-        $saldo = max(round(((float) $this->total) - $totalPagadoConv, 2), 0);
+        $saldo = max(round(((float) $this->total) - $totalPagado, 2), 0);
         return $saldo;
     }
 

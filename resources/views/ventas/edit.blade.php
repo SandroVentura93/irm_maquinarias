@@ -134,7 +134,7 @@
                             <div class="card-body">
                                 <div id="productos-container">
                                     @foreach($venta->detalleVentas as $index => $detalle)
-                                    <div class="producto-row border p-3 mb-3" data-index="{{ $index }}">
+                                    <div class="producto-row border p-3 mb-3" data-index="{{ $index }}" data-precioPen="{{ $detalle->producto->precio_venta ?? 0 }}" data-precioUsd="{{ $detalle->producto->precio_venta_usd ?? 0 }}">
                                         <div class="row">
                                             <div class="col-md-4">
                                                 <label>Producto <span class="text-danger">*</span></label>
@@ -157,7 +157,15 @@
                                                     <span class="input-group-text" id="simboloDetalle{{ $index }}">{{ $codigoIso === 'USD' ? '$' : 'S/' }}</span>
                                                     <input type="number" class="form-control precio-input" 
                                                            name="detalle[{{ $index }}][precio_unitario]" 
-                                                           value="{{ $detalle->precio_unitario }}" step="0.01" readonly>
+                                                           value="{{
+                                                                $codigoIso === 'USD'
+                                                                    ? ((isset($detalle->producto) && ($detalle->producto->precio_venta_usd ?? 0) > 0)
+                                                                        ? ($detalle->producto->precio_venta_usd ?? 0)
+                                                                        : ($detalle->precio_unitario ?? 0))
+                                                                    : ((isset($detalle->producto) && ($detalle->producto->precio_venta ?? 0) > 0)
+                                                                        ? ($detalle->producto->precio_venta ?? 0)
+                                                                        : ($detalle->precio_unitario ?? 0))
+                                                            }}" step="0.01" readonly>
                                                 </div>
                                             </div>
                                             <div class="col-md-2">
@@ -253,7 +261,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Inicializar productoIndex correctamente según las filas existentes
     let productoIndex = document.querySelectorAll('.producto-row').length;
-    const TIPO_CAMBIO = parseFloat(document.getElementById('tipoCambio')?.value || '3.75');
     // Pagos existentes de la venta para cálculo de saldo en tiempo real
     const PAGOS_VENTA = @json(($venta->pagos ?? collect())->map(function($p){ return ['monto' => (float)($p->monto ?? 0), 'moneda' => $p->moneda ?? 'PEN']; }));
     
@@ -313,15 +320,13 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('igv-display').innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${igv.toFixed(2)}`;
         document.getElementById('total-display').innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${total.toFixed(2)}`;
 
-        // Calcular saldo pendiente en tiempo real considerando pagos
+        // Calcular saldo pendiente en tiempo real considerando pagos (MISMA MONEDA, sin tipo de cambio)
         let totalPagadoConv = 0;
         PAGOS_VENTA.forEach(function(p){
             const monto = parseFloat(p.monto) || 0;
             const mon = (p.moneda || 'PEN').toUpperCase();
-            if (codigoIso === 'USD') {
-                totalPagadoConv += (mon === 'PEN' && TIPO_CAMBIO > 0) ? (monto / TIPO_CAMBIO) : monto;
-            } else {
-                totalPagadoConv += (mon === 'USD' && TIPO_CAMBIO > 0) ? (monto * TIPO_CAMBIO) : monto;
+            if (mon === codigoIso.toUpperCase()) {
+                totalPagadoConv += monto;
             }
         });
         const saldo = Math.max(total - totalPagadoConv, 0);
@@ -335,11 +340,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Función para calcular precio con descuento
     function calcularPrecioFinal(row) {
-        const precio = parseFloat(row.querySelector('.precio-input').value) || 0;
-        const descuento = parseFloat(row.querySelector('.descuento-input').value) || 0;
+        const precioInput = row.querySelector('.precio-input');
+        const descuentoInput = row.querySelector('.descuento-input');
+        const precioFinalInput = row.querySelector('.precio-final-input');
+
+        const precio = parseFloat(precioInput?.value || '0');
+        const descuento = parseFloat(descuentoInput?.value || '0');
+
         const precioFinal = precio * (1 - descuento / 100);
-        row.querySelector('.precio-final-input').value = precioFinal.toFixed(2);
-        calcularTotales();
+        precioFinalInput.value = precioFinal.toFixed(2);
     }
     
     // Event listeners para productos existentes
@@ -447,9 +456,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const precioUsd = parseFloat(btn.dataset.precioUsd || '0') || 0;
             let unit = 0;
             if (monedaVenta === 'USD') {
-                unit = precioUsd > 0 ? precioUsd : (precioPen > 0 ? (precioPen / TIPO_CAMBIO) : 0);
+                unit = precioUsd;
             } else {
-                unit = precioPen > 0 ? precioPen : (precioUsd > 0 ? (precioUsd * TIPO_CAMBIO) : 0);
+                unit = precioPen;
             }
             const precioInput = newRow.querySelector('.precio-input');
             if (precioInput) precioInput.value = unit.toFixed(2);
@@ -491,49 +500,136 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Calcular totales iniciales
     calcularTotales();
-    // Actualizar símbolos cuando cambia la moneda
+    // Actualizar símbolos y mostrar precios registrados por defecto al cambiar la moneda
     const monedaSel = document.getElementById('moneda');
     if (monedaSel) {
-        monedaSel.addEventListener('change', function() {
+        monedaSel.addEventListener('change', function () {
             const codigoIso = this.value;
             const simboloChar = codigoIso === 'USD' ? '$' : 'S/';
-            document.getElementById('ventaMonedaBadge').textContent = codigoIso;
-            document.querySelectorAll('[id^="simboloDetalle"]').forEach(function(span){
+
+            // Actualizar el símbolo de la moneda en los detalles
+            document.querySelectorAll('[id^="simboloDetalle"]').forEach(function (span) {
                 span.textContent = simboloChar;
             });
-            // Reconvertir precios unitarios usando precios nativos si existen (USD/PEN)
-            document.querySelectorAll('.producto-row').forEach(function(row) {
-                const precioPen = parseFloat(row.dataset.precioPen || 'NaN');
-                const precioUsd = parseFloat(row.dataset.precioUsd || 'NaN');
+
+            // Mostrar precios registrados por defecto
+            document.querySelectorAll('.producto-row').forEach(function (row) {
+                const precioPen = parseFloat(row.dataset.precioPen || '0');
+                const precioUsd = parseFloat(row.dataset.precioUsd || '0');
                 const precioInput = row.querySelector('.precio-input');
+
                 if (precioInput) {
                     let unit;
                     if (codigoIso === 'USD') {
-                        if (!isNaN(precioUsd) && precioUsd > 0) {
-                            unit = precioUsd;
-                        } else if (!isNaN(precioPen) && precioPen > 0) {
-                            unit = precioPen / TIPO_CAMBIO;
-                        }
+                        unit = precioUsd; // Mostrar precio registrado en dólares
                     } else {
-                        if (!isNaN(precioPen) && precioPen > 0) {
-                            unit = precioPen;
-                        } else if (!isNaN(precioUsd) && precioUsd > 0) {
-                            unit = precioUsd * TIPO_CAMBIO;
-                        }
+                        unit = precioPen; // Mostrar precio registrado en soles
                     }
-                    if (typeof unit !== 'undefined') {
-                        precioInput.value = Number(unit).toFixed(2);
-                    }
+                    precioInput.value = unit.toFixed(2);
                 }
-                const precio = parseFloat(precioInput?.value || '0');
+
+                // Recalcular el precio final
                 const descuentoInput = row.querySelector('.descuento-input');
                 const descuento = parseFloat(descuentoInput?.value || '0');
-                const precioFinal = precio * (1 - (descuento / 100));
-                row.querySelector('.precio-final-input').value = precioFinal.toFixed(2);
+                const unitVal = parseFloat(precioInput?.value || '0');
+                row.querySelector('.precio-final-input').value = (unitVal * (1 - descuento / 100)).toFixed(2);
             });
+
+            // Recalcular totales
             calcularTotales();
         });
     }
+
+    // Función para recalcular totales
+    function calcularTotales() {
+        let subtotal = 0;
+        const monedaSel = document.getElementById('moneda');
+        const codigoIso = monedaSel ? monedaSel.value : 'PEN';
+        const simbolo = codigoIso === 'USD' ? '$' : 'S/';
+
+        document.querySelectorAll('.producto-row').forEach(function (row) {
+            const cantidad = parseFloat(row.querySelector('.cantidad-input').value) || 0;
+            const precioFinal = parseFloat(row.querySelector('.precio-final-input').value) || 0;
+            subtotal += cantidad * precioFinal;
+        });
+
+        let igv = 0;
+        if (document.getElementById('igv-checkbox').checked) {
+            igv = subtotal * 0.18;
+        }
+
+        const total = subtotal + igv;
+
+        // Actualizar displays
+        document.getElementById('subtotal-display').innerHTML = `<i class="fas fa-money-bill-wave me-1"></i>${simbolo} ${subtotal.toFixed(2)}`;
+        document.getElementById('igv-display').innerHTML = `<i class="fas fa-money-bill-wave me-1"></i>${simbolo} ${igv.toFixed(2)}`;
+        document.getElementById('total-display').innerHTML = `<i class="fas fa-money-bill-wave me-1"></i>${simbolo} ${total.toFixed(2)}`;
+
+        // Actualizar campos ocultos
+        document.getElementById('subtotal-input').value = subtotal.toFixed(2);
+        document.getElementById('igv-input').value = igv.toFixed(2);
+        document.getElementById('total-input').value = total.toFixed(2);
+    }
+
+    // Inicializar precios unitarios según la moneda seleccionada (evitar redeclaraciones)
+    const monedaSel2 = document.getElementById('moneda');
+    const codigoIsoInit = monedaSel2 ? monedaSel2.value : 'PEN';
+
+    document.querySelectorAll('.producto-row').forEach(function(row) {
+        const precioPen = parseFloat(row.dataset.precioPen || '0');
+        const precioUsd = parseFloat(row.dataset.precioUsd || '0');
+        const precioInput = row.querySelector('.precio-input');
+
+        if (precioInput) {
+            let unit = (codigoIsoInit === 'USD') ? precioUsd : precioPen;
+            // Fallback: si el precio del catálogo está vacío/0, usar el precio guardado en el detalle
+            if (!unit || unit <= 0) {
+                unit = parseFloat(precioInput.value || '0') || 0;
+            }
+            precioInput.value = unit.toFixed(2);
+        }
+
+        // Recalcular el precio final
+        const descuentoInput = row.querySelector('.descuento-input');
+        const descuento = parseFloat(descuentoInput?.value || '0');
+        const base = parseFloat(precioInput?.value || '0');
+        const precioFinal = base * (1 - descuento / 100);
+        const finalInput = row.querySelector('.precio-final-input');
+        if (finalInput) finalInput.value = precioFinal.toFixed(2);
+    });
+
+    // Recalcular totales
+    calcularTotales();
+
+    // Actualizar precios al cambiar la moneda
+    monedaSel.addEventListener('change', function () {
+        const codigoIso = this.value;
+
+        document.querySelectorAll('.producto-row').forEach(function(row) {
+            const precioPen = parseFloat(row.dataset.precioPen || '0');
+            const precioUsd = parseFloat(row.dataset.precioUsd || '0');
+            const precioInput = row.querySelector('.precio-input');
+
+            if (precioInput) {
+                let unit;
+                if (codigoIso === 'USD') {
+                    unit = precioUsd; // Mostrar precio registrado en dólares
+                } else {
+                    unit = precioPen; // Mostrar precio registrado en soles
+                }
+                precioInput.value = unit.toFixed(2);
+            }
+
+            // Recalcular el precio final
+            const descuentoInput = row.querySelector('.descuento-input');
+            const descuento = parseFloat(descuentoInput?.value || '0');
+            const precioFinal = (parseFloat(precioInput.value) || 0) * (1 - descuento / 100);
+            row.querySelector('.precio-final-input').value = precioFinal.toFixed(2);
+        });
+
+        // Recalcular totales
+        calcularTotales();
+    });
 });
 </script>
 
@@ -574,15 +670,14 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('total-display').innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${total.toFixed(2)}`;
 
         // Saldo pendiente en tiempo real (duplicado para este bloque que redefine calcularTotales)
-        const PAGOS_VENTA2 = @json(($venta->pagos ?? collect())->map(function($p){ return ['monto' => (float)($p->monto ?? 0), 'moneda' => $p->moneda ?? 'PEN']; }));
+        const PAGOS_VENTA2 = @json(($venta->pagos ?? collect())->map(function($p){ return ['monto' => (float)($p->monto ?? 0), 'moneda' => strtoupper($p->moneda ?? 'PEN')]; }));
         let totalPagadoConv2 = 0;
         PAGOS_VENTA2.forEach(function(p){
             const monto = parseFloat(p.monto) || 0;
             const mon = (p.moneda || 'PEN').toUpperCase();
-            if (codigoIso === 'USD') {
-                totalPagadoConv2 += (mon === 'PEN' && TIPO_CAMBIO > 0) ? (monto / TIPO_CAMBIO) : monto;
-            } else {
-                totalPagadoConv2 += (mon === 'USD' && TIPO_CAMBIO > 0) ? (monto * TIPO_CAMBIO) : monto;
+            // Sumar solo pagos en la MISMA moneda del comprobante, sin tipo de cambio
+            if (mon === codigoIso.toUpperCase()) {
+                totalPagadoConv2 += monto;
             }
         });
         const saldo2 = Math.max(total - totalPagadoConv2, 0);
@@ -681,9 +776,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const usd = parseFloat(btn.dataset.precioUsd || '0') || 0;
             let unit = 0;
             if (monedaVenta === 'USD') {
-                unit = usd > 0 ? usd : (pen > 0 ? (pen / TIPO_CAMBIO) : 0);
+                unit = usd > 0 ? usd : pen;
             } else {
-                unit = pen > 0 ? pen : (usd > 0 ? (usd * TIPO_CAMBIO) : 0);
+                unit = pen > 0 ? pen : usd;
             }
             const precioInput = row.querySelector('.precio-input');
             if (precioInput) precioInput.value = unit.toFixed(2);
@@ -694,6 +789,92 @@ document.addEventListener('DOMContentLoaded', function() {
             resultados.innerHTML = '';
             if (typeof calcularTotales === 'function') calcularTotales();
         });
+    });
+});
+</script>
+@endpush
+@push('scripts')
+<script>
+// Delegated handlers to ensure discount and quantity changes recalc row final and totals
+document.addEventListener('DOMContentLoaded', function() {
+    // Single totals function without exchange-rate
+    window.calcularTotales = function() {
+        let subtotal = 0;
+        const codigoIso = (document.getElementById('moneda')?.value || 'PEN');
+        const simbolo = codigoIso === 'USD' ? '$' : 'S/';
+        const icono = codigoIso === 'USD' ? 'fas fa-dollar-sign' : 'fas fa-money-bill-wave';
+
+        document.querySelectorAll('.producto-row').forEach(function(row){
+            const cantidad = parseFloat(row.querySelector('.cantidad-input')?.value || '0');
+            const precioFinal = parseFloat(row.querySelector('.precio-final-input')?.value || '0');
+            subtotal += cantidad * precioFinal;
+        });
+
+        let igv = 0;
+        if (document.getElementById('igv-checkbox')?.checked) {
+            igv = subtotal * 0.18;
+        }
+        const total = subtotal + igv;
+
+        // Update UI
+        const badge = document.getElementById('ventaMonedaBadge');
+        if (badge) badge.textContent = codigoIso;
+        const subtotalEl = document.getElementById('subtotal-display');
+        const igvEl = document.getElementById('igv-display');
+        const totalEl = document.getElementById('total-display');
+        if (subtotalEl) subtotalEl.innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${subtotal.toFixed(2)}`;
+        if (igvEl) igvEl.innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${igv.toFixed(2)}`;
+        if (totalEl) totalEl.innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${total.toFixed(2)}`;
+
+        // Update saldo pendiente: sumar solo pagos en la MISMA moneda del comprobante, sin tipo de cambio
+        const pagos = @json(($venta->pagos ?? collect())->map(function($p){ return ['monto' => (float)($p->monto ?? 0), 'moneda' => strtoupper($p->moneda ?? 'PEN')]; }));
+        let pagado = 0;
+        pagos.forEach(function(p){
+            const mon = (p.moneda || 'PEN').toUpperCase();
+            const monto = parseFloat(p.monto) || 0;
+            if (mon === codigoIso.toUpperCase()) pagado += monto;
+        });
+        const saldo = Math.max(total - pagado, 0);
+        const saldoEl = document.getElementById('saldo-display');
+        if (saldoEl) saldoEl.innerHTML = `<i class="${icono} me-1"></i>${simbolo} ${saldo.toFixed(2)}`;
+
+        // Hidden inputs
+        const subIn = document.getElementById('subtotal-input');
+        const igvIn = document.getElementById('igv-input');
+        const totIn = document.getElementById('total-input');
+        if (subIn) subIn.value = subtotal.toFixed(2);
+        if (igvIn) igvIn.value = igv.toFixed(2);
+        if (totIn) totIn.value = total.toFixed(2);
+    };
+
+    // Compute initial final per row and totals
+    document.querySelectorAll('.producto-row').forEach(function(row){
+        const precio = parseFloat(row.querySelector('.precio-input')?.value || '0');
+        const descuento = parseFloat(row.querySelector('.descuento-input')?.value || '0');
+        const final = precio * (1 - descuento/100);
+        const finalInput = row.querySelector('.precio-final-input');
+        if (finalInput) finalInput.value = final.toFixed(2);
+    });
+    window.calcularTotales();
+
+    // Delegated listener for discount changes
+    document.addEventListener('input', function(e){
+        const desc = e.target.closest('.descuento-input');
+        if (!desc) return;
+        const row = desc.closest('.producto-row');
+        if (!row) return;
+        const precio = parseFloat(row.querySelector('.precio-input')?.value || '0');
+        const descuento = parseFloat(desc.value || '0');
+        const final = precio * (1 - descuento/100);
+        const finalInput = row.querySelector('.precio-final-input');
+        if (finalInput) finalInput.value = final.toFixed(2);
+        window.calcularTotales();
+    });
+
+    // Delegated listener for quantity changes
+    document.addEventListener('input', function(e){
+        if (!e.target.closest('.cantidad-input')) return;
+        window.calcularTotales();
     });
 });
 </script>
