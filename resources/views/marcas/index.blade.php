@@ -16,7 +16,7 @@
             </div>
             <div class="header-stats">
                 <div class="stat-card">
-                    <div class="stat-value">{{ method_exists($marcas, 'total') ? $marcas->total() : count($marcas) }}</div>
+                    <div class="stat-value">{{ $marcas->total() }}</div>
                     <div class="stat-label">Total Marcas</div>
                 </div>
                 <div class="stat-card">
@@ -172,11 +172,9 @@
     </div>
 
     <!-- Paginación -->
-    @if(method_exists($marcas, 'links'))
     <div class="pagination-container">
         {{ $marcas->links() }}
     </div>
-    @endif
 </div>
 
 <style>

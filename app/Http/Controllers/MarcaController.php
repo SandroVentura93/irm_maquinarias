@@ -18,7 +18,8 @@ class MarcaController extends Controller
      */
     public function index()
     {
-        $marcas = Marca::all();
+        // Usamos paginate para obtener un LengthAwarePaginator
+        $marcas = Marca::paginate(10); // Ajusta el número de registros por página según necesidad
         return view('marcas.index', compact('marcas'));
     }
 

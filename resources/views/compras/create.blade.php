@@ -380,6 +380,31 @@
         font-style: italic;
     }
 
+    /* Items UI mejorado */
+    .item-code-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        background: #fee2e2;
+        color: #991b1b;
+        font-weight: 700;
+        font-size: 0.8125rem;
+        margin-right: 0.5rem;
+    }
+    .item-desc {
+        color: #111827;
+        font-weight: 600;
+    }
+    .empty-state {
+        background: #f9fafb;
+        border: 2px dashed #e5e7eb;
+        border-radius: 12px;
+        padding: 1rem;
+        text-align: center;
+        color: #6b7280;
+    }
+    .empty-state i { color: #9ca3af; }
+
     @media (max-width: 768px) {
         .actions-bar {
             flex-direction: column;
@@ -419,6 +444,8 @@
 
     <form action="{{ route('compras.store') }}" method="POST">
         @csrf
+        <!-- Proveedor oculto: se deriva del primer producto agregado -->
+        <input type="hidden" name="id_proveedor" id="id_proveedor_hidden" value="">
 
         <!-- Información General -->
         <div class="card-modern">
@@ -430,18 +457,8 @@
             </div>
             <div class="card-body-custom">
                 <div class="row g-3">
-                    <div class="col-md-4">
-                        <label for="id_proveedor" class="form-label">
-                            <i class="fas fa-building"></i>
-                            Proveedor
-                        </label>
-                        <select name="id_proveedor" id="id_proveedor" class="form-select" required>
-                            <option value="">Seleccione un proveedor</option>
-                            @foreach($proveedores as $proveedor)
-                                <option value="{{ $proveedor->id_proveedor }}">{{ $proveedor->razon_social }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    <!-- Lista de proveedor eliminada: se trabajará solo con buscador de productos -->
+                    <!-- Si se requiere guardar, el backend aún exige id_proveedor. Podemos agregar selector o búsqueda de proveedor posteriormente. -->
                     <div class="col-md-4">
                         <label for="id_moneda" class="form-label">
                             <i class="fas fa-coins"></i>
@@ -509,36 +526,21 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td data-label="Producto">
-                                    <select name="detalles[0][id_producto]" class="form-select form-select-sm producto-select" required>
-                                        <option value="">Primero seleccione un proveedor</option>
-                                    </select>
-                                </td>
-                                <td data-label="Cantidad">
-                                    <input type="number" name="detalles[0][cantidad]" class="form-control form-control-sm" min="1" value="1" required>
-                                </td>
-                                <td data-label="Precio">
-                                    <div class="input-group input-group-sm">
-                                        <span class="input-group-text" id="simboloDetalle0">$</span>
-                                        <input type="number" step="0.01" name="detalles[0][precio_unitario]" class="form-control form-control-sm" value="0" required>
+                            <!-- Estado vacío inicial -->
+                            <tr class="empty-state-row">
+                                <td colspan="4">
+                                    <div class="empty-state">
+                                        <i class="fas fa-box-open"></i>
+                                        <span class="ms-2">No hay productos agregados. Usa el buscador superior para añadir ítems.</span>
                                     </div>
                                 </td>
-                                <td data-label="Acciones" class="text-center">
-                                    <button type="button" class="btn-remove-row" onclick="this.closest('tr').remove(); calcularTotales();" title="Eliminar">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
                             </tr>
+                            <!-- Las filas se agregarán solo mediante el buscador -->
                         </tbody>
                     </table>
                 </div>
                 
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn-add-product" onclick="agregarProductoRow()">
-                        <i class="fas fa-plus"></i>
-                        Agregar Producto
-                    </button>
                     <button type="button" class="btn-calculate" onclick="calcularTotales()">
                         <i class="fas fa-calculator"></i>
                         Calcular Totales
@@ -695,53 +697,19 @@ document.addEventListener('DOMContentLoaded', function() {
         inputTC.addEventListener('input', aplicarTipoCambioManualCompras);
     }
 
-    // Configurar el filtro de productos por proveedor
-    const proveedorSelect = document.getElementById('id_proveedor');
-    proveedorSelect.addEventListener('change', function() {
-        const proveedorId = this.value;
-        if (proveedorId) {
-            fetch(`/compras/productos-por-proveedor/${proveedorId}`)
-                .then(response => response.json())
-                .then(data => {
-                    // Actualizar array de productos para el buscador
-                    productos = data.map(p => ({
-                        id: p.id_producto,
-                        codigo: p.codigo || '',
-                        descripcion: p.descripcion
-                    }));
-                    
-                    // Actualizar todos los selects
-                    document.querySelectorAll('.producto-select').forEach(function(productSelect) {
-                        const currentValue = productSelect.value;
-                        productSelect.innerHTML = '<option value="">Seleccione...</option>';
-                        data.forEach(function(producto) {
-                        /* Header responsiveness for small screens */
-                        .page-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
-                        .page-header .page-title { font-size: 1.25rem; }
-                        .page-header .page-title i { font-size: 1rem; }
-                        .page-header .btn-modern { width: 100%; justify-content: center; padding: 0.6rem; }
-                        .breadcrumb-custom { font-size: 0.85rem; }
-                            const selected = currentValue == producto.id_producto ? 'selected' : '';
-                            const codigoText = producto.codigo ? producto.codigo + ' - ' : '';
-                            productSelect.innerHTML += `<option value="${producto.id_producto}" data-codigo="${producto.codigo || ''}" data-descripcion="${producto.descripcion}" ${selected}>${codigoText}${producto.descripcion}</option>`;
-                        });
-                    });
-                    
-                    // Limpiar búsqueda
-                    document.getElementById('buscadorProducto').value = '';
-                    document.getElementById('suggestionsList').classList.remove('show');
-                })
-                .catch(() => {
-                    console.error('Error al cargar productos del proveedor');
-                });
-        } else {
-            // Si no hay proveedor seleccionado, limpiar productos
-            productos = [];
-            document.querySelectorAll('.producto-select').forEach(function(productSelect) {
-                productSelect.innerHTML = '<option value="">Primero seleccione un proveedor</option>';
-            });
-        }
-    });
+    // Inicializar buscador con todos los productos desde el backend
+    try {
+        const rawProductos = @json($productos);
+        productos = (rawProductos || []).map(p => ({
+            id: p.id_producto,
+            codigo: p.codigo || '',
+            descripcion: p.descripcion || '',
+            id_proveedor: p.id_proveedor
+        }));
+    } catch (e) {
+        console.warn('No se pudieron inicializar los productos desde el backend');
+        productos = [];
+    }
 
     calcularTotales();
     // Inicializar detalles con el símbolo de moneda seleccionado
@@ -832,80 +800,62 @@ function actualizarDetallesMonedaVisual() {
     });
 }
 
-function agregarProductoRow() {
+// Agregar fila de producto seleccionada desde el buscador
+function agregarFilaProducto(idProducto, codigo, descripcion) {
     const tbody = document.querySelector('#productos-table tbody');
     const index = tbody.children.length;
     const row = document.createElement('tr');
-    
-    // Obtener opciones del primer select para mantener la lista de productos
-    const primerSelect = document.querySelector('.producto-select');
-    let optionsHTML = '';
-    
-    if (primerSelect) {
-        const options = primerSelect.querySelectorAll('option');
-        options.forEach(option => {
-            optionsHTML += option.outerHTML;
-        });
-    } else {
-        optionsHTML = '<option value="">Primero seleccione un proveedor</option>';
+    const monedaSelect = document.getElementById('id_moneda');
+    const selectedMoneda = monedaSelect.options[monedaSelect.selectedIndex]?.text?.toLowerCase() || '';
+    const simboloISO = (selectedMoneda.includes('dólar') || selectedMoneda.includes('usd') || selectedMoneda.includes('dolar')) ? 'USD' : 'PEN';
+    const simboloChar = simboloISO === 'USD' ? '$' : 'S/';
+
+    // Derivar proveedor del producto y validar homogeneidad
+    const hiddenProv = document.getElementById('id_proveedor_hidden');
+    const prod = productos.find(p => p.id === idProducto);
+    const provId = prod?.id_proveedor || null;
+    if (!provId) {
+        alert('No se pudo determinar el proveedor del producto seleccionado.');
+        return;
     }
-    
+    if (!hiddenProv.value) {
+        hiddenProv.value = provId;
+    } else if (hiddenProv.value !== String(provId)) {
+        alert('Los productos seleccionados pertenecen a distintos proveedores. Registre la compra por proveedor único.');
+        return;
+    }
+
     row.innerHTML = `
-        <td>
-            <select name="detalles[${index}][id_producto]" class="form-select form-select-sm producto-select" required>
-                ${optionsHTML}
-            </select>
+        <td data-label="Producto">
+            <div>
+                ${codigo ? `<span class=\"item-code-badge\">${codigo}</span>` : ''}<span class=\"item-desc\">${descripcion}</span>
+            </div>
+            <input type="hidden" name="detalles[${index}][id_producto]" value="${idProducto}">
         </td>
-        <td>
+        <td data-label="Cantidad">
             <input type="number" name="detalles[${index}][cantidad]" class="form-control form-control-sm" min="1" value="1" required>
         </td>
-        <td>
+        <td data-label="Precio">
             <div class="input-group input-group-sm">
-                <span class="input-group-text" id="simboloDetalle${index}">$</span>
+                <span class="input-group-text" id="simboloDetalle${index}">${simboloChar}</span>
                 <input type="number" step="0.01" name="detalles[${index}][precio_unitario]" class="form-control form-control-sm" value="0" required>
             </div>
         </td>
-        <td class="text-center">
-            <button type="button" class="btn-remove-row" onclick="this.closest('tr').remove(); calcularTotales();" title="Eliminar">
+        <td data-label="Acciones" class="text-center">
+            <button type="button" class="btn-remove-row" onclick="this.closest('tr').remove(); calcularTotales(); mostrarEstadoVacio();" title="Eliminar">
                 <i class="fas fa-trash"></i>
             </button>
         </td>
     `;
+    // Remover estado vacío si existe
+    const emptyRow = tbody.querySelector('.empty-state-row');
+    if (emptyRow) emptyRow.remove();
     tbody.appendChild(row);
     calcularTotales();
+    mostrarEstadoVacio();
 }
 
-function filtrarProductos() {
-    const busqueda = document.getElementById('buscadorProducto').value.toLowerCase();
-    const selects = document.querySelectorAll('.producto-select');
-    
-    selects.forEach(select => {
-        const options = select.querySelectorAll('option');
-        let hayCoincidencias = false;
-        
-        options.forEach(option => {
-            if (option.value === '') {
-                option.style.display = '';
-                return;
-            }
-            
-            const codigo = option.dataset.codigo?.toLowerCase() || '';
-            const descripcion = option.dataset.descripcion?.toLowerCase() || '';
-            
-            if (codigo.includes(busqueda) || descripcion.includes(busqueda)) {
-                option.style.display = '';
-                hayCoincidencias = true;
-            } else {
-                option.style.display = 'none';
-            }
-        });
-        
-        // Si hay búsqueda y coincidencias, abrir el select
-        if (busqueda && hayCoincidencias && !select.value) {
-            select.focus();
-        }
-    });
-}
+// (Eliminado) filtrarProductos: ya no se usan listas, solo buscador
 
 // Variables para el buscador
 let productos = [];
@@ -913,23 +863,12 @@ let selectedIndex = -1;
 
 // No cargar productos al inicio - se cargarán al seleccionar proveedor
 document.addEventListener('DOMContentLoaded', function() {
-    // Deshabilitar búsqueda hasta que se seleccione proveedor
+    // Habilitar búsqueda desde el inicio
     const buscadorInput = document.getElementById('buscadorProducto');
-    buscadorInput.disabled = true;
-    buscadorInput.placeholder = 'Primero seleccione un proveedor...';
-    
-    // Habilitar búsqueda cuando se seleccione proveedor
-    const proveedorSelect = document.getElementById('id_proveedor');
-    proveedorSelect.addEventListener('change', function() {
-        if (this.value) {
-            buscadorInput.disabled = false;
-            buscadorInput.placeholder = 'Buscar producto por código o descripción...';
-        } else {
-            buscadorInput.disabled = true;
-            buscadorInput.placeholder = 'Primero seleccione un proveedor...';
-            buscadorInput.value = '';
-        }
-    });
+    if (buscadorInput) {
+        buscadorInput.disabled = false;
+        buscadorInput.placeholder = 'Buscar producto por código o descripción...';
+    }
 });
 
 function buscarProducto(event) {
@@ -1011,42 +950,24 @@ function actualizarSeleccion() {
 }
 
 function seleccionarProducto(id, codigo, descripcion) {
-    // Buscar el primer select vacío o agregar una nueva fila
-    const selects = document.querySelectorAll('.producto-select');
-    let selectVacio = null;
-    
-    for (let select of selects) {
-        if (!select.value) {
-            selectVacio = select;
-            break;
-        }
-    }
-    
-    // Si no hay select vacío, agregar una nueva fila
-    if (!selectVacio) {
-        agregarProductoRow();
-        // Obtener el nuevo select
-        const tbody = document.querySelector('#productos-table tbody');
-        const ultimaFila = tbody.lastElementChild;
-        selectVacio = ultimaFila.querySelector('.producto-select');
-    }
-    
-    // Seleccionar el producto
-    if (selectVacio) {
-        selectVacio.value = id;
-        // Enfocar el campo de cantidad
-        const filaActual = selectVacio.closest('tr');
-        const inputCantidad = filaActual.querySelector('input[name*="[cantidad]"]');
-        if (inputCantidad) {
-            inputCantidad.focus();
-            inputCantidad.select();
-        }
-    }
-    
+    // Agregar directamente una fila con el producto seleccionado
+    agregarFilaProducto(id, codigo, descripcion);
     // Limpiar búsqueda
     document.getElementById('buscadorProducto').value = '';
     document.getElementById('suggestionsList').classList.remove('show');
     selectedIndex = -1;
+}
+
+// Mostrar/ocultar estado vacío
+function mostrarEstadoVacio() {
+    const tbody = document.querySelector('#productos-table tbody');
+    const filasReal = Array.from(tbody.children).filter(tr => !tr.classList.contains('empty-state-row'));
+    if (filasReal.length === 0 && !tbody.querySelector('.empty-state-row')) {
+        const tr = document.createElement('tr');
+        tr.className = 'empty-state-row';
+        tr.innerHTML = `<td colspan="4"><div class="empty-state"><i class=\"fas fa-box-open\"></i><span class=\"ms-2\">No hay productos agregados. Usa el buscador superior para añadir ítems.</span></div></td>`;
+        tbody.appendChild(tr);
+    }
 }
 
 // Cerrar sugerencias al hacer click fuera

@@ -8,6 +8,7 @@ use App\Models\Proveedor;
 use App\Models\Moneda;
 use App\Models\Producto;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CompraController extends Controller
 {
@@ -45,14 +46,15 @@ class CompraController extends Controller
     {
         $proveedores = Proveedor::all();
         $monedas = Moneda::all();
-        $productos = Producto::all();
+        // Asegurar que el buscador tenga los campos necesarios
+        $productos = Producto::select('id_producto', 'codigo', 'descripcion', 'id_proveedor')->orderBy('descripcion')->get();
         return view('compras.create', compact('proveedores', 'monedas', 'productos'));
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'id_proveedor' => 'required|exists:proveedores,id_proveedor',
+            'id_proveedor' => 'nullable|exists:proveedores,id_proveedor',
             'id_moneda' => 'required|exists:monedas,id_moneda',
             'fecha' => 'required|date',
             'incluir_igv' => 'nullable|boolean',
@@ -63,6 +65,26 @@ class CompraController extends Controller
             'detalles.*.cantidad' => 'required|integer|min:1',
             'detalles.*.precio_unitario' => 'required|numeric',
         ]);
+
+        // Derivar proveedor desde los productos si no se envió
+        $idProveedor = $data['id_proveedor'] ?? null;
+        if (!$idProveedor) {
+            $primerProductoId = $data['detalles'][0]['id_producto'] ?? null;
+            if ($primerProductoId) {
+                $primerProducto = Producto::select('id_proveedor')->find($primerProductoId);
+                $idProveedor = $primerProducto->id_proveedor ?? null;
+            }
+        }
+        if (!$idProveedor) {
+            return back()->withErrors(['id_proveedor' => 'No se pudo determinar el proveedor de la compra.'])->withInput();
+        }
+        // Validar que todos los productos pertenezcan al mismo proveedor
+        foreach ($data['detalles'] as $detalleValid) {
+            $prodValid = Producto::select('id_proveedor')->find($detalleValid['id_producto']);
+            if (!$prodValid || (int)$prodValid->id_proveedor !== (int)$idProveedor) {
+                return back()->withErrors(['detalles' => 'Los productos seleccionados pertenecen a distintos proveedores. Registre la compra por proveedor único.'])->withInput();
+            }
+        }
 
         // Verificar coherencia entre id_moneda y moneda_codigo (si se envía)
         if (!empty($data['moneda_codigo'])) {
@@ -87,23 +109,24 @@ class CompraController extends Controller
             $total += $detalle['total'];
         }
 
-        // Crear compra con totales y tipo de cambio manual
-        $compra = new Compra();
-        $compra->id_proveedor = $data['id_proveedor'];
-        $compra->id_moneda = $data['id_moneda'];
-        $compra->fecha = $data['fecha'];
-        // Nota: algunas bases no tienen columna incluir_igv; no asignar si no existe
-        $compra->subtotal = $subtotal;
-        $compra->igv = $igv;
-        $compra->total = $total;
-        // Nota: No asignar tipo_cambio si la columna no existe en la tabla compras
-        $compra->save();
+        // Crear compra y detalles de forma atómica
+        DB::transaction(function() use ($idProveedor, $data, $subtotal, $igv, $total) {
+            $compra = new Compra();
+            $compra->id_proveedor = $idProveedor;
+            $compra->id_moneda = $data['id_moneda'];
+            $compra->fecha = $data['fecha'];
+            // Nota: algunas bases no tienen columna incluir_igv; no asignar si no existe
+            $compra->subtotal = $subtotal;
+            $compra->igv = $igv;
+            $compra->total = $total;
+            // Nota: No asignar tipo_cambio si la columna no existe en la tabla compras
+            $compra->save();
 
-        // Guardar detalles
-        foreach ($data['detalles'] as $detalle) {
-            $detalle['id_compra'] = $compra->id_compra;
-            DetalleCompra::create($detalle);
-        }
+            foreach ($data['detalles'] as $detalle) {
+                $detalle['id_compra'] = $compra->id_compra;
+                DetalleCompra::create($detalle);
+            }
+        });
 
         return redirect()->route('compras.index')->with('success', 'Compra registrada correctamente');
     }
@@ -126,7 +149,7 @@ class CompraController extends Controller
     public function update(Request $request, $id)
     {
         $data = $request->validate([
-            'id_proveedor' => 'required|exists:proveedores,id_proveedor',
+            'id_proveedor' => 'nullable|exists:proveedores,id_proveedor',
             'id_moneda' => 'required|exists:monedas,id_moneda',
             'fecha' => 'required|date',
             'incluir_igv' => 'nullable|boolean',
@@ -138,6 +161,26 @@ class CompraController extends Controller
             'detalles.*.cantidad' => 'required|integer|min:1',
             'detalles.*.precio_unitario' => 'required|numeric',
         ]);
+
+        // Derivar proveedor desde los productos si no se envió
+        $idProveedorUpd = $data['id_proveedor'] ?? null;
+        if (!$idProveedorUpd) {
+            $primerProductoId = $data['detalles'][0]['id_producto'] ?? null;
+            if ($primerProductoId) {
+                $primerProducto = Producto::select('id_proveedor')->find($primerProductoId);
+                $idProveedorUpd = $primerProducto->id_proveedor ?? null;
+            }
+        }
+        if (!$idProveedorUpd) {
+            return back()->withErrors(['id_proveedor' => 'No se pudo determinar el proveedor de la compra.'])->withInput();
+        }
+        // Validar que todos los productos pertenezcan al mismo proveedor
+        foreach ($data['detalles'] as $detalleValid) {
+            $prodValid = Producto::select('id_proveedor')->find($detalleValid['id_producto']);
+            if (!$prodValid || (int)$prodValid->id_proveedor !== (int)$idProveedorUpd) {
+                return back()->withErrors(['detalles' => 'Los productos seleccionados pertenecen a distintos proveedores. Registre la compra por proveedor único.'])->withInput();
+            }
+        }
 
         $compra = Compra::findOrFail($id);
 
@@ -157,18 +200,22 @@ class CompraController extends Controller
             $total += $detalle['total'];
         }
         // Asignar campos manualmente evitando columnas inexistentes
-        $compra->id_proveedor = $data['id_proveedor'];
-        $compra->id_moneda = $data['id_moneda'];
-        $compra->fecha = $data['fecha'];
-        $compra->subtotal = $subtotal;
-        $compra->igv = $igv;
-        $compra->total = $total;
-        $compra->save();
-        $compra->detalles()->delete();
-        foreach ($data['detalles'] as $detalle) {
-            $detalle['id_compra'] = $compra->id_compra;
-            DetalleCompra::create($detalle);
-        }
+        // Actualizar compra y detalles de forma atómica
+        DB::transaction(function() use ($compra, $idProveedorUpd, $data, $subtotal, $igv, $total) {
+            $compra->id_proveedor = $idProveedorUpd;
+            $compra->id_moneda = $data['id_moneda'];
+            $compra->fecha = $data['fecha'];
+            $compra->subtotal = $subtotal;
+            $compra->igv = $igv;
+            $compra->total = $total;
+            $compra->save();
+
+            $compra->detalles()->delete();
+            foreach ($data['detalles'] as $detalle) {
+                $detalle['id_compra'] = $compra->id_compra;
+                DetalleCompra::create($detalle);
+            }
+        });
         return redirect()->route('compras.show', $compra->id_compra)->with('success', 'Compra actualizada correctamente');
     }
 
