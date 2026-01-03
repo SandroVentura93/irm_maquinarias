@@ -107,3 +107,15 @@ El sistema PDF ahora usa correctamente:
 - Templates específicos para cada comprobante
 
 **¡El sistema está 100% alineado con los estándares SUNAT!**
+
+---
+
+## 📝 Mejora: Cotización muestra el total en letras
+
+- Se añadió en `resources/views/comprobantes/cotizacion.blade.php` un bloque visible con el **importe total en letras**.
+- El texto se calcula en el `PdfController` usando `numeroALetrasConMoneda()` para respetar la **moneda de la venta** (PEN/USD).
+- Formato mostrado: `SON: <monto en letras> CON <centavos>/100 <MONEDA>`.
+- Ejemplo USD: `SON: SEISCIENTOS NOVENTA Y DOS CON 66/100 DOLARES AMERICANOS`.
+- Para **Cotización (CT/ID 8)**, los decimales se muestran como **dos cifras** con denominador **/100**.
+- Ejemplo Cotización USD: `SON: SEISCIENTOS NOVENTA Y DOS CON 71/100 DOLARES AMERICANOS`.
+- Beneficio: mejora la claridad para el cliente y estandariza la presentación del total.

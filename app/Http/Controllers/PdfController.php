@@ -310,9 +310,9 @@ class PdfController extends Controller
                 ->setPaper('a4', 'portrait')
                 ->setOptions([
                     'isHtml5ParserEnabled' => true,
-                    'isRemoteEnabled' => true,
-                    'defaultFont' => 'Arial, sans-serif',
-                    'dpi' => 96, // Performance optimizado
+                    'isRemoteEnabled' => false, // evitar intentos de cargar recursos externos
+                    'defaultFont' => 'DejaVu Sans', // fuente soportada por DomPDF
+                    'dpi' => 96,
                     'enable_php' => false,
                     'enable_javascript' => false,
                     'enable_html5_parser' => true,
@@ -320,7 +320,7 @@ class PdfController extends Controller
                     'margin_bottom' => 8,
                     'margin_left' => 8,
                     'margin_right' => 8,
-                    'chroot' => base_path('resources/views')
+                    'chroot' => public_path() // restringir accesos a recursos locales
                 ]);
 
             $nombreArchivo = $this->generarNombreArchivo($venta, $tipoConfig);
@@ -406,13 +406,13 @@ class PdfController extends Controller
                 ->setPaper('a4', 'portrait')
                 ->setOptions([
                     'isHtml5ParserEnabled' => true,
-                    'isRemoteEnabled' => true,
-                    'defaultFont' => 'Arial, sans-serif',
-                    'dpi' => 96, // Reducir DPI para mejor performance
+                    'isRemoteEnabled' => false,
+                    'defaultFont' => 'DejaVu Sans',
+                    'dpi' => 96,
                     'enable_php' => false,
                     'enable_javascript' => false,
                     'enable_html5_parser' => true,
-                    'chroot' => base_path('resources/views')
+                    'chroot' => public_path()
                 ]);
 
             // ⚡ Log para debugging performance
@@ -691,24 +691,48 @@ class PdfController extends Controller
      */
     private function convertirNumeroALetras($numero)
     {
-        if ($numero == 0) return "CERO";
-        
-        $unidades = ["", "UNO", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE"];
-        $decenas = ["", "", "VEINTE", "TREINTA", "CUARENTA", "CINCUENTA", "SESENTA", "SETENTA", "OCHENTA", "NOVENTA"];
-        $especiales = ["DIEZ", "ONCE", "DOCE", "TRECE", "CATORCE", "QUINCE", "DIECISEIS", "DIECISIETE", "DIECIOCHO", "DIECINUEVE"];
-        
-        if ($numero < 10) {
-            return $unidades[$numero];
-        } elseif ($numero < 20) {
-            return $especiales[$numero - 10];
-        } elseif ($numero < 100) {
-            $d = intval($numero / 10);
-            $u = $numero % 10;
-            return $decenas[$d] . ($u > 0 ? " Y " . $unidades[$u] : "");
-        }
-        
-        // Para números más grandes, implementar lógica completa
-        return "NÚMERO MAYOR";
+        $n = intval($numero);
+        if ($n === 0) return 'CERO';
+
+        $UNIDADES = ["", "UNO", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE"];
+        $DECENAS = ["", "DIEZ", "VEINTE", "TREINTA", "CUARENTA", "CINCUENTA", "SESENTA", "SETENTA", "OCHENTA", "NOVENTA"];
+        $DIEZ_A_DIECINUEVE = ["DIEZ", "ONCE", "DOCE", "TRECE", "CATORCE", "QUINCE", "DIECISEIS", "DIECISIETE", "DIECIOCHO", "DIECINUEVE"];
+        $CENTENAS = ["", "CIEN", "DOSCIENTOS", "TRESCIENTOS", "CUATROCIENTOS", "QUINIENTOS", "SEISCIENTOS", "SETECIENTOS", "OCHOCIENTOS", "NOVECIENTOS"];
+
+        $decenas_fn = function($num) use ($UNIDADES, $DECENAS, $DIEZ_A_DIECINUEVE) {
+            if ($num < 10) return $UNIDADES[$num];
+            if ($num < 20) return $DIEZ_A_DIECINUEVE[$num - 10];
+            $d = intdiv($num, 10);
+            $u = $num % 10;
+            if ($d === 2 && $u > 0) return 'VEINTI' . $UNIDADES[$u];
+            return $DECENAS[$d] . ($u > 0 ? ' Y ' . $UNIDADES[$u] : '');
+        };
+
+        $centenas_fn = function($num) use ($CENTENAS, $decenas_fn) {
+            if ($num < 100) return $decenas_fn($num);
+            $c = intdiv($num, 100);
+            $r = $num % 100;
+            if ($c === 1) return $r > 0 ? 'CIENTO ' . $decenas_fn($r) : 'CIEN';
+            return $CENTENAS[$c] . ($r > 0 ? ' ' . $decenas_fn($r) : '');
+        };
+
+        $miles_fn = function($num) use ($centenas_fn) {
+            if ($num < 1000) return $centenas_fn($num);
+            $miles = intdiv($num, 1000);
+            $resto = $num % 1000;
+            $milesTxt = ($miles === 1) ? 'MIL' : $centenas_fn($miles) . ' MIL';
+            return $milesTxt . ($resto > 0 ? ' ' . $centenas_fn($resto) : '');
+        };
+
+        $millones_fn = function($num) use ($miles_fn, $centenas_fn) {
+            if ($num < 1000000) return $miles_fn($num);
+            $millones = intdiv($num, 1000000);
+            $resto = $num % 1000000;
+            $millonesTxt = ($millones === 1) ? 'UN MILLON' : $miles_fn($millones) . ' MILLONES';
+            return $millonesTxt . ($resto > 0 ? ' ' . $miles_fn($resto) : '');
+        };
+
+        return $millones_fn($n);
     }
 
     /**
@@ -716,14 +740,35 @@ class PdfController extends Controller
      */
     private function numeroALetrasConMoneda($numero, $venta)
     {
-        $entero = intval($numero);
-        $decimales = intval(round(($numero - $entero) * 100));
-        $base = "SON: " . strtoupper($this->convertirNumeroALetras($entero)) . " CON {$decimales}/100";
+        $entero = intval(floor($numero));
+        $fraccion = max(0, $numero - $entero);
+
+        // Decimales: mostrar SIEMPRE dos cifras con denominador /100
+        $decimales = intval(round($fraccion * 100)); // 0..99
+        if ($decimales === 100) { $decimales = 0; $entero += 1; }
+        $denominador = 100;
+        $decFormato = sprintf('%02d', $decimales);
+
+        $baseNumero = strtoupper($this->convertirNumeroALetras($entero));
+        $base = 'SON: ' . $baseNumero . ' CON ' . $decFormato . '/' . $denominador;
 
         // Determinar nombre de moneda a partir de la relación
-        $codigoIso = strtoupper($venta->moneda->codigo_iso ?? 'USD');
-        // Mapear nombre formal
-        $nombre = $codigoIso === 'PEN' ? 'SOLES' : ($codigoIso === 'USD' ? 'DÓLARES' : $codigoIso);
+        $codigoIso = strtoupper($venta->moneda->codigo_iso ?? 'PEN');
+        // Mapear nombre formal exacto segun requerimiento
+        switch ($codigoIso) {
+            case 'USD':
+                $nombre = 'DOLARES AMERICANOS';
+                break;
+            case 'PEN':
+                $nombre = 'SOLES';
+                break;
+            case 'EUR':
+                $nombre = 'EUROS';
+                break;
+            default:
+                $nombre = $codigoIso; // fallback
+        }
+
         return $base . ' ' . $nombre;
     }
 

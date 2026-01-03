@@ -187,6 +187,32 @@
             color: #0c5460;
             font-weight: bold;
         }
+
+        .amount-words {
+            margin-top: 20px;
+            padding: 12px 15px;
+            background: #eef5ff;
+            border: 1px solid #cfe2ff;
+            border-left: 4px solid #2c5aa0;
+        }
+        .amount-words h4 {
+            color: #2c5aa0;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+        .amount-words p {
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        /* Bank data styles */
+        .bank-data { margin-top: 25px; }
+        .bank-data h4 { color: #2c5aa0; margin-bottom: 8px; font-size: 14px; }
+        .bank-table { width: 100%; border-collapse: collapse; }
+        .bank-table th { background: #2c5aa0; color: #fff; padding: 8px; border: 1px solid #1f4173; font-size: 11px; text-align: center; }
+        .bank-table td { padding: 8px; border: 1px solid #dee2e6; font-size: 11px; text-align: center; }
+        .bank-logo { width: 60px; height: 20px; object-fit: contain; }
+        .bank-badge { display:inline-block; padding:2px 6px; background:#2c5aa0; color:#fff; border-radius:4px; font-size:10px; }
     </style>
 </head>
 <body>
@@ -216,12 +242,13 @@
             <h3>INFORMACIÓN DEL CLIENTE</h3>
             <div style="display: table; width: 100%;">
                 <div style="display: table-cell; width: 50%;">
-                    <p><strong>Cliente:</strong> {{ $cliente->nombre }}</p>
-                    <p><strong>{{ strlen($cliente->numero_documento) == 8 ? 'DNI' : 'RUC' }}:</strong> {{ $cliente->numero_documento }}</p>
+                    <p><strong>Cliente:</strong> {{ optional($venta->cliente)->nombre ?? 'Sin cliente' }}</p>
+                    @php $doc = optional($venta->cliente)->numero_documento; @endphp
+                    <p><strong>{{ strlen($doc ?? '') == 8 ? 'DNI' : 'RUC' }}:</strong> {{ $doc ?? 'N/A' }}</p>
                 </div>
                 <div style="display: table-cell; width: 50%;">
-                    <p><strong>Dirección:</strong> {{ $cliente->direccion ?: 'No especificada' }}</p>
-                    <p><strong>Teléfono:</strong> {{ $cliente->telefono ?: 'No especificado' }}</p>
+                    <p><strong>Dirección:</strong> {{ optional($venta->cliente)->direccion ?? 'No especificada' }}</p>
+                    <p><strong>Teléfono:</strong> {{ optional($venta->cliente)->telefono ?? 'No especificado' }}</p>
                 </div>
             </div>
         </div>
@@ -244,24 +271,51 @@
 
         <!-- Totales integrados en el bloque estandarizado; SON en condiciones -->
 
-        <!-- Condiciones comerciales -->
-        <div class="conditions">
-            <h4>CONDICIONES COMERCIALES</h4>
-            <ul>
-                <li><strong>Forma de Pago:</strong> 50% adelanto, 50% contra entrega</li>
-                <li><strong>Tiempo de Entrega:</strong> 10 días hábiles según disponibilidad</li>
-                <!-- <li><strong>Garantía:</strong> 12 meses por defectos de fabricación</li> -->
-                <li><strong>Validez de Precios:</strong> 15 días calendarios</li>
-                @php
-                    $descripcionMoneda = ($codigoIso === 'USD') ? 'Dólares Americanos' : 'Soles Peruanos';
-                @endphp
-                <li><strong>Moneda:</strong> {{ $descripcionMoneda }} <span style="display:inline-block; padding:2px 6px; background:#2c5aa0; color:white; border-radius:4px; font-size:10px;">{{ $codigoIso }}</span></li>
-                @if(($codigoIso ?? 'PEN') === 'USD' && isset($tipoCambio))
-                    <li><strong>Tipo de Cambio (referencial):</strong> S/ {{ number_format($venta->tipo_cambio ?? $tipoCambio ?? 0, 2) }} por USD</li>
-                @endif
-                <!-- <li><strong>Incluye:</strong> IGV, instalación básica y capacitación de uso</li>
-                <li><strong>No Incluye:</strong> Flete, seguros, obras civiles</li> -->
-            </ul>
+        <!-- Importe total en letras -->
+        <div class="amount-words">
+            <h4>IMPORTE TOTAL EN LETRAS:</h4>
+            <p>
+                {{ $datos['total_en_letras'] 
+                    ?? ($totalEnLetras ?? (function() use($venta, $codigoIso) {
+                        // Fallback simple: entero y dos decimales /100 + moneda
+                        $entero = intval(floor($venta->total ?? 0));
+                        $fraccion = max(0, ($venta->total ?? 0) - $entero);
+                        $dec = intval(round($fraccion * 100));
+                        if ($dec === 100) { $dec = 0; $entero += 1; }
+                        $mon = (($codigoIso ?? 'PEN') === 'USD') ? 'DOLARES AMERICANOS' : 'SOLES';
+                        return 'SON: ' . $entero . ' CON ' . sprintf('%02d', $dec) . '/100 ' . $mon;
+                    })()) 
+                }}
+            </p>
+        </div>
+
+        <!-- Datos Bancarios (reemplaza condiciones comerciales) -->
+        <div class="bank-data">
+            <h4>DATOS BANCARIOS</h4>
+            <table class="bank-table">
+                <thead>
+                    <tr>
+                        <th>BANCO</th>
+                        <th>MONEDA</th>
+                        <th>CUENTA</th>
+                        <th>CCI</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="bank-badge">BCP</span></td>
+                        <td>SOLES</td>
+                        <td>245-8089437-0-29</td>
+                        <td>00224500808943702997</td>
+                    </tr>
+                    <tr>
+                        <td><span class="bank-badge">BCP</span></td>
+                        <td>DOLARES</td>
+                        <td>245-9392508-1-72</td>
+                        <td>00224500939250817296</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
 
         <!-- Footer -->

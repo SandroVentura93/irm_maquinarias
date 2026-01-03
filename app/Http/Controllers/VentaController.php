@@ -958,7 +958,7 @@ class VentaController extends Controller
                 ],
                 'tipoCambio' => $tipoCambio,
                 'descuentoTotal' => $venta->detalleVentas->sum('descuento_monto') ?? 0,
-                'totalEnLetras' => $this->numeroALetrasConMoneda($venta->total ?? 0, $codigoIso),
+                'totalEnLetras' => $this->numeroALetrasConMoneda($venta->total ?? 0, $codigoIso, $tipoComprobante),
                 'mostrarCodigoParte' => $mostrarCodigoParte,
                 // Mantener compatibilidad con vistas que esperan un array $datos
                 'datos' => [
@@ -1006,38 +1006,80 @@ class VentaController extends Controller
         }
     }
 
-    // Función auxiliar para convertir números a letras
-    private function numeroALetras($numero)
+    // Convierte el número entero a letras (español), incluyendo miles y millones
+    private function convertirEnteroALetras($entero)
     {
-        $numero = floatval($numero);
-        $enteros = floor($numero);
-        $decimales = round(($numero - $enteros) * 100);
-        
-        // Implementación básica
-        $unidades = ['', 'UNO', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
-        $decenas = ['', '', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
-        
-        if ($enteros == 0) {
-            return 'CERO CON ' . sprintf('%02d', $decimales) . '/100 SOLES';
-        }
-        
-        if ($enteros <= 9) {
-            return $unidades[$enteros] . ' CON ' . sprintf('%02d', $decimales) . '/100 SOLES';
-        }
-        
-        return strtoupper(number_format($enteros)) . ' CON ' . sprintf('%02d', $decimales) . '/100 SOLES';
+        $n = intval($entero);
+        if ($n === 0) return 'CERO';
+
+        $UNIDADES = ["", "UNO", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE"];
+        $DECENAS = ["", "DIEZ", "VEINTE", "TREINTA", "CUARENTA", "CINCUENTA", "SESENTA", "SETENTA", "OCHENTA", "NOVENTA"];
+        $DIEZ_A_DIECINUEVE = ["DIEZ", "ONCE", "DOCE", "TRECE", "CATORCE", "QUINCE", "DIECISEIS", "DIECISIETE", "DIECIOCHO", "DIECINUEVE"];
+        $CENTENAS = ["", "CIEN", "DOSCIENTOS", "TRESCIENTOS", "CUATROCIENTOS", "QUINIENTOS", "SEISCIENTOS", "SETECIENTOS", "OCHOCIENTOS", "NOVECIENTOS"];
+
+        $decenas_fn = function($num) use ($UNIDADES, $DECENAS, $DIEZ_A_DIECINUEVE) {
+            if ($num < 10) return $UNIDADES[$num];
+            if ($num < 20) return $DIEZ_A_DIECINUEVE[$num - 10];
+            $d = intdiv($num, 10);
+            $u = $num % 10;
+            if ($d === 2 && $u > 0) return 'VEINTI' . $UNIDADES[$u];
+            return $DECENAS[$d] . ($u > 0 ? ' Y ' . $UNIDADES[$u] : '');
+        };
+
+        $centenas_fn = function($num) use ($CENTENAS, $decenas_fn) {
+            if ($num < 100) return $decenas_fn($num);
+            $c = intdiv($num, 100);
+            $r = $num % 100;
+            if ($c === 1) return $r > 0 ? 'CIENTO ' . $decenas_fn($r) : 'CIEN';
+            return $CENTENAS[$c] . ($r > 0 ? ' ' . $decenas_fn($r) : '');
+        };
+
+        $miles_fn = function($num) use ($centenas_fn) {
+            if ($num < 1000) return $centenas_fn($num);
+            $miles = intdiv($num, 1000);
+            $resto = $num % 1000;
+            $milesTxt = ($miles === 1) ? 'MIL' : $centenas_fn($miles) . ' MIL';
+            return $milesTxt . ($resto > 0 ? ' ' . $centenas_fn($resto) : '');
+        };
+
+        $millones_fn = function($num) use ($miles_fn) {
+            if ($num < 1000000) return $miles_fn($num);
+            $millones = intdiv($num, 1000000);
+            $resto = $num % 1000000;
+            $millonesTxt = ($millones === 1) ? 'UN MILLON' : $miles_fn($millones) . ' MILLONES';
+            return $millonesTxt . ($resto > 0 ? ' ' . $miles_fn($resto) : '');
+        };
+
+        return $millones_fn($n);
     }
 
-    // Variante que agrega la moneda (SOLES / DÓLARES) según código ISO
-    private function numeroALetrasConMoneda($numero, $codigoIso = 'PEN')
+    // Número a letras con moneda. Para Cotización usa decimales /10.
+    private function numeroALetrasConMoneda($numero, $codigoIso = 'PEN', $tipoComprobante = null)
     {
-        $base = $this->numeroALetras($numero);
-        $codigoIso = strtoupper($codigoIso ?? 'PEN');
-        if ($codigoIso === 'USD') {
-            // Reemplazar sufijo por DÓLARES si la original dice SOLES
-            $base = preg_replace('/SOLES$/', 'DÓLARES', $base);
+        $entero = intval(floor($numero));
+        $fraccion = max(0, $numero - $entero);
+
+        $esCotizacion = false;
+        if (is_string($tipoComprobante)) {
+            $esCotizacion = stripos($tipoComprobante, 'COTIZ') !== false;
         }
-        return $base;
+
+        // Decimales: mostrar SIEMPRE dos cifras con denominador /100
+        $dec = intval(round($fraccion * 100));
+        if ($dec === 100) { $dec = 0; $entero += 1; }
+        $den = 100;
+        $decTxt = sprintf('%02d', $dec);
+
+        $baseNumero = strtoupper($this->convertirEnteroALetras($entero));
+        $codigoIso = strtoupper($codigoIso ?? 'PEN');
+        switch ($codigoIso) {
+            case 'USD': $moneda = 'DOLARES AMERICANOS'; break;
+            case 'PEN': $moneda = 'SOLES'; break;
+            case 'EUR': $moneda = 'EUROS'; break;
+            default: $moneda = $codigoIso; break;
+        }
+
+        return 'SON: ' . $baseNumero . ' CON ' . $decTxt . '/' . $den . ' ' . $moneda;
     }
 
     // Valida y normaliza el tipo de cambio manual ingresado

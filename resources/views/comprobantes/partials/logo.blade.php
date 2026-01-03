@@ -1,38 +1,34 @@
-<!-- Logo Component para PDFs -->
+<!-- Logo Component para PDFs (sin fuentes/recursos remotos) -->
 <div class="company-logo">
     @php
-        // PRIORIDAD ABSOLUTA: logo.png desde public/images/
+        // Intentar cargar logo local desde public/images/logo.png
         $logoPath = public_path('images/logo.png');
-        $logoExists = file_exists($logoPath);
-        
-        // Verificar que GD está disponible para procesar PNG
-        $gdAvailable = extension_loaded('gd');
-        
-        // Crear base64 del PNG si existe y GD está disponible
         $logoBase64 = null;
-        if ($logoExists && $gdAvailable) {
+        if (is_file($logoPath)) {
             try {
                 $logoContent = file_get_contents($logoPath);
-                $logoBase64 = 'data:image/png;base64,' . base64_encode($logoContent);
-            } catch (Exception $e) {
-                // Si hay error leyendo el archivo, usar fallback
+                if ($logoContent !== false) {
+                    $logoBase64 = 'data:image/png;base64,' . base64_encode($logoContent);
+                }
+            } catch (\Exception $e) {
                 $logoBase64 = null;
             }
         }
-        
-        // Logo SVG de fallback (solo como última opción)
-        $logoSvgFallback = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" style="background:#f39c12"><rect width="200" height="100" fill="#f39c12"/><circle cx="100" cy="50" r="35" fill="#2c3e50"/><text x="100" y="58" font-family="Arial" font-size="18" font-weight="bold" text-anchor="middle" fill="white">IRM</text><text x="100" y="75" font-family="Arial" font-size="8" text-anchor="middle" fill="white">MAQUINARIAS</text></svg>';
+        // Logo desde configuración (ya viene en base64 si existe)
+        $empresaLogo = isset($empresa['logo_base64']) ? $empresa['logo_base64'] : null;
     @endphp
-    
-    @if($logoExists && $logoBase64 && $gdAvailable)
-        <!-- 🥇 PRIORIDAD 1: Logo PNG desde public/images/logo.png -->
-    <img src="{{ $logoBase64 }}" alt="IRM Maquinarias S.R.L." class="img-fluid" style="max-width: 100%; max-height: 100%; object-fit: contain;">
-    @elseif(isset($empresa['logo_base64']) && $empresa['logo_base64'])
-        <!-- 🥈 PRIORIDAD 2: Logo desde configuración de empresa -->
-    <img src="{{ $empresa['logo_base64'] }}" alt="{{ $empresa['razon_social'] ?? 'IRM Maquinarias S.R.L.' }}" class="img-fluid" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+
+    @if($logoBase64)
+        <img src="{{ $logoBase64 }}" alt="IRM Maquinarias S.R.L." style="max-width: 100%; max-height: 100%; object-fit: contain;">
+    @elseif($empresaLogo)
+        <img src="{{ $empresaLogo }}" alt="{{ $empresa['razon_social'] ?? 'IRM Maquinarias S.R.L.' }}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
     @else
-        <!-- 🥉 PRIORIDAD 3: Logo SVG de fallback -->
-    <img src="data:image/svg+xml;base64,{{ base64_encode($logoSvgFallback) }}" alt="IRM Maquinarias S.R.L." class="img-fluid" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+        <!-- Fallback ultra simple para evitar bloqueos en DomPDF -->
+        <div style="
+            width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+            background: #f8f9fa; border: 2px solid #2c5aa0; color: #2c5aa0; font-weight: bold; font-size: 11px;">
+            IRM Maquinarias S.R.L.
+        </div>
     @endif
 </div>
 
@@ -46,10 +42,5 @@
         justify-content: center;
         margin-bottom: 10px;
     }
-    
-    .company-logo img {
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain;
-    }
+    .company-logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
 </style>
