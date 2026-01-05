@@ -423,7 +423,7 @@
   window.productoSeleccionado = window.productoSeleccionado || null;
 // === VARIABLES ===
 const IGV = 0.18;
-let TIPO_CAMBIO = 3.80;
+let TIPO_CAMBIO = {{ isset($tipoCambio) ? number_format($tipoCambio, 2, '.', '') : '3.80' }};
 let detalle = [];
 let productoSeleccionado = null;
 let clienteSeleccionado = null;
@@ -705,24 +705,25 @@ inputProd.addEventListener('input', async () => {
       // Mostrar productos con información completa
       const monedaSeleccionada = document.getElementById('moneda')?.value || 'USD';
       lista.innerHTML = items.map(it => {
-        const precioPen = Number(it.precio_venta || it.precio_compra || 0);
-        const precioUsd = (it.precio_venta_usd || it.precio_compra_usd) ? Number(it.precio_venta_usd || it.precio_compra_usd) : null;
-        let precioDisplay = '';
-        if (monedaSeleccionada === 'USD') {
-          if (precioUsd !== null) precioDisplay = `$ ${precioUsd.toFixed(2)}`;
-          else precioDisplay = `$ ${(precioPen / TIPO_CAMBIO).toFixed(2)}`;
-        } else {
-          precioDisplay = `S/ ${precioPen.toFixed(2)}`;
-        }
+        const penRaw = Number(it.precio_venta || it.precio_compra || 0);
+        const usdRawNullable = (it.precio_venta_usd || it.precio_compra_usd);
+        const usdRaw = usdRawNullable ? Number(usdRawNullable) : null;
+        // Base preferente: si hay USD, usar USD; sino, PEN
+        const baseIso = (usdRaw !== null && usdRaw > 0) ? 'USD' : 'PEN';
+        const baseVal = (baseIso === 'USD') ? (usdRaw || 0) : penRaw;
+        const penMostrar = (baseIso === 'USD' && TIPO_CAMBIO > 0) ? (baseVal * TIPO_CAMBIO) : baseVal;
+        const usdMostrar = (baseIso === 'PEN' && TIPO_CAMBIO > 0) ? (baseVal / TIPO_CAMBIO) : baseVal;
 
-        return `
+          return `
         <div class='p-3 border-bottom prod-item' 
               data-id='${it.id_producto}' 
               data-codigo='${it.codigo || ''}'
               data-numero-parte='${it.numero_parte || ''}'
               data-desc='${it.descripcion || ''}' 
-              data-precio-pen='${precioPen}'
-              data-precio-usd='${precioUsd !== null ? precioUsd : ''}'
+              data-precio-pen='${penRaw}'
+              data-precio-usd='${usdRaw !== null ? usdRaw : ''}'
+            data-precio-pen-conv='${penMostrar.toFixed(2)}'
+            data-precio-usd-conv='${usdMostrar.toFixed(2)}'
               data-stock='${it.stock_actual || 0}'
               data-modelo='${it.modelo || ''}'
               data-ubicacion='${it.ubicacion || ''}'
@@ -748,8 +749,8 @@ inputProd.addEventListener('input', async () => {
               <small class="text-secondary">Peso: ${it.peso || 0} kg</small>
             </div>
             <div class="col-4 text-end">
-              <div class="fw-bold text-success fs-6">${precioDisplay}</div>
-              <small class="text-muted d-block">T.C: S/ ${TIPO_CAMBIO.toFixed(2)}</small>
+              <div class="fw-bold text-success fs-6">S/ ${penMostrar.toFixed(2)} &nbsp;|&nbsp; $ ${usdMostrar.toFixed(2)}</div>
+              <small class="text-muted d-block">T.C (venta): S/ ${TIPO_CAMBIO.toFixed(2)} por USD</small>
               <small class="d-block ${it.stock_status === 'Bajo' ? 'text-danger' : 'text-success'}">
                 <i class="fas fa-boxes"></i> Stock: ${it.stock_actual || 0}
                 ${it.stock_status === 'Bajo' ? '<i class="fas fa-exclamation-triangle text-warning"></i>' : ''}
@@ -771,6 +772,10 @@ inputProd.addEventListener('input', async () => {
           const precioPen = Number(p.dataset.precioPen || p.dataset['precio-pen'] || 0);
           const precioUsdAttr = p.dataset.precioUsd || p.dataset['precio-usd'] || '';
           const precioUsd = precioUsdAttr !== '' ? Number(precioUsdAttr) : null;
+          const precioPenConvAttr = p.dataset.precioPenConv || p.dataset['precio-pen-conv'] || '';
+          const precioUsdConvAttr = p.dataset.precioUsdConv || p.dataset['precio-usd-conv'] || '';
+          const precioPenConv = precioPenConvAttr !== '' ? Number(precioPenConvAttr) : null;
+          const precioUsdConv = precioUsdConvAttr !== '' ? Number(precioUsdConvAttr) : null;
           productoSeleccionado = {
             id: p.dataset.id,
             codigo: p.dataset.codigo,
@@ -778,6 +783,8 @@ inputProd.addEventListener('input', async () => {
             desc: p.dataset.desc,
             precio_pen: precioPen,
             precio_usd: precioUsd,
+            precio_pen_conv: precioPenConv,
+            precio_usd_conv: precioUsdConv,
             stock: parseInt(p.dataset.stock) || 0,
             modelo: p.dataset.modelo || '',
             ubicacion: p.dataset.ubicacion || ''
@@ -795,14 +802,25 @@ inputProd.addEventListener('input', async () => {
           // Mostrar precio: preferir mostrar en la moneda actual seleccionada
           const monedaAct = document.getElementById('moneda')?.value || 'USD';
           if (monedaAct === 'USD') {
-            if (productoSeleccionado.precio_usd !== null) {
+            // Usar exactamente el valor mostrado en la sugerencia
+            if (productoSeleccionado.precio_usd_conv !== null && !isNaN(productoSeleccionado.precio_usd_conv)) {
+              document.getElementById('precio').value = Number(productoSeleccionado.precio_usd_conv).toFixed(2);
+            } else if (productoSeleccionado.precio_usd !== null && !isNaN(productoSeleccionado.precio_usd)) {
               document.getElementById('precio').value = Number(productoSeleccionado.precio_usd).toFixed(2);
             } else {
-              document.getElementById('precio').value = (productoSeleccionado.precio_pen / TIPO_CAMBIO).toFixed(2);
+              document.getElementById('precio').value = (Number(productoSeleccionado.precio_pen) / Number(TIPO_CAMBIO || 1)).toFixed(2);
             }
           } else {
-            // Mostrar en soles
-            document.getElementById('precio').value = Number(productoSeleccionado.precio_pen).toFixed(2);
+            // PEN: usar el valor mostrado en la sugerencia
+            if (productoSeleccionado.precio_pen_conv !== null && !isNaN(productoSeleccionado.precio_pen_conv)) {
+              document.getElementById('precio').value = Number(productoSeleccionado.precio_pen_conv).toFixed(2);
+            } else if (!isNaN(Number(productoSeleccionado.precio_pen)) && Number(productoSeleccionado.precio_pen) > 0) {
+              document.getElementById('precio').value = Number(productoSeleccionado.precio_pen).toFixed(2);
+            } else if (productoSeleccionado.precio_usd !== null && !isNaN(productoSeleccionado.precio_usd)) {
+              document.getElementById('precio').value = (Number(productoSeleccionado.precio_usd) * Number(TIPO_CAMBIO || 1)).toFixed(2);
+            } else {
+              document.getElementById('precio').value = '0.00';
+            }
           }
           lista.style.display = 'none';
           
@@ -840,7 +858,7 @@ document.getElementById('agregar').addEventListener('click',()=>{
   // Preferir datos desde productoSeleccionado si existe
   let idProd = null, descProd = textoProducto, precio = 0, moneda = 'PEN', precio_usd = null;
   let codigoProd = null, numeroParteProd = null;
-  if (productoSeleccionado) {
+    if (productoSeleccionado) {
     idProd = productoSeleccionado.id;
     descProd = productoSeleccionado.desc;
     codigoProd = productoSeleccionado.codigo || null;
@@ -850,13 +868,20 @@ document.getElementById('agregar').addEventListener('click',()=>{
     // Determinar precio por defecto según moneda
     let precioPorDefecto;
     if (moneda === 'USD') {
-      if (productoSeleccionado.precio_usd !== null) {
-        precioPorDefecto = Number(productoSeleccionado.precio_usd);
-      } else {
-        precioPorDefecto = Number(productoSeleccionado.precio_pen) / TIPO_CAMBIO;
-      }
+        // Usar el valor exacto mostrado en la sugerencia si existe
+        if (productoSeleccionado.precio_usd_conv !== null && !isNaN(productoSeleccionado.precio_usd_conv)) {
+          precioPorDefecto = Number(productoSeleccionado.precio_usd_conv);
+        } else if (productoSeleccionado.precio_usd !== null) {
+          precioPorDefecto = Number(productoSeleccionado.precio_usd);
+        } else {
+          precioPorDefecto = Number(productoSeleccionado.precio_pen) / TIPO_CAMBIO;
+        }
     } else {
-      precioPorDefecto = Number(productoSeleccionado.precio_pen);
+        if (productoSeleccionado.precio_pen_conv !== null && !isNaN(productoSeleccionado.precio_pen_conv)) {
+          precioPorDefecto = Number(productoSeleccionado.precio_pen_conv);
+        } else {
+          precioPorDefecto = Number(productoSeleccionado.precio_pen);
+        }
     }
 
     // Si el usuario ingresó manualmente un precio distinto, respetarlo
@@ -877,7 +902,12 @@ document.getElementById('agregar').addEventListener('click',()=>{
     if (moneda === 'USD') {
       precio_usd = Number(precio);
     } else {
-      precio_usd = productoSeleccionado.precio_usd !== null ? Number(productoSeleccionado.precio_usd) : null;
+      // Si teníamos el valor USD mostrado, podemos recalcularlo coherente al TC
+      if (productoSeleccionado.precio_usd_conv !== null && !isNaN(productoSeleccionado.precio_usd_conv)) {
+        precio_usd = Number(productoSeleccionado.precio_usd_conv);
+      } else {
+        precio_usd = productoSeleccionado.precio_usd !== null ? Number(productoSeleccionado.precio_usd) : null;
+      }
     }
   } else if (!isNaN(precioIngresado)) {
     precio = precioIngresado;
@@ -999,30 +1029,37 @@ function calcularTotales() {
     }
   });
 
-  // Compute IGV per currency
+  // Unificar totales en la moneda seleccionada usando el tipo de cambio manual
   const incluirIGV = document.getElementById('incluirIGV').checked;
-  const igvPen = incluirIGV ? subtotalPen * IGV : 0;
-  const igvUsd = incluirIGV ? subtotalUsd * IGV : 0;
-
-  // Update hidden fields
-  document.getElementById('subTotal').textContent = subtotalPen.toFixed(2);
-  document.getElementById('igv').textContent = igvPen.toFixed(2);
-  document.getElementById('total').textContent = (subtotalPen + igvPen).toFixed(2);
-
-  document.getElementById('subTotalUSD').textContent = subtotalUsd.toFixed(2);
-  document.getElementById('igvUSD').textContent = igvUsd.toFixed(2);
-  document.getElementById('totalUSD').textContent = (subtotalUsd + igvUsd).toFixed(2);
-
-  // Visible display: show totals in the selected currency
   const monedaSeleccionada = document.getElementById('moneda')?.value || 'USD';
+
+  // Totales convertidos a PEN y USD según TC
+  const subtotalPenUnified = subtotalPen + (TIPO_CAMBIO > 0 ? subtotalUsd * TIPO_CAMBIO : 0);
+  const igvPenUnified = incluirIGV ? subtotalPenUnified * IGV : 0;
+  const totalPenUnified = subtotalPenUnified + igvPenUnified;
+
+  const subtotalUsdUnified = subtotalUsd + (TIPO_CAMBIO > 0 ? subtotalPen / TIPO_CAMBIO : 0);
+  const igvUsdUnified = incluirIGV ? subtotalUsdUnified * IGV : 0;
+  const totalUsdUnified = subtotalUsdUnified + igvUsdUnified;
+
+  // Actualizar campos ocultos (ambas monedas)
+  document.getElementById('subTotal').textContent = subtotalPenUnified.toFixed(2);
+  document.getElementById('igv').textContent = igvPenUnified.toFixed(2);
+  document.getElementById('total').textContent = totalPenUnified.toFixed(2);
+
+  document.getElementById('subTotalUSD').textContent = subtotalUsdUnified.toFixed(2);
+  document.getElementById('igvUSD').textContent = igvUsdUnified.toFixed(2);
+  document.getElementById('totalUSD').textContent = totalUsdUnified.toFixed(2);
+
+  // Mostrar según moneda seleccionada
   if (monedaSeleccionada === 'USD') {
-    document.getElementById('subtotalDisplay').textContent = `$ ${subtotalUsd.toFixed(2)}`;
-    document.getElementById('igvDisplay').textContent = `$ ${igvUsd.toFixed(2)}`;
-    document.getElementById('totalDisplay').textContent = `$ ${(subtotalUsd+igvUsd).toFixed(2)}`;
+    document.getElementById('subtotalDisplay').textContent = `$ ${subtotalUsdUnified.toFixed(2)}`;
+    document.getElementById('igvDisplay').textContent = `$ ${igvUsdUnified.toFixed(2)}`;
+    document.getElementById('totalDisplay').textContent = `$ ${totalUsdUnified.toFixed(2)}`;
   } else {
-    document.getElementById('subtotalDisplay').textContent = `S/ ${subtotalPen.toFixed(2)}`;
-    document.getElementById('igvDisplay').textContent = `S/ ${igvPen.toFixed(2)}`;
-    document.getElementById('totalDisplay').textContent = `S/ ${(subtotalPen+igvPen).toFixed(2)}`;
+    document.getElementById('subtotalDisplay').textContent = `S/ ${subtotalPenUnified.toFixed(2)}`;
+    document.getElementById('igvDisplay').textContent = `S/ ${igvPenUnified.toFixed(2)}`;
+    document.getElementById('totalDisplay').textContent = `S/ ${totalPenUnified.toFixed(2)}`;
   }
 }
 
@@ -1135,14 +1172,16 @@ document.getElementById('btnGuardar').addEventListener('click', async ()=>{
     total: (()=>{
       const monedaSeleccionada = document.getElementById('moneda').value;
       const incluirIGV = document.getElementById('incluirIGV').checked;
-      // Usar totales ya calculados
-      const subtotal = parseFloat(document.getElementById('subTotal').textContent) || 0;
-      const igv = incluirIGV ? (subtotal * IGV) : 0;
-      const totalCalc = subtotal + igv;
+      // Leer subtotales por moneda y convertir al seleccionado
+      const subPen = parseFloat(document.getElementById('subTotal').textContent) || 0; // ya unificado a PEN
+      const subUsd = parseFloat(document.getElementById('subTotalUSD').textContent) || 0; // ya unificado a USD
       if (monedaSeleccionada === 'USD') {
-        return Number((totalCalc / TIPO_CAMBIO).toFixed(2));
+        const igvUsd = incluirIGV ? (subUsd * IGV) : 0;
+        return Number((subUsd + igvUsd).toFixed(2));
+      } else {
+        const igvPen = incluirIGV ? (subPen * IGV) : 0;
+        return Number((subPen + igvPen).toFixed(2));
       }
-      return Number(totalCalc.toFixed(2));
     })()
   };
 

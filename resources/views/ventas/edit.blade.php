@@ -121,7 +121,10 @@
                                         <option value="PEN" {{ $codigoIsoSelect === 'PEN' ? 'selected' : '' }}>Soles (PEN)</option>
                                         <option value="USD" {{ $codigoIsoSelect === 'USD' ? 'selected' : '' }}>Dólares (USD)</option>
                                     </select>
-                                    <input type="hidden" id="tipoCambio" value="{{ number_format($tipoCambio ?? 3.75, 4, '.', '') }}">
+                                    <input type="hidden" id="tipoCambio" value="{{ number_format($venta->tipo_cambio ?? 0, 4, '.', '') }}">
+                                    <small class="form-text text-muted">
+                                        Tipo de Cambio de la venta: S/ {{ number_format($venta->tipo_cambio ?? 0, 4) }} por USD
+                                    </small>
                                 </div>
                             </div>
                         </div>
@@ -134,7 +137,42 @@
                             <div class="card-body">
                                 <div id="productos-container">
                                     @foreach($venta->detalleVentas as $index => $detalle)
-                                    <div class="producto-row border p-3 mb-3" data-index="{{ $index }}" data-precioPen="{{ $detalle->producto->precio_venta ?? 0 }}" data-precioUsd="{{ $detalle->producto->precio_venta_usd ?? 0 }}">
+                                    @php
+                                        // Calcular precio base desde los datos guardados de la venta
+                                        $baseUnit = (float)($detalle->precio_unitario ?? 0);
+                                        $tcVenta = (float)($venta->tipo_cambio ?? 0);
+                                        $penCat = (float)($detalle->producto->precio_venta ?? 0);
+                                        $usdCat = (float)($detalle->producto->precio_venta_usd ?? 0);
+                                        // Si la venta es en PEN pero el precio guardado parece USD (coincide con catálogo USD), convertir usando TC de la venta
+                                        if (($codigoIsoSelect === 'PEN') && $baseUnit > 0 && $usdCat > 0 && abs($baseUnit - $usdCat) < 0.01 && $tcVenta > 0) {
+                                            $baseUnit = $baseUnit * $tcVenta; // USD -> PEN
+                                        }
+                                        // Si la venta es en USD pero el precio guardado parece PEN (coincide con catálogo PEN), convertir usando TC de la venta
+                                        if (($codigoIsoSelect === 'USD') && $baseUnit > 0 && $penCat > 0 && abs($baseUnit - $penCat) < 0.01 && $tcVenta > 0) {
+                                            $baseUnit = $baseUnit / $tcVenta; // PEN -> USD
+                                        }
+                                        if ($baseUnit <= 0) {
+                                            $pf = (float)($detalle->precio_final ?? 0);
+                                            $sub = (float)($detalle->subtotal ?? 0);
+                                            $cant = (float)($detalle->cantidad ?? 0);
+                                            if ($pf > 0) {
+                                                $baseUnit = $pf;
+                                            } elseif ($sub > 0 && $cant > 0) {
+                                                $baseUnit = $sub / $cant;
+                                            } else {
+                                                // Último recurso: precio de catálogo en la moneda de la venta
+                                                $baseUnit = ($codigoIsoSelect === 'USD')
+                                                    ? (float)($detalle->producto->precio_venta_usd ?? 0)
+                                                    : (float)($detalle->producto->precio_venta ?? 0);
+                                            }
+                                        }
+                                        $descuentoPct = (float)($detalle->descuento_porcentaje ?? 0);
+                                        $precioFinalGuardado = (float)($detalle->precio_final ?? 0);
+                                        $precioFinalCalculado = ($precioFinalGuardado > 0)
+                                            ? $precioFinalGuardado
+                                            : ($baseUnit * (1 - $descuentoPct/100));
+                                    @endphp
+                                    <div class="producto-row border p-3 mb-3" data-index="{{ $index }}" data-precio-base="{{ number_format($baseUnit, 6, '.', '') }}" data-moneda-base="{{ $codigoIsoSelect }}">
                                         <div class="row">
                                             <div class="col-md-4">
                                                 <label>Producto <span class="text-danger">*</span></label>
@@ -155,17 +193,9 @@
                                                         $codigoIso = is_object($venta->moneda) ? ($venta->moneda->codigo_iso ?? 'PEN') : ($venta->moneda ?? 'PEN');
                                                     @endphp
                                                     <span class="input-group-text" id="simboloDetalle{{ $index }}">{{ $codigoIso === 'USD' ? '$' : 'S/' }}</span>
-                                                    <input type="number" class="form-control precio-input" 
+                                                       <input type="number" class="form-control precio-input" 
                                                            name="detalle[{{ $index }}][precio_unitario]" 
-                                                           value="{{
-                                                                $codigoIso === 'USD'
-                                                                    ? ((isset($detalle->producto) && ($detalle->producto->precio_venta_usd ?? 0) > 0)
-                                                                        ? ($detalle->producto->precio_venta_usd ?? 0)
-                                                                        : ($detalle->precio_unitario ?? 0))
-                                                                    : ((isset($detalle->producto) && ($detalle->producto->precio_venta ?? 0) > 0)
-                                                                        ? ($detalle->producto->precio_venta ?? 0)
-                                                                        : ($detalle->precio_unitario ?? 0))
-                                                            }}" step="0.01" readonly>
+                                                           value="{{ number_format($baseUnit, 2, '.', '') }}" step="0.01" readonly>
                                                 </div>
                                             </div>
                                             <div class="col-md-2">
@@ -178,7 +208,7 @@
                                                 <label>Precio Final</label>
                                                 <input type="number" class="form-control precio-final-input" 
                                                        name="detalle[{{ $index }}][precio_final]" 
-                                                       value="{{ $detalle->precio_final }}" step="0.01" readonly>
+                                                        value="{{ number_format($precioFinalCalculado, 2, '.', '') }}" step="0.01" readonly>
                                                 <button type="button" class="btn btn-danger btn-sm mt-1 remove-product">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
@@ -210,24 +240,28 @@
                                         <table class="table">
                                             <tr>
                                                 <td><strong>Subtotal:</strong> <span class="badge bg-secondary" id="ventaMonedaBadge">{{ $codigoIso }}</span></td>
-                                                <td class="text-right"><span id="subtotal-display"><i class="{{ $icono }} me-1"></i>{{ $simboloMoneda }} 0.00</span></td>
+                                                <td class="text-right"><span id="subtotal-display"><i class="{{ $icono }} me-1"></i>{{ $simboloMoneda }} {{ number_format($venta->subtotal ?? 0, 2) }}</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Tipo de Cambio (venta):</strong></td>
+                                                <td class="text-right"><span id="tc-display">S/ {{ number_format($venta->tipo_cambio ?? $tipoCambio ?? 0, 4) }} por USD</span></td>
                                             </tr>
                                             <tr>
                                                 <td><strong>IGV (18%):</strong></td>
                                                 <td class="text-right">
-                                                    <span id="igv-display"><i class="{{ $icono }} me-1"></i>{{ $simboloMoneda }} 0.00</span>
+                                                    <span id="igv-display"><i class="{{ $icono }} me-1"></i>{{ $simboloMoneda }} {{ number_format($venta->igv ?? 0, 2) }}</span>
                                                     <input class="form-check-input ml-2" type="checkbox" id="igv-checkbox" checked>
                                                     <label class="form-check-label" for="igv-checkbox">Aplicar</label>
                                                 </td>
                                             </tr>
                                             <tr class="table-active">
                                                 <td><strong>Total:</strong></td>
-                                                <td class="text-right"><strong><span id="total-display"><i class="{{ $icono }} me-1"></i>{{ $simboloMoneda }} 0.00</span></strong></td>
+                                                <td class="text-right"><strong><span id="total-display"><i class="{{ $icono }} me-1"></i>{{ $simboloMoneda }} {{ number_format($venta->total ?? 0, 2) }}</span></strong></td>
                                             </tr>
                                             <tr>
                                                 <td><strong>Saldo Pendiente:</strong></td>
                                                 <td class="text-right">
-                                                    <span id="saldo-display"><i class="{{ $icono }} me-1"></i>{{ $simboloMoneda }} 0.00</span>
+                                                    <span id="saldo-display"><i class="{{ $icono }} me-1"></i>{{ $simboloMoneda }} {{ number_format($venta->saldo ?? ($venta->saldo_calculado ?? 0), 2) }}</span>
                                                 </td>
                                             </tr>
                                         </table>
@@ -259,6 +293,32 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Moneda y tipo de cambio usados en la venta original
+    const MONEDA_BASE = '{{ $codigoIsoSelect }}';
+    // Forzar el TC desde la venta registrada; fallback al hidden input solo si está vacío
+    const TIPO_CAMBIO_VENTA = (function(){
+        const tcServer = parseFloat('{{ number_format($venta->tipo_cambio ?? 0, 4, '.', '') }}');
+        if (!isNaN(tcServer) && tcServer > 0) return tcServer;
+        const tcHidden = parseFloat(document.getElementById('tipoCambio')?.value || '0');
+        return (!isNaN(tcHidden) && tcHidden > 0) ? tcHidden : 0;
+    })();
+    // Exponer globalmente para que otros bloques de script lo utilicen de forma consistente
+    window.TIPO_CAMBIO_VENTA = TIPO_CAMBIO_VENTA;
+
+    // Helper para convertir monto entre PEN y USD usando el TC de la venta
+    function convertirPrecio(base, desdeIso, haciaIso) {
+        const d = (desdeIso || 'PEN').toUpperCase();
+        const h = (haciaIso || 'PEN').toUpperCase();
+        if (d === h) return base;
+        if (!TIPO_CAMBIO_VENTA || TIPO_CAMBIO_VENTA <= 0) return base;
+        if (d === 'PEN' && h === 'USD') return base / TIPO_CAMBIO_VENTA;
+        if (d === 'USD' && h === 'PEN') return base * TIPO_CAMBIO_VENTA;
+        return base;
+    }
+    // Hacer disponibles globalmente la moneda base y el conversor con el TC de la venta
+    window.MONEDA_BASE = MONEDA_BASE;
+    window.convertirPrecio = convertirPrecio;
+
     // Inicializar productoIndex correctamente según las filas existentes
     let productoIndex = document.querySelectorAll('.producto-row').length;
     // Pagos existentes de la venta para cálculo de saldo en tiempo real
@@ -426,7 +486,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         resultados.innerHTML = '<div class="p-2 text-muted">No se encontraron productos</div>';
                         return;
                     }
-                    resultados.innerHTML = items.map(it => `
+                    const tc = (typeof window.TIPO_CAMBIO_VENTA === 'number') ? window.TIPO_CAMBIO_VENTA : (parseFloat(document.getElementById('tipoCambio')?.value || '0') || 0);
+                    resultados.innerHTML = items.map(it => {
+                        const penRaw = Number(it.precio_venta) || 0;
+                        const usdRaw = Number(it.precio_venta_usd) || 0;
+                        const baseIso = (usdRaw > 0) ? 'USD' : 'PEN';
+                        const baseVal = (baseIso === 'USD') ? usdRaw : penRaw;
+                        const penMostrar = (baseIso === 'USD' && tc > 0) ? (baseVal * tc) : baseVal;
+                        const usdMostrar = (baseIso === 'PEN' && tc > 0) ? (baseVal / tc) : baseVal;
+                        return `
                         <button type="button" class="list-group-item list-group-item-action"
                                 data-id="${it.id_producto}"
                                 data-desc="${it.descripcion}"
@@ -434,9 +502,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                 data-precio-usd="${it.precio_venta_usd}"
                                 data-codigo="${it.codigo || ''}">
                             <strong>${(it.codigo || '-') + ' - ' + it.descripcion}</strong><br>
-                            <small>S/ ${Number(it.precio_venta).toFixed(2)} | $ ${Number(it.precio_venta_usd).toFixed(2)}</small>
-                        </button>
-                    `).join('');
+                            <small>S/ ${penMostrar.toFixed(2)} | $ ${usdMostrar.toFixed(2)}</small>
+                        </button>`;
+                    }).join('');
                 } catch (err) {
                     resultados.innerHTML = '<div class="p-2 text-danger">Error al buscar productos</div>';
                 }
@@ -447,19 +515,28 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!btn) return;
             input.value = (btn.dataset.codigo ? (btn.dataset.codigo + ' - ') : '') + btn.dataset.desc;
             newRow.querySelector('.producto-id-input').value = btn.dataset.id;
-            // Guardar precios catálogo
-            newRow.dataset.precioPen = btn.dataset.precioPen;
-            newRow.dataset.precioUsd = btn.dataset.precioUsd;
-            // Asignar precio unitario según moneda seleccionada (preferir precio nativo si existe)
-            const monedaVenta = document.getElementById('moneda')?.value || 'PEN';
+            // Guardar precio base en la MONEDA_BASE de la venta
             const precioPen = parseFloat(btn.dataset.precioPen || '0') || 0;
             const precioUsd = parseFloat(btn.dataset.precioUsd || '0') || 0;
-            let unit = 0;
-            if (monedaVenta === 'USD') {
-                unit = precioUsd;
+            // Usar preferentemente el precio en USD como base; si no existe, usar el de PEN
+            let base = 0;
+            let monedaBaseFila = 'PEN';
+            if (precioUsd > 0) {
+                base = precioUsd;
+                monedaBaseFila = 'USD';
+            } else if (precioPen > 0) {
+                base = precioPen;
+                monedaBaseFila = 'PEN';
             } else {
-                unit = precioPen;
+                base = 0;
+                monedaBaseFila = MONEDA_BASE; // fallback
             }
+            newRow.dataset.precioBase = String(base);
+            newRow.dataset.monedaBase = monedaBaseFila;
+
+            // Mostrar el precio ya convertido a la moneda actualmente seleccionada
+            const monedaVenta = document.getElementById('moneda')?.value || 'PEN';
+            const unit = window.convertirPrecio(base, monedaBaseFila, monedaVenta);
             const precioInput = newRow.querySelector('.precio-input');
             if (precioInput) precioInput.value = unit.toFixed(2);
             // Actualizar precio final inmediato
@@ -500,7 +577,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Calcular totales iniciales
     calcularTotales();
-    // Actualizar símbolos y mostrar precios registrados por defecto al cambiar la moneda
+    // Actualizar símbolos y convertir los precios registrados (de la venta) al cambiar la moneda
     const monedaSel = document.getElementById('moneda');
     if (monedaSel) {
         monedaSel.addEventListener('change', function () {
@@ -512,19 +589,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 span.textContent = simboloChar;
             });
 
-            // Mostrar precios registrados por defecto
+            // Convertir precio unitario desde la moneda base por fila a la moneda seleccionada usando el TC de la venta
             document.querySelectorAll('.producto-row').forEach(function (row) {
-                const precioPen = parseFloat(row.dataset.precioPen || '0');
-                const precioUsd = parseFloat(row.dataset.precioUsd || '0');
+                const base = parseFloat(row.dataset.precioBase || row.dataset.preciobase || '0') || 0;
+                const monedaBaseFila = (row.dataset.monedaBase || row.dataset.monedabase || MONEDA_BASE);
                 const precioInput = row.querySelector('.precio-input');
 
                 if (precioInput) {
-                    let unit;
-                    if (codigoIso === 'USD') {
-                        unit = precioUsd; // Mostrar precio registrado en dólares
-                    } else {
-                        unit = precioPen; // Mostrar precio registrado en soles
-                    }
+                    const unit = convertirPrecio(base, monedaBaseFila, codigoIso);
                     precioInput.value = unit.toFixed(2);
                 }
 
@@ -571,29 +643,25 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('total-input').value = total.toFixed(2);
     }
 
-    // Inicializar precios unitarios según la moneda seleccionada (evitar redeclaraciones)
+    // Inicializar precios unitarios según la moneda seleccionada usando el precio guardado de la venta
     const monedaSel2 = document.getElementById('moneda');
     const codigoIsoInit = monedaSel2 ? monedaSel2.value : 'PEN';
 
     document.querySelectorAll('.producto-row').forEach(function(row) {
-        const precioPen = parseFloat(row.dataset.precioPen || '0');
-        const precioUsd = parseFloat(row.dataset.precioUsd || '0');
+        const base = parseFloat(row.dataset.precioBase || row.dataset.preciobase || '0') || 0;
+        const monedaBaseFila = (row.dataset.monedaBase || row.dataset.monedabase || MONEDA_BASE);
         const precioInput = row.querySelector('.precio-input');
 
         if (precioInput) {
-            let unit = (codigoIsoInit === 'USD') ? precioUsd : precioPen;
-            // Fallback: si el precio del catálogo está vacío/0, usar el precio guardado en el detalle
-            if (!unit || unit <= 0) {
-                unit = parseFloat(precioInput.value || '0') || 0;
-            }
+            let unit = convertirPrecio(base, monedaBaseFila, codigoIsoInit);
             precioInput.value = unit.toFixed(2);
         }
 
         // Recalcular el precio final
         const descuentoInput = row.querySelector('.descuento-input');
         const descuento = parseFloat(descuentoInput?.value || '0');
-        const base = parseFloat(precioInput?.value || '0');
-        const precioFinal = base * (1 - descuento / 100);
+        const unitShown = parseFloat(precioInput?.value || '0');
+        const precioFinal = unitShown * (1 - descuento / 100);
         const finalInput = row.querySelector('.precio-final-input');
         if (finalInput) finalInput.value = precioFinal.toFixed(2);
     });
@@ -601,35 +669,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Recalcular totales
     calcularTotales();
 
-    // Actualizar precios al cambiar la moneda
-    monedaSel.addEventListener('change', function () {
-        const codigoIso = this.value;
-
-        document.querySelectorAll('.producto-row').forEach(function(row) {
-            const precioPen = parseFloat(row.dataset.precioPen || '0');
-            const precioUsd = parseFloat(row.dataset.precioUsd || '0');
-            const precioInput = row.querySelector('.precio-input');
-
-            if (precioInput) {
-                let unit;
-                if (codigoIso === 'USD') {
-                    unit = precioUsd; // Mostrar precio registrado en dólares
-                } else {
-                    unit = precioPen; // Mostrar precio registrado en soles
-                }
-                precioInput.value = unit.toFixed(2);
-            }
-
-            // Recalcular el precio final
-            const descuentoInput = row.querySelector('.descuento-input');
-            const descuento = parseFloat(descuentoInput?.value || '0');
-            const precioFinal = (parseFloat(precioInput.value) || 0) * (1 - descuento / 100);
-            row.querySelector('.precio-final-input').value = precioFinal.toFixed(2);
-        });
-
-        // Recalcular totales
-        calcularTotales();
-    });
+    // Evitar doble registro del mismo listener de cambio de moneda (ya configurado arriba)
 });
 </script>
 
@@ -732,6 +772,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.buscador-producto-edit').forEach(function(input) {
         const index = input.getAttribute('data-index');
         const resultados = document.getElementById('resultados-producto-edit-' + index);
+        const VENTA_BASE_ISO = window.MONEDA_BASE || '{{ is_object($venta->moneda) ? ($venta->moneda->codigo_iso ?? 'PEN') : ($venta->moneda ?? 'PEN') }}';
         let timeout = null;
         input.addEventListener('input', function() {
             clearTimeout(timeout);
@@ -750,12 +791,20 @@ document.addEventListener('DOMContentLoaded', function() {
                         resultados.innerHTML = '<div class="p-2 text-muted">No se encontraron productos</div>';
                         return;
                     }
-                    resultados.innerHTML = items.map(it => `
+                    const tc = (typeof window.TIPO_CAMBIO_VENTA === 'number') ? window.TIPO_CAMBIO_VENTA : (parseFloat(document.getElementById('tipoCambio')?.value || '0') || 0);
+                    resultados.innerHTML = items.map(it => {
+                        const penRaw = Number(it.precio_venta) || 0;
+                        const usdRaw = Number(it.precio_venta_usd) || 0;
+                        const baseIso = (usdRaw > 0) ? 'USD' : 'PEN';
+                        const baseVal = (baseIso === 'USD') ? usdRaw : penRaw;
+                        const penMostrar = (baseIso === 'USD' && tc > 0) ? (baseVal * tc) : baseVal;
+                        const usdMostrar = (baseIso === 'PEN' && tc > 0) ? (baseVal / tc) : baseVal;
+                        return `
                         <button type="button" class="list-group-item list-group-item-action" data-id="${it.id_producto}" data-desc="${it.descripcion}" data-precio-pen="${it.precio_venta}" data-precio-usd="${it.precio_venta_usd}" data-codigo="${it.codigo || ''}" data-nparte="${it.numero_parte || ''}">
                             <strong>${(it.codigo || '-') + ' - ' + it.descripcion}</strong><br>
-                            <small>N° Parte: ${it.numero_parte || '-'} | S/ ${Number(it.precio_venta).toFixed(2)} | $ ${Number(it.precio_venta_usd).toFixed(2)}</small>
-                        </button>
-                    `).join('');
+                            <small>N° Parte: ${it.numero_parte || '-'} | S/ ${penMostrar.toFixed(2)} | $ ${usdMostrar.toFixed(2)}</small>
+                        </button>`;
+                    }).join('');
                 } catch (err) {
                     resultados.innerHTML = '<div class="p-2 text-danger">Error al buscar productos</div>';
                 }
@@ -767,19 +816,22 @@ document.addEventListener('DOMContentLoaded', function() {
             input.value = (btn.dataset.codigo ? (btn.dataset.codigo + ' - ') : '') + btn.dataset.desc;
             // Asignar id_producto al input hidden
             input.parentElement.querySelector('.producto-id-input').value = btn.dataset.id;
-            // Guardar precios de catálogo (PEN y USD) y convertir según moneda actual
+            // Guardar precio base en la moneda original de la venta y convertir a la moneda mostrada
             const row = input.closest('.producto-row');
-            row.dataset.precioPen = btn.dataset.precioPen;
-            row.dataset.precioUsd = btn.dataset.precioUsd;
-            const monedaVenta = document.getElementById('moneda')?.value || 'PEN';
             const pen = parseFloat(btn.dataset.precioPen || '0') || 0;
             const usd = parseFloat(btn.dataset.precioUsd || '0') || 0;
-            let unit = 0;
-            if (monedaVenta === 'USD') {
-                unit = usd > 0 ? usd : pen;
-            } else {
-                unit = pen > 0 ? pen : usd;
-            }
+            // Usar siempre el conversor global con el TC de la venta
+            // Elegir base en la moneda de la venta
+            // Preferir precio USD como base; si no existe, usar PEN
+            let base = 0;
+            let monedaBaseFila = 'PEN';
+            if (usd > 0) { base = usd; monedaBaseFila = 'USD'; }
+            else if (pen > 0) { base = pen; monedaBaseFila = 'PEN'; }
+            row.dataset.precioBase = String(base);
+            row.dataset.monedaBase = monedaBaseFila;
+            // Mostrar convertido a la moneda seleccionada actualmente en la UI
+            const monedaUI = document.getElementById('moneda')?.value || 'PEN';
+            const unit = window.convertirPrecio(base, monedaBaseFila, monedaUI);
             const precioInput = row.querySelector('.precio-input');
             if (precioInput) precioInput.value = unit.toFixed(2);
             // Recalcular precio final inmediato

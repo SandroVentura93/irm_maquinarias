@@ -1763,7 +1763,9 @@ class VentaController extends Controller
         $productos = Producto::orderBy('descripcion')->limit(100)->get();
         $monedas = \App\Models\Moneda::all();
         $ubigeos = \App\Models\Ubigeo::all();
-        return view('ventas.create', compact('clientes', 'productos', 'monedas', 'ubigeos'));
+        // Proveer tipo de cambio inicial para la vista de creación
+        $tipoCambio = $this->obtenerTipoCambio();
+        return view('ventas.create', compact('clientes', 'productos', 'monedas', 'ubigeos', 'tipoCambio'));
     }
 
     public function index(Request $request)

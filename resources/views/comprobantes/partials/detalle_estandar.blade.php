@@ -80,17 +80,17 @@
                 $marca = $prod->marca->nombre ?? ($prod->marca ?? '');
                 $peso = (float)($prod->peso ?? 0);
                 $cant = (float)($detalle->cantidad ?? 0);
-                // Precio unitario debe reflejar EXACTAMENTE lo mostrado en el editor:
-                // usar el precio registrado del producto según la MONEDA del comprobante,
-                // sin convertir por tipo de cambio.
-                if ($codigoIso === 'USD') {
-                    $pu = (float)($prod->precio_venta_usd ?? $detalle->precio_unitario ?? 0);
-                } else {
-                    $pu = (float)($prod->precio_venta ?? $detalle->precio_unitario ?? 0);
-                }
+                // Precio unitario DEBE provenir del detalle guardado en la venta.
+                // Este valor ya fue convertido por el backend a la moneda del comprobante
+                // usando el tipo de cambio manual ingresado.
+                $pu = (float)($detalle->precio_unitario ?? 0);
                 $descPct = (float)($detalle->descuento_porcentaje ?? 0);
                 $descUnit = $pu * $descPct / 100.0;
                 $netUnit = $pu - $descUnit;
+                // Si existe precio_final en el detalle, preferirlo para exactitud
+                if (isset($detalle->precio_final)) {
+                    $netUnit = (float)$detalle->precio_final;
+                }
                 $netTotal = $netUnit * $cant;
                 $totalPeso += $peso * $cant;
                 $baseCalc += $netTotal;
