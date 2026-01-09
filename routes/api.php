@@ -47,6 +47,8 @@ Route::get('/productos/search', [ProductoController::class, 'searchPublic']);
 
 // Búsqueda de clientes para el formulario de ventas
 Route::get('/clientes/search', [ClienteController::class, 'searchPublic']);
+// Sugerencias de clientes (autocomplete)
+Route::get('/clientes/suggest', [ClienteController::class, 'suggestPublic']);
 
 // Crear nuevo cliente desde formulario de ventas
 Route::post('/clientes', [ClienteController::class, 'storePublic']);

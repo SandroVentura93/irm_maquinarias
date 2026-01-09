@@ -235,6 +235,29 @@ class ClienteController extends Controller
     }
 
     /**
+     * ⚡ Sugerencias de clientes (autocomplete) para el formulario de ventas
+     * Busca por número de documento o por nombre (parcial), devolviendo una lista.
+     */
+    public function suggestPublic(Request $request)
+    {
+        $q = trim($request->get('q', ''));
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $sugerencias = Cliente::query()
+            ->where(function ($qb) use ($q) {
+                $qb->where('numero_documento', 'LIKE', "%{$q}%")
+                   ->orWhere('nombre', 'LIKE', "%{$q}%");
+            })
+            ->orderBy('nombre')
+            ->limit(10)
+            ->get(['id_cliente','numero_documento','tipo_documento','nombre','direccion','telefono','correo']);
+
+        return response()->json($sugerencias);
+    }
+
+    /**
      * ⚡ Crear cliente público desde formulario de ventas
      */
     public function storePublic(Request $request)

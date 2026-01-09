@@ -52,6 +52,39 @@
 
 @php
     $wDesc = $mostrarCodigoParte ? '34%' : '46%';
+    // Pre-chequeo: detectar si los subtotales por línea parecen estar en otra moneda
+    // comparando la suma de subtotales de líneas vs el subtotal de la venta y el tipo de cambio.
+    $sumSubRaw = 0.0;
+    foreach (($lineas ?? []) as $d2) {
+        $c2 = (float)($d2->cantidad ?? 0);
+        $pf2 = isset($d2->precio_final) ? (float)$d2->precio_final : null;
+        $sub2 = isset($d2->subtotal) ? (float)$d2->subtotal : null;
+        if ($sub2 === null || $sub2 <= 0) {
+            if ($pf2 !== null && $pf2 > 0) {
+                $sub2 = $pf2 * $c2;
+            } else {
+                $pu2 = (float)($d2->precio_unitario ?? 0);
+                $desc2 = (float)($d2->descuento_porcentaje ?? 0);
+                $net2 = $pu2 * (1 - $desc2 / 100.0);
+                $sub2 = $net2 * $c2;
+            }
+        }
+        $sumSubRaw += $sub2;
+    }
+    $convertDirection = null; // 'usd2pen' | 'pen2usd' | null
+    if ($tc && $tc > 0 && isset($venta->subtotal) && $sumSubRaw > 0) {
+        if ($codigoIso === 'PEN') {
+            $ratio = ((float)$venta->subtotal) / $sumSubRaw;
+            if ($ratio > 0 && abs($ratio - $tc) / $tc < 0.06) { // tolerancia ~6%
+                $convertDirection = 'usd2pen';
+            }
+        } elseif ($codigoIso === 'USD') {
+            $ratio = $sumSubRaw / ((float)$venta->subtotal);
+            if ($ratio > 0 && abs($ratio - $tc) / $tc < 0.06) {
+                $convertDirection = 'pen2usd';
+            }
+        }
+    }
 @endphp
 
 <table class="std-details">
@@ -80,18 +113,46 @@
                 $marca = $prod->marca->nombre ?? ($prod->marca ?? '');
                 $peso = (float)($prod->peso ?? 0);
                 $cant = (float)($detalle->cantidad ?? 0);
-                // Precio unitario DEBE provenir del detalle guardado en la venta.
-                // Este valor ya fue convertido por el backend a la moneda del comprobante
-                // usando el tipo de cambio manual ingresado.
-                $pu = (float)($detalle->precio_unitario ?? 0);
+                // Derivar los valores mostrados desde los campos persistidos (robusto frente a cambios de moneda):
+                // - Si hay precio_final, usarlo como Valor neto precio unitario.
+                // - Si no, pero existe subtotal y cantidad>0, netUnit = subtotal/cantidad.
+                // - En último caso, calcular desde precio_unitario y descuento_porcentaje.
+                $puRaw = (float)($detalle->precio_unitario ?? 0);
                 $descPct = (float)($detalle->descuento_porcentaje ?? 0);
-                $descUnit = $pu * $descPct / 100.0;
-                $netUnit = $pu - $descUnit;
-                // Si existe precio_final en el detalle, preferirlo para exactitud
-                if (isset($detalle->precio_final)) {
+                $netUnit = null;
+                if (isset($detalle->precio_final) && (float)$detalle->precio_final > 0) {
                     $netUnit = (float)$detalle->precio_final;
+                } elseif (isset($detalle->subtotal) && $cant > 0 && (float)$detalle->subtotal > 0) {
+                    $netUnit = (float)$detalle->subtotal / $cant;
+                } else {
+                    $netUnit = $puRaw * (1 - ($descPct / 100.0));
                 }
-                $netTotal = $netUnit * $cant;
+                // Reconstruir Valor precio unitario a partir del neto y el porcentaje de descuento (cuando aplique)
+                if ($descPct > 0 && $descPct < 100) {
+                    $pu = $netUnit / (1 - ($descPct / 100.0));
+                } else {
+                    $pu = $puRaw ?: $netUnit;
+                }
+                $descUnit = max($pu - $netUnit, 0);
+                // Valor venta neto total: preferir 'total' si existe; si no, netUnit * cantidad
+                if (isset($detalle->total) && (float)$detalle->total > 0) {
+                    $netTotal = (float)$detalle->total;
+                } else {
+                    $netTotal = $netUnit * $cant;
+                }
+                // Aplicar conversión dinámica si las líneas aparentan estar en otra moneda que la del comprobante
+                if ($convertDirection === 'usd2pen' && $tc > 0) {
+                    $pu = round($pu * $tc, 6);
+                    $netUnit = round($netUnit * $tc, 6);
+                    $descUnit = round($descUnit * $tc, 6);
+                    $netTotal = round($netTotal * $tc, 6);
+                } elseif ($convertDirection === 'pen2usd' && $tc > 0) {
+                    $pu = round($pu / $tc, 6);
+                    $netUnit = round($netUnit / $tc, 6);
+                    $descUnit = round($descUnit / $tc, 6);
+                    $netTotal = round($netTotal / $tc, 6);
+                }
+
                 $totalPeso += $peso * $cant;
                 $baseCalc += $netTotal;
             @endphp

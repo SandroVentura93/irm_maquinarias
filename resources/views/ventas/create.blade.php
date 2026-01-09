@@ -112,11 +112,13 @@
               <i class="fas fa-id-card me-1"></i>
               RUC/DNI Cliente
             </label>
-            <div class="input-group modern-input-group">
+            <div class="input-group modern-input-group position-relative">
               <input id="docCliente" class="form-control modern-input" placeholder="Ingrese RUC o DNI">
               <button class="btn btn-primary modern-btn" type="button" id="btnBuscarCliente">
                 <i class="fas fa-search me-1"></i> Buscar
               </button>
+              <!-- Sugerencias de clientes -->
+              <div id="listaClientes" class="client-dropdown" style="display:none;"></div>
             </div>
           </div>
           <div class="col-md-5">
@@ -591,6 +593,73 @@ function validarCambioTipoComprobante() {
 }
 
 // === BUSCAR CLIENTE (MEJORADO) ===
+// Autocomplete de clientes por número o nombre
+const docInput = document.getElementById('docCliente');
+const listaClientes = document.getElementById('listaClientes');
+let clienteSuggestTimeout = null;
+
+docInput.addEventListener('input', () => {
+  const q = docInput.value.trim();
+  if (clienteSuggestTimeout) clearTimeout(clienteSuggestTimeout);
+  if (q.length < 2) { listaClientes.style.display = 'none'; return; }
+  clienteSuggestTimeout = setTimeout(async () => {
+    try {
+      listaClientes.innerHTML = '<div class="p-2 text-center text-muted"><i class="fas fa-spinner fa-spin"></i> Buscando...</div>';
+      listaClientes.style.display = 'block';
+      const res = await fetch(`/api/clientes/suggest?q=${encodeURIComponent(q)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const items = await res.json();
+      if (!Array.isArray(items) || items.length === 0) {
+        listaClientes.innerHTML = '<div class="p-2 text-center text-muted">Sin resultados</div>';
+        return;
+      }
+      listaClientes.innerHTML = items.map(c => `
+        <div class="p-2 border-bottom client-item" 
+             data-id="${c.id_cliente}" 
+             data-doc="${c.numero_documento || ''}" 
+             data-nombre="${c.nombre || ''}" 
+             data-direccion="${c.direccion || ''}" 
+             style="cursor:pointer;">
+          <div class="d-flex justify-content-between">
+            <div>
+              <div class="fw-bold text-primary">${c.numero_documento || ''}</div>
+              <div class="text-dark">${c.nombre || ''}</div>
+              <small class="text-muted">${c.direccion || ''}</small>
+            </div>
+            <div class="text-end">
+              <span class="badge bg-light text-dark">${c.tipo_documento || ''}</span>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      // bind click
+      listaClientes.querySelectorAll('.client-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const id = el.dataset.id;
+          const doc = el.dataset.doc;
+          const nombre = el.dataset.nombre;
+          const direccion = el.dataset.direccion;
+          clienteSeleccionado = {
+            id_cliente: Number(id),
+            numero_documento: doc,
+            nombre: nombre,
+            direccion: direccion
+          };
+          // rellenar campos
+          docInput.value = doc;
+          document.getElementById('nombreCliente').value = nombre || '';
+          document.getElementById('direccionCliente').value = direccion || '';
+          listaClientes.style.display = 'none';
+        });
+      });
+    } catch (e) {
+      console.error('Error buscando clientes:', e);
+      listaClientes.innerHTML = `<div class="p-2 text-danger text-center">Error: ${e.message}</div>`;
+    }
+  }, 250);
+});
+
 document.getElementById('btnBuscarCliente').addEventListener('click', async () => {
   const doc = document.getElementById('docCliente').value.trim();
   
@@ -1383,6 +1452,9 @@ document.addEventListener('click', function(e) {
   if (!e.target.closest('#buscaProducto') && !e.target.closest('#listaProductos')) {
     lista.style.display = 'none';
   }
+  if (!e.target.closest('#docCliente') && !e.target.closest('#listaClientes')) {
+    listaClientes.style.display = 'none';
+  }
 });
 
 // === ACTUALIZAR TIPO DE CAMBIO MANUAL ===
@@ -1715,6 +1787,22 @@ document.getElementById('tipoCambioManual').addEventListener('input', function()
     box-shadow: 0 25px 50px rgba(0, 0, 0, 0.35) !important;
 }
 
+/* Dropdown de clientes */
+.client-dropdown {
+  position: absolute !important;
+  top: 100% !important;
+  left: 0 !important;
+  right: 0 !important;
+  background: white !important;
+  border: 2px solid var(--primary-color);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 999999 !important;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.35) !important;
+}
+
 .product-dropdown .dropdown-item {
     padding: 0.75rem 1rem;
     border-bottom: 1px solid #f1f5f9;
@@ -1937,7 +2025,7 @@ document.getElementById('tipoCambioManual').addEventListener('input', function()
 
 /* Evitar que otros elementos interfieran con el dropdown */
 .modern-card:not(:has(.product-search-container)) {
-    z-index: 1;
+    z-index: 5 !important;
 }
 
 /* Card de detalle debe tener z-index menor */
