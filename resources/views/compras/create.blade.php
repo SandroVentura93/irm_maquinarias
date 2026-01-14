@@ -329,7 +329,7 @@
         border-radius: 0 0 10px 10px;
         max-height: 300px;
         overflow-y: auto;
-        z-index: 1000;
+        z-index: 10000;
         display: none;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
@@ -373,6 +373,16 @@
         flex: 1;
     }
 
+    .suggestion-proveedor {
+        color: #6b7280;
+        font-size: 0.75rem;
+        margin-left: 0.5rem;
+        background: #f3f4f6;
+        padding: 2px 6px;
+        border-radius: 6px;
+        white-space: nowrap;
+    }
+
     .no-results {
         padding: 1rem;
         text-align: center;
@@ -404,6 +414,10 @@
         color: #6b7280;
     }
     .empty-state i { color: #9ca3af; }
+
+    /* Garantizar que los inputs de búsqueda siempre sean interactivos y sobrepongan sugerencias correctamente */
+    .search-container .form-control { position: relative; z-index: 2; }
+    .search-container .input-group-text { position: relative; z-index: 2; }
 
     @media (max-width: 768px) {
         .actions-bar {
@@ -457,8 +471,29 @@
             </div>
             <div class="card-body-custom">
                 <div class="row g-3">
-                    <!-- Lista de proveedor eliminada: se trabajará solo con buscador de productos -->
-                    <!-- Si se requiere guardar, el backend aún exige id_proveedor. Podemos agregar selector o búsqueda de proveedor posteriormente. -->
+                    <!-- Buscador de Proveedor -->
+                    <div class="col-md-8">
+                        <label for="buscadorProveedor" class="form-label">
+                            <i class="fas fa-truck"></i>
+                            Proveedor
+                        </label>
+                        <div class="search-container">
+                            <div class="input-group">
+                                <span class="input-group-text bg-light">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" id="buscadorProveedor" class="form-control" placeholder="Buscar proveedor por razón social o RUC..." 
+                                       autocomplete="off" onkeyup="buscarProveedor(event)" onfocus="buscarProveedor(event)">
+                                <button type="button" class="btn btn-outline-secondary" onclick="limpiarProveedor()" title="Limpiar proveedor">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div id="proveedorSuggestions" class="suggestions-list"></div>
+                            <div id="proveedorSeleccionadoInfo" class="mt-2" style="display:none; font-size: 0.85rem;">
+                                <span class="badge bg-secondary"><i class="fas fa-truck me-1"></i><span id="proveedorSeleccionadoTexto"></span></span>
+                            </div>
+                        </div>
+                    </div>
                     <div class="col-md-4">
                         <label for="id_moneda" class="form-label">
                             <i class="fas fa-coins"></i>
@@ -677,6 +712,8 @@
 
 <script>
 let TIPO_CAMBIO = 3.80; // Valor inicial sugerido; editable por el usuario
+// Flag para permitir búsquedas globales sin filtrar por proveedor cuando el usuario limpia manualmente
+let allowGlobalSearch = false;
 
 // Aplicar el tipo de cambio ingresado manualmente
 function aplicarTipoCambioManualCompras() {
@@ -704,11 +741,38 @@ document.addEventListener('DOMContentLoaded', function() {
             id: p.id_producto,
             codigo: p.codigo || '',
             descripcion: p.descripcion || '',
-            id_proveedor: p.id_proveedor
+            id_proveedor: p.id_proveedor,
+            proveedor: (p.proveedor_nombre || ''),
+            proveedor_ruc: (p.proveedor_ruc || '')
         }));
     } catch (e) {
         console.warn('No se pudieron inicializar los productos desde el backend');
         productos = [];
+    }
+
+    // Inicializar proveedores para el buscador de proveedor
+    try {
+        const rawProveedores = @json($proveedores);
+        proveedores = (rawProveedores || []).map(pr => ({
+            id: pr.id_proveedor,
+            nombre: pr.razon_social || '',
+            ruc: pr.numero_documento || ''
+        }));
+    } catch (e) {
+        console.warn('No se pudieron inicializar los proveedores desde el backend');
+        proveedores = [];
+    }
+
+    // Asegurar que inputs de búsqueda estén habilitados
+    const buscadorProd = document.getElementById('buscadorProducto');
+    if (buscadorProd) {
+        buscadorProd.disabled = false;
+        buscadorProd.addEventListener('input', buscarProducto);
+    }
+    const buscadorProv = document.getElementById('buscadorProveedor');
+    if (buscadorProv) {
+        buscadorProv.disabled = false;
+        buscadorProv.addEventListener('input', buscarProveedor);
     }
 
     calcularTotales();
@@ -803,7 +867,11 @@ function actualizarDetallesMonedaVisual() {
 // Agregar fila de producto seleccionada desde el buscador
 function agregarFilaProducto(idProducto, codigo, descripcion) {
     const tbody = document.querySelector('#productos-table tbody');
-    const index = tbody.children.length;
+    // Remover estado vacío si existe ANTES de calcular el índice
+    const emptyRowPre = tbody.querySelector('.empty-state-row');
+    if (emptyRowPre) emptyRowPre.remove();
+    // Calcular índice real según cantidad de filas de productos existentes
+    const index = Array.from(tbody.querySelectorAll('tr')).filter(tr => !tr.classList.contains('empty-state-row')).length;
     const row = document.createElement('tr');
     const monedaSelect = document.getElementById('id_moneda');
     const selectedMoneda = monedaSelect.options[monedaSelect.selectedIndex]?.text?.toLowerCase() || '';
@@ -818,11 +886,14 @@ function agregarFilaProducto(idProducto, codigo, descripcion) {
         alert('No se pudo determinar el proveedor del producto seleccionado.');
         return;
     }
+    // Si el proveedor cabecera está limpio, llenar automáticamente según el producto seleccionado
     if (!hiddenProv.value) {
-        hiddenProv.value = provId;
-    } else if (hiddenProv.value !== String(provId)) {
-        alert('Los productos seleccionados pertenecen a distintos proveedores. Registre la compra por proveedor único.');
-        return;
+        try {
+            const prov = (typeof proveedores !== 'undefined') ? proveedores.find(pp => String(pp.id) === String(provId)) : null;
+            if (prov) {
+                setProveedorUI(prov.id, prov.nombre, prov.ruc);
+            }
+        } catch (e) {}
     }
 
     row.innerHTML = `
@@ -847,9 +918,6 @@ function agregarFilaProducto(idProducto, codigo, descripcion) {
             </button>
         </td>
     `;
-    // Remover estado vacío si existe
-    const emptyRow = tbody.querySelector('.empty-state-row');
-    if (emptyRow) emptyRow.remove();
     tbody.appendChild(row);
     calcularTotales();
     mostrarEstadoVacio();
@@ -910,20 +978,26 @@ function buscarProducto(event) {
         return;
     }
     
-    // Filtrar productos
+    // Filtrar productos considerando proveedor seleccionado
+    const hiddenProv = document.getElementById('id_proveedor_hidden');
+    const provFilter = (hiddenProv && hiddenProv.value) ? String(hiddenProv.value) : '';
     const resultados = productos.filter(producto => {
-        const codigo = producto.codigo.toLowerCase();
-        const descripcion = producto.descripcion.toLowerCase();
-        return codigo.includes(busqueda) || descripcion.includes(busqueda);
+        const codigo = (producto.codigo || '').toLowerCase();
+        const descripcion = (producto.descripcion || '').toLowerCase();
+        const proveedor = (producto.proveedor || '').toLowerCase();
+        const matchTexto = codigo.includes(busqueda) || descripcion.includes(busqueda) || proveedor.includes(busqueda);
+        const matchProv = provFilter ? String(producto.id_proveedor) === provFilter : true;
+        return matchTexto && matchProv;
     });
     
     // Mostrar resultados
     if (resultados.length > 0) {
         suggestionsList.innerHTML = resultados.map((producto, index) => `
             <div class="suggestion-item" data-index="${index}" onclick="seleccionarProducto(${producto.id}, '${producto.codigo}', '${producto.descripcion.replace(/'/g, "\\'")}')">
-                <div class="d-flex align-items-center">
+                <div class="d-flex align-items-center flex-wrap" style="gap:6px;">
                     ${producto.codigo ? `<span class="suggestion-codigo">${producto.codigo}</span>` : ''}
                     <span class="suggestion-descripcion">${producto.descripcion}</span>
+                    ${producto.proveedor ? `<span class="suggestion-proveedor"><i class='fas fa-truck me-1'></i>${producto.proveedor}</span>` : ''}
                 </div>
                 <i class="fas fa-plus-circle text-success"></i>
             </div>
@@ -972,12 +1046,120 @@ function mostrarEstadoVacio() {
 
 // Cerrar sugerencias al hacer click fuera
 document.addEventListener('click', function(event) {
-    const searchContainer = document.querySelector('.search-container');
-    if (searchContainer && !searchContainer.contains(event.target)) {
-        document.getElementById('suggestionsList').classList.remove('show');
+    const containers = document.querySelectorAll('.search-container');
+    const isInside = Array.from(containers).some(c => c.contains(event.target));
+    if (!isInside) {
+        const listProd = document.getElementById('suggestionsList');
+        const listProv = document.getElementById('proveedorSuggestions');
+        if (listProd) listProd.classList.remove('show');
+        if (listProv) listProv.classList.remove('show');
         selectedIndex = -1;
+        if (typeof selectedProveedorIndex !== 'undefined') selectedProveedorIndex = -1;
     }
 });
+
+// ==========================
+// Buscador de Proveedor
+// ==========================
+let proveedores = [];
+let selectedProveedorIndex = -1;
+
+function buscarProveedor(event) {
+    const input = document.getElementById('buscadorProveedor');
+    const list = document.getElementById('proveedorSuggestions');
+    const q = (input.value || '').toLowerCase().trim();
+
+    // Teclas navegación
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        selectedProveedorIndex = Math.min(selectedProveedorIndex + 1, list.children.length - 1);
+        actualizarSeleccionProveedor();
+        return;
+    } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        selectedProveedorIndex = Math.max(selectedProveedorIndex - 1, 0);
+        actualizarSeleccionProveedor();
+        return;
+    } else if (event.key === 'Enter') {
+        event.preventDefault();
+        if (selectedProveedorIndex >= 0) {
+            const item = list.children[selectedProveedorIndex];
+            if (item) item.click();
+        }
+        return;
+    } else if (event.key === 'Escape') {
+        list.classList.remove('show');
+        selectedProveedorIndex = -1;
+        return;
+    }
+
+    selectedProveedorIndex = -1;
+    if (!q) { list.classList.remove('show'); return; }
+
+    const res = proveedores.filter(p => (
+        (p.nombre || '').toLowerCase().includes(q) || (p.ruc || '').toLowerCase().includes(q)
+    ));
+
+    if (res.length) {
+        list.innerHTML = res.map((p, idx) => `
+            <div class="suggestion-item" data-index="${idx}" onclick="seleccionarProveedor(${p.id}, '${(p.nombre || '').replace(/'/g, "\\'")}', '${p.ruc || ''}')">
+                <div class="d-flex align-items-center flex-wrap" style="gap:6px;">
+                    <span class="suggestion-descripcion"><i class='fas fa-truck me-1'></i>${p.nombre || '—'}</span>
+                    ${p.ruc ? `<span class='suggestion-proveedor'>RUC: ${p.ruc}</span>` : ''}
+                </div>
+                <i class="fas fa-check text-success"></i>
+            </div>
+        `).join('');
+        list.classList.add('show');
+    } else {
+        list.innerHTML = '<div class="no-results"><i class="fas fa-search"></i> No se encontraron proveedores</div>';
+        list.classList.add('show');
+    }
+}
+
+function actualizarSeleccionProveedor() {
+    const list = document.getElementById('proveedorSuggestions');
+    const items = list.querySelectorAll('.suggestion-item');
+    items.forEach((el, i) => {
+        if (i === selectedProveedorIndex) {
+            el.classList.add('selected');
+            el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        } else {
+            el.classList.remove('selected');
+        }
+    });
+}
+
+function setProveedorUI(id, nombre, ruc) {
+    const hidden = document.getElementById('id_proveedor_hidden');
+    hidden.value = id || '';
+    const info = document.getElementById('proveedorSeleccionadoInfo');
+    const texto = document.getElementById('proveedorSeleccionadoTexto');
+    if (id) {
+        texto.textContent = `${nombre || ''}${ruc ? ' • RUC: ' + ruc : ''}`;
+        info.style.display = 'block';
+        const input = document.getElementById('buscadorProveedor');
+        input.value = nombre || '';
+    } else {
+        texto.textContent = '';
+        info.style.display = 'none';
+        document.getElementById('buscadorProveedor').value = '';
+    }
+}
+
+function seleccionarProveedor(id, nombre, ruc) {
+    // Permitir cambiar el proveedor cabecera en cualquier momento (multi-proveedor por producto)
+    setProveedorUI(id, nombre, ruc);
+    allowGlobalSearch = false; // al seleccionar proveedor, se vuelve a filtrar por ese proveedor
+    document.getElementById('proveedorSuggestions').classList.remove('show');
+    selectedProveedorIndex = -1;
+}
+
+function limpiarProveedor() {
+    // Permitir limpiar SIEMPRE: búsquedas globales de productos
+    setProveedorUI('', '', '');
+    allowGlobalSearch = true;
+}
 
 </script>
 

@@ -16,9 +16,19 @@ class CompraController extends Controller
     {
         $this->middleware('admin')->only(['destroy']);
     }
-    public function index()
+    public function index(Request $request)
     {
-        $compras = Compra::with(['proveedor', 'moneda'])->orderByDesc('fecha')->paginate(15);
+        $proveedores = Proveedor::orderBy('razon_social')->get();
+
+        $comprasQuery = Compra::with(['proveedor', 'moneda']);
+        if ($request->filled('id_proveedor')) {
+            $comprasQuery->where('id_proveedor', $request->id_proveedor);
+        }
+        // Importante: clonar antes de ordenar/paginar para no contaminar el query base usado en agregaciones
+        $compras = (clone $comprasQuery)
+            ->orderByDesc('fecha')
+            ->paginate(15)
+            ->appends($request->query());
 
         // Obtener ids de moneda PEN y USD
         $moneda_pen = Moneda::where('codigo_iso', 'PEN')->first();
@@ -30,24 +40,47 @@ class CompraController extends Controller
         $compras_count_pen = Compra::where('id_moneda', $id_pen)->count();
         $compras_count_usd = Compra::where('id_moneda', $id_usd)->count();
 
-        // Totales por moneda (sumar total tal cual, aquí las compras no tienen estado XML)
-        $totales_por_moneda = \DB::table('compras')
-            ->select('id_moneda', \DB::raw('SUM(total) as monto'))
+        // Totales por moneda (aplican al conjunto filtrado si hay filtro)
+        $totales_por_moneda = (clone $comprasQuery)
+            ->select('id_moneda', DB::raw('SUM(total) as monto'))
             ->groupBy('id_moneda')
             ->pluck('monto', 'id_moneda');
 
         $monto_total_pen = isset($totales_por_moneda[$id_pen]) ? (float) $totales_por_moneda[$id_pen] : 0;
         $monto_total_usd = isset($totales_por_moneda[$id_usd]) ? (float) $totales_por_moneda[$id_usd] : 0;
 
-        return view('compras.index', compact('compras', 'compras_count_pen', 'compras_count_usd', 'monto_total_pen', 'monto_total_usd'));
+        // Compras del mes (conteo correcto global, no solo de la página actual)
+        $compras_mes_count = (clone $comprasQuery)
+            ->where('fecha', '>=', now()->startOfMonth())
+            ->count();
+
+        return view('compras.index', compact(
+            'compras',
+            'proveedores',
+            'compras_count_pen',
+            'compras_count_usd',
+            'monto_total_pen',
+            'monto_total_usd',
+            'compras_mes_count'
+        ));
     }
 
     public function create()
     {
         $proveedores = Proveedor::all();
         $monedas = Moneda::all();
-        // Asegurar que el buscador tenga los campos necesarios
-        $productos = Producto::select('id_producto', 'codigo', 'descripcion', 'id_proveedor')->orderBy('descripcion')->get();
+        // Asegurar que el buscador tenga los campos necesarios e incluir nombre del proveedor
+        $productos = Producto::leftJoin('proveedores', 'proveedores.id_proveedor', '=', 'productos.id_proveedor')
+            ->select(
+                'productos.id_producto',
+                'productos.codigo',
+                'productos.descripcion',
+                'productos.id_proveedor',
+                DB::raw('COALESCE(proveedores.razon_social, "") as proveedor_nombre'),
+                DB::raw('COALESCE(proveedores.numero_documento, "") as proveedor_ruc')
+            )
+            ->orderBy('productos.descripcion')
+            ->get();
         return view('compras.create', compact('proveedores', 'monedas', 'productos'));
     }
 
@@ -66,25 +99,26 @@ class CompraController extends Controller
             'detalles.*.precio_unitario' => 'required|numeric',
         ]);
 
-        // Derivar proveedor desde los productos si no se envió
+        // Derivar proveedor desde los productos si no se envió (independiente del índice del array)
         $idProveedor = $data['id_proveedor'] ?? null;
-        if (!$idProveedor) {
-            $primerProductoId = $data['detalles'][0]['id_producto'] ?? null;
+        if (!$idProveedor && !empty($data['detalles']) && is_array($data['detalles'])) {
+            $primerDetalle = reset($data['detalles']);
+            $primerProductoId = is_array($primerDetalle) ? ($primerDetalle['id_producto'] ?? null) : null;
             if ($primerProductoId) {
                 $primerProducto = Producto::select('id_proveedor')->find($primerProductoId);
                 $idProveedor = $primerProducto->id_proveedor ?? null;
             }
         }
+        // Si no se pudo determinar proveedor para la cabecera, usar el proveedor del primer producto si existe
         if (!$idProveedor) {
-            return back()->withErrors(['id_proveedor' => 'No se pudo determinar el proveedor de la compra.'])->withInput();
-        }
-        // Validar que todos los productos pertenezcan al mismo proveedor
-        foreach ($data['detalles'] as $detalleValid) {
-            $prodValid = Producto::select('id_proveedor')->find($detalleValid['id_producto']);
-            if (!$prodValid || (int)$prodValid->id_proveedor !== (int)$idProveedor) {
-                return back()->withErrors(['detalles' => 'Los productos seleccionados pertenecen a distintos proveedores. Registre la compra por proveedor único.'])->withInput();
+            $primerDetalleTmp = reset($data['detalles']);
+            $primerProductoIdTmp = is_array($primerDetalleTmp) ? ($primerDetalleTmp['id_producto'] ?? null) : null;
+            if ($primerProductoIdTmp) {
+                $primerProductoTmp = Producto::select('id_proveedor')->find($primerProductoIdTmp);
+                $idProveedor = $primerProductoTmp->id_proveedor ?? null;
             }
         }
+        // Nota: Se permite registrar productos de distintos proveedores en una sola compra.
 
         // Verificar coherencia entre id_moneda y moneda_codigo (si se envía)
         if (!empty($data['moneda_codigo'])) {
@@ -139,10 +173,22 @@ class CompraController extends Controller
 
     public function edit($id)
     {
-        $compra = Compra::with(['detalles'])->findOrFail($id);
+        // Eager load proveedor y moneda de la compra, y el proveedor de cada producto en los detalles
+        $compra = Compra::with(['proveedor', 'moneda', 'detalles.producto.proveedor'])->findOrFail($id);
         $proveedores = Proveedor::all();
         $monedas = Moneda::all();
-        $productos = Producto::all();
+        // Incluir datos de proveedor para buscador en la vista de edición
+        $productos = Producto::leftJoin('proveedores', 'proveedores.id_proveedor', '=', 'productos.id_proveedor')
+            ->select(
+                'productos.id_producto',
+                'productos.codigo',
+                'productos.descripcion',
+                'productos.id_proveedor',
+                DB::raw('COALESCE(proveedores.razon_social, "") as proveedor_nombre'),
+                DB::raw('COALESCE(proveedores.numero_documento, "") as proveedor_ruc')
+            )
+            ->orderBy('productos.descripcion')
+            ->get();
         return view('compras.edit', compact('compra', 'proveedores', 'monedas', 'productos'));
     }
 
@@ -162,23 +208,23 @@ class CompraController extends Controller
             'detalles.*.precio_unitario' => 'required|numeric',
         ]);
 
-        // Derivar proveedor desde los productos si no se envió
+        // Derivar proveedor desde los productos si no se envió (independiente del índice del array)
         $idProveedorUpd = $data['id_proveedor'] ?? null;
-        if (!$idProveedorUpd) {
-            $primerProductoId = $data['detalles'][0]['id_producto'] ?? null;
+        if (!$idProveedorUpd && !empty($data['detalles']) && is_array($data['detalles'])) {
+            $primerDetalleUpd = reset($data['detalles']);
+            $primerProductoId = is_array($primerDetalleUpd) ? ($primerDetalleUpd['id_producto'] ?? null) : null;
             if ($primerProductoId) {
                 $primerProducto = Producto::select('id_proveedor')->find($primerProductoId);
                 $idProveedorUpd = $primerProducto->id_proveedor ?? null;
             }
         }
+        // Permitir edición con múltiples proveedores; si no hay proveedor cabecera, derivar del primer detalle
         if (!$idProveedorUpd) {
-            return back()->withErrors(['id_proveedor' => 'No se pudo determinar el proveedor de la compra.'])->withInput();
-        }
-        // Validar que todos los productos pertenezcan al mismo proveedor
-        foreach ($data['detalles'] as $detalleValid) {
-            $prodValid = Producto::select('id_proveedor')->find($detalleValid['id_producto']);
-            if (!$prodValid || (int)$prodValid->id_proveedor !== (int)$idProveedorUpd) {
-                return back()->withErrors(['detalles' => 'Los productos seleccionados pertenecen a distintos proveedores. Registre la compra por proveedor único.'])->withInput();
+            $primerDetalleTmp = reset($data['detalles']);
+            $primerProductoIdTmp = is_array($primerDetalleTmp) ? ($primerDetalleTmp['id_producto'] ?? null) : null;
+            if ($primerProductoIdTmp) {
+                $primerProductoTmp = Producto::select('id_proveedor')->find($primerProductoIdTmp);
+                $idProveedorUpd = $primerProductoTmp->id_proveedor ?? null;
             }
         }
 
@@ -216,7 +262,8 @@ class CompraController extends Controller
                 DetalleCompra::create($detalle);
             }
         });
-        return redirect()->route('compras.show', $compra->id_compra)->with('success', 'Compra actualizada correctamente');
+        // Redirigir al índice de compras después de actualizar
+        return redirect()->route('compras.index')->with('success', 'Compra actualizada correctamente');
     }
 
     public function destroy($id)

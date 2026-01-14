@@ -365,6 +365,27 @@
         </a>
     </div>
 
+    <!-- Filtros -->
+    <form method="GET" action="{{ route('compras.index') }}" class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label class="form-label fw-semibold"><i class="fas fa-truck me-1"></i>Proveedor</label>
+            <select name="id_proveedor" class="form-select">
+                <option value="">Todos</option>
+                @foreach(($proveedores ?? []) as $prov)
+                    <option value="{{ $prov->id_proveedor }}" {{ request('id_proveedor') == $prov->id_proveedor ? 'selected' : '' }}>
+                        {{ $prov->razon_social }} {{ $prov->numero_documento ? '(RUC: '.$prov->numero_documento.')' : '' }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-md-6 d-flex align-items-end">
+            <div>
+                <button class="btn btn-modern" type="submit"><i class="fas fa-filter me-1"></i>Aplicar</button>
+                <a href="{{ route('compras.index') }}" class="btn btn-secondary ms-2"><i class="fas fa-undo me-1"></i>Limpiar</a>
+            </div>
+        </div>
+    </form>
+
     @if(session('success'))
         <div class="alert alert-success alert-modern alert-dismissible fade show" role="alert">
             <i class="fas fa-check-circle me-2"></i>
@@ -403,7 +424,7 @@
                 <i class="fas fa-calendar-alt"></i>
             </div>
             <div class="stat-label">Compras del Mes</div>
-            <div class="stat-value">{{ $compras->where('fecha', '>=', now()->startOfMonth())->count() }}</div>
+            <div class="stat-value">{{ $compras_mes_count ?? 0 }}</div>
         </div>
 
         <div class="stat-card">
