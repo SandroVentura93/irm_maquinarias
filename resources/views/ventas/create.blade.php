@@ -106,6 +106,10 @@
         </h5>
       </div>
       <div class="card-body">
+        <div id="clienteOpcionalHint" class="alert alert-info py-2 px-3 mb-3" style="display:none;">
+          <i class="fas fa-info-circle me-1"></i>
+          Para <strong>cotización</strong>, los datos del cliente son <strong>opcionales</strong>.
+        </div>
         <div class="row g-3">
           <div class="col-md-3">
             <label class="modern-label">
@@ -437,6 +441,10 @@ function validarCompatibilidadComprobanteCliente() {
   const cliente = clienteSeleccionado;
   if (!tipo) {
     return { valido: false, advertencia: false, mensaje: 'Seleccione el tipo de comprobante.' };
+  }
+  // Para cotización, el cliente es opcional
+  if (tipo === 'Cotización') {
+    return { valido: true, advertencia: false, mensaje: '' };
   }
   if (!cliente) {
     return { valido: false, advertencia: false, mensaje: 'Debe seleccionar un cliente antes de registrar.' };
@@ -1210,7 +1218,8 @@ document.getElementById('btnGuardar').addEventListener('click', async ()=>{
   btn.disabled = true;
 
   console.log('[VENTA] Click en Registrar Venta');
-  if(!clienteSeleccionado) return alert('Debe buscar y seleccionar un cliente');
+  const tipoSeleccionado = (document.getElementById('tipo_comprobante')?.value || '').trim();
+  if(tipoSeleccionado !== 'Cotización' && !clienteSeleccionado) return alert('Debe buscar y seleccionar un cliente');
   if(detalle.length === 0) return alert('Debe agregar al menos un producto');
   
   // === VALIDACIÓN DE COMPATIBILIDAD FACTURA/BOLETA ===
@@ -1228,7 +1237,7 @@ document.getElementById('btnGuardar').addEventListener('click', async ()=>{
   }
   
   const payload = {
-    id_cliente: clienteSeleccionado.id_cliente,
+    id_cliente: (tipoSeleccionado === 'Cotización' && !clienteSeleccionado) ? null : (clienteSeleccionado ? clienteSeleccionado.id_cliente : null),
     tipo_comprobante: document.getElementById('tipo_comprobante').value,
     moneda: document.getElementById('moneda').value,
     serie: document.getElementById('serie').value,
@@ -1359,11 +1368,14 @@ document.getElementById('btnGuardar').addEventListener('click', async ()=>{
     try {
       const tipo = document.getElementById('tipo_comprobante') ? document.getElementById('tipo_comprobante').value : '';
       const cont = document.getElementById('mostrarCodigoParteContainer');
+      const hintCliente = document.getElementById('clienteOpcionalHint');
       if (!cont) return;
       if (tipo === 'Cotización') {
         cont.style.display = 'block';
+        if (hintCliente) hintCliente.style.display = '';
       } else {
         cont.style.display = 'none';
+        if (hintCliente) hintCliente.style.display = 'none';
       }
     } catch (e) {
       console.warn('Error actualizando mostrarCodigoParte:', e);

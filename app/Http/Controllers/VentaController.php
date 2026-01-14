@@ -118,8 +118,19 @@ class VentaController extends Controller
     {
         \Log::info('Datos recibidos en guardarVenta:', $r->all());
         
+            // Determinar si es cotización para reglas condicionales de validación
+            $tipoEntrada = $r->input('tipo_comprobante');
+            $esCotizacion = false;
+            if (is_numeric($tipoEntrada)) {
+                $esCotizacion = ((int)$tipoEntrada) === 8;
+            } else if (is_string($tipoEntrada)) {
+                $esCotizacion = stripos($tipoEntrada, 'cotiz') !== false;
+            }
+
+            $idClienteRule = $esCotizacion ? 'nullable|integer' : 'required|integer';
+
             $data = $r->validate([
-            'id_cliente' => 'required|integer',
+            'id_cliente' => $idClienteRule,
             'tipo_comprobante' => 'required', // Puede ser ID o string para compatibilidad
             'moneda' => 'nullable|string',
             'serie' => 'required|string',
@@ -248,8 +259,14 @@ class VentaController extends Controller
             // Cotizaciones (ID 8) empiezan en ENVIADO, los demás en PENDIENTE
             $estadoInicial = ($id_tipo_comprobante == 8) ? 'ENVIADO' : 'PENDIENTE';
 
+            // Resolver id_cliente: para cotización puede ser null; si la BD no permite null, usar un cliente genérico
+            $idClienteParaGuardar = $data['id_cliente'] ?? null;
+            if ($esCotizacion && empty($idClienteParaGuardar)) {
+                $idClienteParaGuardar = $this->obtenerClienteGenericoId();
+            }
+
             $venta = Venta::create([
-                'id_cliente' => $data['id_cliente'],
+                'id_cliente' => $idClienteParaGuardar,
                 // Vendedor: si no hay sesión, usar null (o un usuario sistema)
                 'id_vendedor' => optional(auth()->user())->id_usuario ?? null,
                 'id_moneda' => $id_moneda,
@@ -418,6 +435,37 @@ class VentaController extends Controller
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json(['ok' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    // Obtiene el ID de un cliente genérico para casos donde el cliente es opcional (p. ej., cotización).
+    // Si no existe, lo crea con datos mínimos.
+    private function obtenerClienteGenericoId(): int
+    {
+        try {
+            $generico = Cliente::where(function($q){
+                $q->where('numero_documento', '00000000')
+                  ->orWhere('numero_documento', '00000000000');
+            })->first();
+            if ($generico) return (int) $generico->id_cliente;
+
+            $nuevoId = Cliente::insertGetId([
+                'tipo_documento' => 'DNI',
+                'numero_documento' => '00000000',
+                'nombre' => 'Sin cliente',
+                'direccion' => '—',
+                'telefono' => null,
+                'correo' => null,
+                'activo' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            return (int) $nuevoId;
+        } catch (\Throwable $e) {
+            \Log::warning('[CLIENTE GENÉRICO] No se pudo obtener/crear cliente genérico', ['error' => $e->getMessage()]);
+            // Fallback duro: intentar usar el primer cliente existente
+            $cualquiera = Cliente::orderBy('id_cliente', 'asc')->value('id_cliente');
+            return (int) ($cualquiera ?: 1);
         }
     }
 
@@ -701,8 +749,18 @@ class VentaController extends Controller
     public function store(Request $request)
     {
         // Implementación de registro tradicional con generación automática de número de comprobante
+        // Reglas condicionales: cliente requerido salvo cotización
+        $tipoEntrada = $request->input('tipo_comprobante');
+        $esCotizacion = false;
+        if (is_numeric($tipoEntrada)) {
+            $esCotizacion = ((int)$tipoEntrada) === 8;
+        } else if (is_string($tipoEntrada)) {
+            $esCotizacion = stripos($tipoEntrada, 'cotiz') !== false;
+        }
+        $idClienteRule = $esCotizacion ? 'nullable|integer' : 'required|integer';
+
         $data = $request->validate([
-            'id_cliente' => 'required|integer',
+            'id_cliente' => $idClienteRule,
             'tipo_comprobante' => 'required',
             'moneda' => 'required|string',
             'serie' => 'nullable|string', // Permitir que sea nulo para generar automáticamente
@@ -775,8 +833,13 @@ class VentaController extends Controller
             $prefijo = $prefijos[$data['tipo_comprobante']] ?? '';
             $numero_formateado = $prefijo . str_pad($nuevo_numero, 8, '0', STR_PAD_LEFT);
 
+            $idClienteParaGuardar = $data['id_cliente'] ?? null;
+            if ($esCotizacion && empty($idClienteParaGuardar)) {
+                $idClienteParaGuardar = $this->obtenerClienteGenericoId();
+            }
+
             $venta = Venta::create([
-                'id_cliente' => $data['id_cliente'],
+                'id_cliente' => $idClienteParaGuardar,
                 'id_vendedor' => auth()->user()->id_usuario ?? 1, // fallback a 1 si no hay usuario
                 'id_moneda' => $id_moneda,
                 'tipo_cambio' => $tipoCambio,
