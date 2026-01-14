@@ -306,7 +306,14 @@ class PdfController extends Controller
 
             // ⚡ Configuración optimizada de DomPDF
             $moneda = $venta->moneda; // Pasar objeto Moneda para vistas existentes
-            $pdf = PDF::loadView('comprobantes.' . $tipoConfig['template'], compact('venta', 'datos', 'empresa', 'tipoConfig', 'tipoCambio', 'moneda', 'mostrarCodigoParte'))
+            // Bandera para quitar separadores en detalles cuando el PDF cabe en una sola hoja
+            $singlePage = $this->esUnaSolaHoja($venta, $tipoConfig);
+            // Permitir forzar vía query ?single_page=1/0
+            if (request()->has('single_page')) {
+                $singlePage = request('single_page') == '1';
+            }
+
+            $pdf = PDF::loadView('comprobantes.' . $tipoConfig['template'], compact('venta', 'datos', 'empresa', 'tipoConfig', 'tipoCambio', 'moneda', 'mostrarCodigoParte', 'singlePage'))
                 ->setPaper('a4', 'portrait')
                 ->setOptions([
                     'isHtml5ParserEnabled' => true,
@@ -402,7 +409,13 @@ class PdfController extends Controller
             ]);
 
             // ⚡ Optimizaciones de DomPDF
-            $pdf = PDF::loadView('comprobantes.' . $tipoConfig['template'], compact('venta', 'datos', 'empresa', 'tipoConfig', 'moneda', 'tipoCambio', 'mostrarCodigoParte'))
+            // Bandera para quitar separadores en detalles cuando el PDF cabe en una sola hoja
+            $singlePage = $this->esUnaSolaHoja($venta, $tipoConfig);
+            if (request()->has('single_page')) {
+                $singlePage = request('single_page') == '1';
+            }
+
+            $pdf = PDF::loadView('comprobantes.' . $tipoConfig['template'], compact('venta', 'datos', 'empresa', 'tipoConfig', 'moneda', 'tipoCambio', 'mostrarCodigoParte', 'singlePage'))
                 ->setPaper('a4', 'portrait')
                 ->setOptions([
                     'isHtml5ParserEnabled' => true,
@@ -851,7 +864,9 @@ class PdfController extends Controller
         $datos = $this->prepararDatosComprobante($venta, $tipoConfig);
 
         // Renderizar la vista correspondiente
-        return PDF::loadView('comprobantes.' . $tipoConfig['template'], compact('venta', 'datos', 'empresa', 'tipoConfig'))
+        // Bandera para quitar separadores cuando cabe en una sola hoja
+        $singlePage = $this->esUnaSolaHoja($venta, $tipoConfig);
+        return PDF::loadView('comprobantes.' . $tipoConfig['template'], compact('venta', 'datos', 'empresa', 'tipoConfig', 'singlePage'))
             ->setPaper('a4', 'portrait')
             ->setOptions([
                 'isHtml5ParserEnabled' => true,
@@ -873,5 +888,31 @@ class PdfController extends Controller
         $descripcion = $tipoConfig['descripcion'] ?? 'comprobante';
         
         return strtolower(str_replace(' ', '_', $descripcion)) . '_' . $venta->serie . '_' . str_pad($venta->numero_comprobante, 8, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Heurística para determinar si el PDF cabe en una sola hoja.
+     * Nota: DomPDF no expone el conteo de páginas previo al render fácilmente,
+     * así que usamos un umbral por cantidad de ítems ajustado por tipo.
+     */
+    private function esUnaSolaHoja($venta, array $tipoConfig): bool
+    {
+        try {
+            $detallesCount = is_iterable($venta->detalles ?? null) ? count($venta->detalles) : (is_iterable($venta->detalleVentas ?? null) ? count($venta->detalleVentas) : 0);
+            $codigo = strtoupper($tipoConfig['codigo_sunat'] ?? '');
+            // Umbrales conservadores por tipo: guía tiene más bloques; ticket suele caber más.
+            $umbral = 18;
+            if ($codigo === '09') { // Guía de Remisión
+                $umbral = 12;
+            } elseif ($codigo === '12') { // Ticket
+                $umbral = 24;
+            } elseif ($codigo === 'CT') { // Cotización
+                $umbral = 18;
+            }
+            return $detallesCount <= $umbral;
+        } catch (\Throwable $e) {
+            \Log::warning('[PDF] esUnaSolaHoja fallback true por error', ['error' => $e->getMessage()]);
+            return true; // fallback: preferimos quitar líneas si hay duda
+        }
     }
 }

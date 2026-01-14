@@ -1004,6 +1004,16 @@ class VentaController extends Controller
                 'computed_flag' => $mostrarCodigoParte
             ]);
 
+            // Bandera: quitar separadores en detalles si cabe en una sola hoja (heurística simple)
+            $detallesCount = is_iterable($venta->detalleVentas) ? $venta->detalleVentas->count() : 0;
+            $umbral = 18; // conservador para A4 portrait
+            if (stripos($tipoComprobante, 'Guía') !== false) { $umbral = 12; }
+            if (stripos($tipoComprobante, 'Ticket') !== false) { $umbral = 24; }
+            $singlePage = $detallesCount <= $umbral;
+            if (request()->has('single_page')) {
+                $singlePage = request('single_page') == '1';
+            }
+
             // Preparar datos para el PDF
             $data = [
                 'venta' => $venta,
@@ -1023,9 +1033,11 @@ class VentaController extends Controller
                 'descuentoTotal' => $venta->detalleVentas->sum('descuento_monto') ?? 0,
                 'totalEnLetras' => $this->numeroALetrasConMoneda($venta->total ?? 0, $codigoIso, $tipoComprobante),
                 'mostrarCodigoParte' => $mostrarCodigoParte,
+                'singlePage' => $singlePage,
                 // Mantener compatibilidad con vistas que esperan un array $datos
                 'datos' => [
-                    'mostrarCodigoParte' => $mostrarCodigoParte
+                    'mostrarCodigoParte' => $mostrarCodigoParte,
+                    'singlePage' => $singlePage
                 ]
             ];
 

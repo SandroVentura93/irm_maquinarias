@@ -28,6 +28,15 @@
         $mostrarCodigoParte = true; // por defecto mostrar
     }
 
+    // Flag para controlar el estilo sin separadores (una sola hoja)
+    if (isset($singlePage)) {
+        $singlePage = (bool)$singlePage;
+    } elseif (isset($datos) && array_key_exists('singlePage', $datos)) {
+        $singlePage = (bool)$datos['singlePage'];
+    } else {
+        $singlePage = false;
+    }
+
     $totalPeso = 0;
     $baseCalc = 0;
 @endphp
@@ -38,6 +47,32 @@
     .std-details td { padding: 6px; border: 1px solid #dee2e6; text-align: center; font-size: 11px; }
     .std-details .txt-left { text-align: left; }
     .std-details tr:nth-child(even) { background: #f8f9fa; }
+
+    /* Modo sin separadores: quitar líneas y compactar filas */
+    .std-details.no-separators { border-collapse: collapse; margin: 14px 0; }
+    .std-details.no-separators th {
+        border: none !important;
+        padding: 5px 4px;
+        font-size: 10px;
+        white-space: normal;
+        line-height: 1.2;
+    }
+    .std-details.no-separators td {
+        border: none !important;
+        padding: 4px 3px;
+        line-height: 1.15;
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .std-details.no-separators td.txt-left,
+    .std-details.no-separators td.txt-left strong {
+        white-space: nowrap;
+        display: block;
+    }
+    .std-details.no-separators tr { background: transparent !important; }
+    .std-details.no-separators tr:nth-child(even) { background: rgba(44, 90, 160, 0.05) !important; }
 
     .std-totals { width: 100%; margin-top: 10px; display: table; }
     .std-totals .right { display: table-cell; width: 45%; vertical-align: top; }
@@ -87,7 +122,7 @@
     }
 @endphp
 
-<table class="std-details">
+<table class="std-details{{ $singlePage ? ' no-separators' : '' }}">
     <thead>
         <tr>
             <th style="width:6%">ITEM</th>

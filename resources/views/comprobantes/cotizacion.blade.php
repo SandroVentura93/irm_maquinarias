@@ -204,6 +204,11 @@
             font-weight: bold;
             font-size: 12px;
         }
+        .amount-words.compact h4 { font-size: 12px; }
+        .amount-words.compact p {
+            font-size: 10px;
+            white-space: nowrap;
+        }
 
         /* Bank data styles */
         .bank-data { margin-top: 25px; }
@@ -211,6 +216,15 @@
         .bank-table { width: 100%; border-collapse: collapse; }
         .bank-table th { background: #2c5aa0; color: #fff; padding: 8px; border: 1px solid #1f4173; font-size: 11px; text-align: center; }
         .bank-table td { padding: 8px; border: 1px solid #dee2e6; font-size: 11px; text-align: center; }
+        .bank-table.compact th {
+            padding: 6px 4px;
+            font-size: 10px;
+        }
+        .bank-table.compact td {
+            padding: 5px 4px;
+            font-size: 9.5px;
+            white-space: nowrap;
+        }
         .bank-logo { width: 60px; height: 20px; object-fit: contain; }
         .bank-badge { display:inline-block; padding:2px 6px; background:#2c5aa0; color:#fff; border-radius:4px; font-size:10px; }
     </style>
@@ -272,7 +286,7 @@
         <!-- Totales integrados en el bloque estandarizado; SON en condiciones -->
 
         <!-- Importe total en letras -->
-        <div class="amount-words">
+        <div class="amount-words{{ $singlePage ? ' compact' : '' }}">
             <h4>IMPORTE TOTAL EN LETRAS:</h4>
             <p>
                 {{ $datos['total_en_letras'] 
@@ -292,7 +306,7 @@
         <!-- Datos Bancarios (reemplaza condiciones comerciales) -->
         <div class="bank-data">
             <h4>DATOS BANCARIOS</h4>
-            <table class="bank-table">
+            <table class="bank-table{{ $singlePage ? ' compact' : '' }}">
                 <thead>
                     <tr>
                         <th>BANCO</th>
