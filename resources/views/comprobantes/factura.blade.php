@@ -17,12 +17,16 @@
             line-height: 1.4;
             color: #333;
         }
+        body.compact-mode { font-size: 11px; line-height: 1.25; }
+        body.compact-mode p,
+        body.compact-mode li { margin: 2px 0; }
         
         .container {
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
         }
+        .container.compact { padding: 14px; }
         
         .header {
             display: table;
@@ -31,6 +35,7 @@
             border-bottom: 2px solid #28a745;
             padding-bottom: 15px;
         }
+        .header.compact { margin-bottom: 14px; padding-bottom: 10px; }
         
         .company-info {
             display: table-cell;
@@ -58,6 +63,8 @@
             margin-bottom: 5px;
             font-size: 18px;
         }
+        .compact-mode .company-details h2 { font-size: 16px; margin-bottom: 4px; }
+        .compact-mode .company-details p { font-size: 11px; }
         
         .document-info {
             display: table-cell;
@@ -68,12 +75,14 @@
             padding: 15px;
             background: #f8f9fa;
         }
+        .document-info.compact { padding: 10px; }
         
         .document-info h1 {
             color: #28a745;
             margin-bottom: 10px;
             font-size: 20px;
         }
+        .document-info.compact h1 { font-size: 16px; margin-bottom: 6px; }
         
         .document-number {
             font-size: 16px;
@@ -81,6 +90,7 @@
             color: #28a745;
             margin-bottom: 10px;
         }
+        .document-info.compact .document-number { font-size: 14px; margin-bottom: 6px; }
         
         .client-info {
             background: #f8f9fa;
@@ -88,6 +98,9 @@
             margin: 20px 0;
             border-left: 4px solid #28a745;
         }
+        .client-info.compact { padding: 10px; margin: 14px 0; }
+        .client-info.compact h3 { margin-bottom: 6px; }
+        .client-info.compact p { margin: 2px 0; }
         
         .client-info h3 {
             color: #28a745;
@@ -100,6 +113,7 @@
             border-collapse: collapse;
             margin: 20px 0;
         }
+        .details-table.compact { margin: 14px 0; }
         
         .details-table th {
             background: #28a745;
@@ -109,6 +123,7 @@
             font-size: 11px;
             border: 1px solid #1e7e34;
         }
+        .details-table.compact th { padding: 8px 6px; font-size: 10px; }
         
         .details-table td {
             padding: 8px;
@@ -116,6 +131,7 @@
             text-align: center;
             font-size: 11px;
         }
+        .details-table.compact td { padding: 6px 5px; font-size: 10px; }
         
         .details-table tr:nth-child(even) {
             background-color: #f8f9fa;
@@ -125,6 +141,7 @@
             margin-top: 20px;
             text-align: right;
         }
+        .totals.compact { margin-top: 14px; }
         
         .totals table {
             margin-left: auto;
@@ -136,6 +153,7 @@
             padding: 8px 15px;
             border: 1px solid #dee2e6;
         }
+        .totals.compact td { padding: 6px 10px; font-size: 11px; }
         
         .totals .total-label {
             background: #f8f9fa;
@@ -149,6 +167,7 @@
             font-weight: bold;
             font-size: 14px;
         }
+        .totals.compact .total-final { font-size: 12px; }
         
         .legal-info {
             margin-top: 30px;
@@ -157,6 +176,8 @@
             padding: 15px;
             border-radius: 5px;
         }
+        .legal-info.compact { margin-top: 18px; padding: 10px; }
+        .legal-info.compact p { margin-bottom: 3px; }
         
         .legal-info h4 {
             color: #155724;
@@ -178,6 +199,7 @@
             border-top: 1px solid #dee2e6;
             padding-top: 15px;
         }
+        .footer.compact { margin-top: 20px; padding-top: 10px; }
         
         .amount-words {
             background: #f8f9fa;
@@ -187,6 +209,7 @@
             font-weight: bold;
             color: #155724;
         }
+        .amount-words.compact { padding: 8px; margin: 10px 0; font-size: 11px; }
         
         .tax-info {
             background: #fff3cd;
@@ -195,6 +218,7 @@
             margin: 15px 0;
             border-radius: 5px;
         }
+        .tax-info.compact { padding: 8px; margin: 10px 0; font-size: 11px; }
         
         .tax-info h5 {
             color: #856404;
@@ -202,11 +226,11 @@
             font-size: 12px;
         }
     </style>
-</head>
-<body>
-    <div class="container">
+    </head>
+    <body class="{{ $singlePage ? 'compact-mode' : '' }}">
+        <div class="container{{ $singlePage ? ' compact' : '' }}">
         <!-- Header -->
-        <div class="header">
+            <div class="header{{ $singlePage ? ' compact' : '' }}">
             <div class="company-info">
                 @include('comprobantes.partials.logo')
                 <div class="company-details">
@@ -217,7 +241,7 @@
                     <p><strong>Email:</strong> {{ $empresa['email'] ?? 'ventas@irmmaquinarias.com' }}</p>
                 </div>
             </div>
-            <div class="document-info">
+            <div class="document-info{{ $singlePage ? ' compact' : '' }}">
                 <h1>FACTURA</h1>
                 <!-- <div class="document-number">{{ $venta->serie }}-{{ $venta->numero }}</div> -->
                 <div class="document-number">{{ $venta->numero }}</div>
@@ -227,7 +251,7 @@
         </div>
 
         <!-- Información del Cliente -->
-        <div class="client-info">
+        <div class="client-info{{ $singlePage ? ' compact' : '' }}">
             <h3>CLIENTE</h3>
             <div style="display: table; width: 100%;">
                 <div style="display: table-cell; width: 50%;">
@@ -250,14 +274,14 @@
         @include('comprobantes.partials.detalle_estandar')
 
         <!-- Importe en palabras -->
-        <div class="amount-words">
+        <div class="amount-words{{ $singlePage ? ' compact' : '' }}">
             <strong>SON:</strong> {{ strtoupper($totalEnLetras) }}
         </div>
 
         <!-- Totales integrados en el bloque estandarizado -->
 
         <!-- Información legal -->
-        <div class="legal-info">
+        <div class="legal-info{{ $singlePage ? ' compact' : '' }}">
             <h4>INFORMACIÓN LEGAL</h4>
             <p>• Documento electrónico que cumple con las disposiciones de SUNAT</p>
             <p>• Autorizada mediante Resolución de Intendencia Nacional</p>
@@ -266,7 +290,7 @@
         </div>
 
         <!-- Footer -->
-        <div class="footer">
+        <div class="footer{{ $singlePage ? ' compact' : '' }}">
             @if($venta->vendedor)
             <p><strong>Vendedor:</strong> {{ $venta->vendedor->nombre }}</p>
             @endif

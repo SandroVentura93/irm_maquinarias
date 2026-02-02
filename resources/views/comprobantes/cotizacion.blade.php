@@ -17,12 +17,16 @@
             line-height: 1.4;
             color: #333;
         }
+        body.compact-mode { font-size: 11px; line-height: 1.25; }
+        body.compact-mode p,
+        body.compact-mode li { margin: 2px 0; }
         
         .container {
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
         }
+        .container.compact { padding: 14px; }
         
         .header {
             display: table;
@@ -31,6 +35,7 @@
             border-bottom: 2px solid #007bff;
             padding-bottom: 15px;
         }
+        .header.compact { margin-bottom: 14px; padding-bottom: 10px; }
         
         .company-info {
             display: table-cell;
@@ -57,6 +62,8 @@
             margin-bottom: 5px;
             font-size: 18px;
         }
+        .compact-mode .company-details h2 { font-size: 16px; margin-bottom: 4px; }
+        .compact-mode .company-details p { font-size: 11px; }
         
         .document-info {
             display: table-cell;
@@ -67,12 +74,14 @@
             padding: 15px;
             background: #f8f9fa;
         }
+        .document-info.compact { padding: 10px; }
         
         .document-info h1 {
             color: #007bff;
             margin-bottom: 10px;
             font-size: 20px;
         }
+        .document-info.compact h1 { font-size: 16px; margin-bottom: 6px; }
         
         .document-number {
             font-size: 16px;
@@ -80,6 +89,7 @@
             color: #007bff;
             margin-bottom: 10px;
         }
+        .document-info.compact .document-number { font-size: 14px; margin-bottom: 6px; }
         
         .client-info {
             background: #f8f9fa;
@@ -87,6 +97,9 @@
             margin: 20px 0;
             border-left: 4px solid #007bff;
         }
+            .client-info.compact { padding: 10px; margin: 14px 0; }
+            .client-info.compact h3 { margin-bottom: 6px; }
+            .client-info.compact p { margin: 2px 0; }
         
         .client-info h3 {
             color: #007bff;
@@ -99,6 +112,7 @@
             border-collapse: collapse;
             margin: 20px 0;
         }
+        .details-table.compact { margin: 14px 0; }
         
         .details-table th {
             background: #007bff;
@@ -108,6 +122,7 @@
             font-size: 11px;
             border: 1px solid #0056b3;
         }
+        .details-table.compact th { padding: 8px 6px; font-size: 10px; }
         
         .details-table td {
             padding: 8px;
@@ -115,6 +130,7 @@
             text-align: center;
             font-size: 11px;
         }
+        .details-table.compact td { padding: 6px 5px; font-size: 10px; }
         
         .details-table tr:nth-child(even) {
             background-color: #f8f9fa;
@@ -124,6 +140,7 @@
             margin-top: 20px;
             text-align: right;
         }
+        .totals.compact { margin-top: 14px; }
         
         .totals table {
             margin-left: auto;
@@ -135,7 +152,7 @@
             padding: 8px 15px;
             border: 1px solid #dee2e6;
         }
-        
+        .totals.compact td { padding: 6px 10px; font-size: 11px; }
         .totals .total-label {
             background: #f8f9fa;
             font-weight: bold;
@@ -148,6 +165,7 @@
             font-weight: bold;
             font-size: 14px;
         }
+        .totals.compact .total-final { font-size: 12px; }
         
         .conditions {
             margin-top: 30px;
@@ -156,12 +174,14 @@
             padding: 15px;
             border-radius: 5px;
         }
+        .conditions.compact { margin-top: 18px; padding: 10px; font-size: 11px; }
         
         .conditions h4 {
             color: #856404;
             margin-bottom: 10px;
             font-size: 14px;
         }
+        .conditions.compact h4 { font-size: 12px; margin-bottom: 6px; }
         
         .conditions ul {
             color: #856404;
@@ -177,6 +197,7 @@
             border-top: 1px solid #dee2e6;
             padding-top: 15px;
         }
+        .footer.compact { margin-top: 20px; padding-top: 10px; }
         
         .validity {
             text-align: center;
@@ -187,6 +208,7 @@
             color: #0c5460;
             font-weight: bold;
         }
+            .validity.compact { margin: 12px 0; padding: 8px; }
 
         .amount-words {
             margin-top: 20px;
@@ -204,24 +226,28 @@
             font-weight: bold;
             font-size: 12px;
         }
-        .amount-words.compact h4 { font-size: 12px; }
+        .amount-words.compact h4 { font-size: 12px; margin-bottom: 3px; }
         .amount-words.compact p {
             font-size: 10px;
             white-space: nowrap;
+            margin: 0;
+            line-height: 1.1;
         }
 
         /* Bank data styles */
         .bank-data { margin-top: 25px; }
+        .bank-data.compact { margin-top: 16px; }
         .bank-data h4 { color: #2c5aa0; margin-bottom: 8px; font-size: 14px; }
+        .bank-data.compact h4 { font-size: 12px; margin-bottom: 6px; }
         .bank-table { width: 100%; border-collapse: collapse; }
         .bank-table th { background: #2c5aa0; color: #fff; padding: 8px; border: 1px solid #1f4173; font-size: 11px; text-align: center; }
         .bank-table td { padding: 8px; border: 1px solid #dee2e6; font-size: 11px; text-align: center; }
         .bank-table.compact th {
-            padding: 6px 4px;
+            padding: 5px 3px;
             font-size: 10px;
         }
         .bank-table.compact td {
-            padding: 5px 4px;
+            padding: 4px 3px;
             font-size: 9.5px;
             white-space: nowrap;
         }
@@ -229,10 +255,10 @@
         .bank-badge { display:inline-block; padding:2px 6px; background:#2c5aa0; color:#fff; border-radius:4px; font-size:10px; }
     </style>
 </head>
-<body>
-    <div class="container">
+<body class="{{ $singlePage ? 'compact-mode' : '' }}">
+    <div class="container{{ $singlePage ? ' compact' : '' }}">
         <!-- Header -->
-        <div class="header">
+        <div class="header{{ $singlePage ? ' compact' : '' }}">
             <div class="company-info">
                 @include('comprobantes.partials.logo')
                 <div class="company-details">
@@ -243,7 +269,7 @@
                     <p><strong>Email:</strong> ventas@irmmaquinarias.com</p>
                 </div>
             </div>
-            <div class="document-info">
+            <div class="document-info{{ $singlePage ? ' compact' : '' }}">
                 <h1>COTIZACIÓN</h1>
                 <div class="document-number">{{ $venta->numero }}</div>
                 <p><strong>Fecha:</strong> {{ date('d/m/Y', strtotime($venta->fecha)) }}</p>
@@ -252,7 +278,7 @@
         </div>
 
         <!-- Información del Cliente -->
-        <div class="client-info">
+        <div class="client-info{{ $singlePage ? ' compact' : '' }}">
             <h3>INFORMACIÓN DEL CLIENTE</h3>
             <div style="display: table; width: 100%;">
                 <div style="display: table-cell; width: 50%;">
@@ -268,7 +294,7 @@
         </div>
 
         <!-- Validez de la cotización -->
-        <div class="validity">
+        <div class="validity{{ $singlePage ? ' compact' : '' }}">
             Esta cotización es válida por 30 días calendario desde la fecha de emisión
         </div>
 
@@ -287,7 +313,7 @@
 
         <!-- Importe total en letras -->
         <div class="amount-words{{ $singlePage ? ' compact' : '' }}">
-            <h4>IMPORTE TOTAL EN LETRAS:</h4>
+            <!-- <h4>IMPORTE TOTAL EN LETRAS:</h4> -->
             <p>
                 {{ $datos['total_en_letras'] 
                     ?? ($totalEnLetras ?? (function() use($venta, $codigoIso) {
@@ -304,7 +330,7 @@
         </div>
 
         <!-- Datos Bancarios (reemplaza condiciones comerciales) -->
-        <div class="bank-data">
+        <div class="bank-data{{ $singlePage ? ' compact' : '' }}">
             <h4>DATOS BANCARIOS</h4>
             <table class="bank-table{{ $singlePage ? ' compact' : '' }}">
                 <thead>
@@ -333,7 +359,7 @@
         </div>
 
         <!-- Footer -->
-        <div class="footer">
+        <div class="footer{{ $singlePage ? ' compact' : '' }}">
             @if($venta->vendedor)
             <p><strong>Ejecutivo de Ventas:</strong> {{ $venta->vendedor->nombre }}</p>
             @endif

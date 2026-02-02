@@ -17,12 +17,16 @@
             line-height: 1.4;
             color: #333;
         }
+        body.compact-mode { font-size: 11px; line-height: 1.25; }
+        body.compact-mode p,
+        body.compact-mode li { margin: 2px 0; }
         
         .container {
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
         }
+        .container.compact { padding: 14px; }
         
         .header {
             display: table;
@@ -31,6 +35,7 @@
             border-bottom: 2px solid #6f42c1;
             padding-bottom: 15px;
         }
+        .header.compact { margin-bottom: 14px; padding-bottom: 10px; }
         
         .company-info {
             display: table-cell;
@@ -57,6 +62,8 @@
             margin-bottom: 5px;
             font-size: 18px;
         }
+        .compact-mode .company-details h2 { font-size: 16px; margin-bottom: 4px; }
+        .compact-mode .company-details p { font-size: 11px; }
         
         .document-info {
             display: table-cell;
@@ -67,12 +74,14 @@
             padding: 15px;
             background: #e2d9f3;
         }
+        .document-info.compact { padding: 10px; }
         
         .document-info h1 {
             color: #6f42c1;
             margin-bottom: 10px;
             font-size: 18px;
         }
+        .document-info.compact h1 { font-size: 16px; margin-bottom: 6px; }
         
         .document-number {
             font-size: 16px;
@@ -80,6 +89,7 @@
             color: #6f42c1;
             margin-bottom: 10px;
         }
+        .document-info.compact .document-number { font-size: 14px; margin-bottom: 6px; }
         
         .traslado-info {
             background: #e2d9f3;
@@ -88,6 +98,8 @@
             margin: 15px 0;
             border-radius: 5px;
         }
+        .traslado-info.compact { padding: 8px; margin: 12px 0; }
+        .traslado-info.compact h4 { margin-bottom: 6px !important; }
         
         .client-info {
             background: #f8f9fa;
@@ -95,6 +107,9 @@
             margin: 20px 0;
             border-left: 4px solid #6f42c1;
         }
+        .client-info.compact { padding: 10px; margin: 14px 0; }
+        .client-info.compact h3 { margin-bottom: 6px; }
+        .client-info.compact p { margin: 2px 0; }
         
         .client-info h3 {
             color: #6f42c1;
@@ -107,6 +122,7 @@
             border-collapse: collapse;
             margin: 20px 0;
         }
+        .details-table.compact { margin: 14px 0; }
         
         .details-table th {
             background: #6f42c1;
@@ -115,6 +131,7 @@
             text-align: center;
             font-size: 11px;
         }
+        .details-table.compact th { padding: 8px 6px; font-size: 10px; }
         
         .details-table td {
             padding: 8px;
@@ -122,6 +139,7 @@
             text-align: center;
             font-size: 11px;
         }
+        .details-table.compact td { padding: 6px 5px; font-size: 10px; }
         
         .details-table .description {
             text-align: left;
@@ -132,6 +150,7 @@
             width: 100%;
             margin-top: 20px;
         }
+        .totals.compact { margin-top: 16px; }
         
         .totals-left {
             display: table-cell;
@@ -139,12 +158,14 @@
             vertical-align: top;
             padding-right: 20px;
         }
+        .totals-left.compact { padding-right: 12px; }
         
         .totals-right {
             display: table-cell;
             width: 40%;
             vertical-align: top;
         }
+        .totals-right.compact { padding-left: 6px; }
         
         .observaciones {
             background: #f8f9fa;
@@ -152,16 +173,20 @@
             border-left: 4px solid #6f42c1;
             margin-bottom: 15px;
         }
+        .observaciones.compact { padding: 8px; margin-bottom: 10px; }
+        .observaciones.compact p { margin: 2px 0; }
         
         .firmas {
             border: 1px solid #6f42c1;
             padding: 15px;
             border-radius: 5px;
         }
+        .firmas.compact { padding: 10px; }
         
         .firma-section {
             margin-bottom: 40px;
         }
+        .firma-section.compact { margin-bottom: 24px; }
         
         .firma-line {
             border-top: 1px solid #666;
@@ -179,16 +204,17 @@
             border-top: 1px solid #ddd;
             padding-top: 15px;
         }
+        .footer.compact { margin-top: 20px; padding-top: 10px; }
         
         .text-right { text-align: right; }
         .text-center { text-align: center; }
         .font-bold { font-weight: bold; }
     </style>
-</head>
-<body>
-    <div class="container">
+    </head>
+    <body class="{{ $singlePage ? 'compact-mode' : '' }}">
+        <div class="container{{ $singlePage ? ' compact' : '' }}">
         <!-- Header -->
-        <div class="header">
+            <div class="header{{ $singlePage ? ' compact' : '' }}">
             <div class="company-info">
                 @include('comprobantes.partials.logo')
                 <div class="company-details">
@@ -200,7 +226,7 @@
                 </div>
             </div>
             
-            <div class="document-info">
+            <div class="document-info{{ $singlePage ? ' compact' : '' }}">
                 <h1>{{ $tipoConfig['titulo'] ?? 'GUÍA DE REMISIÓN ELECTRÓNICA' }}</h1>
                 <div class="document-number">{{ $venta->serie }}-{{ str_pad($venta->numero_comprobante, 8, '0', STR_PAD_LEFT) }}</div>
                 <p><strong>Código SUNAT:</strong> {{ $tipoConfig['codigo_sunat'] ?? '09' }}</p>
@@ -208,7 +234,7 @@
         </div>
 
         <!-- Información del traslado -->
-        <div class="traslado-info">
+        <div class="traslado-info{{ $singlePage ? ' compact' : '' }}">
             <h4 style="color: #6f42c1; margin-bottom: 8px;">🚚 INFORMACIÓN DEL TRASLADO</h4>
             <div style="display: table; width: 100%;">
                 <div style="display: table-row;">
@@ -231,7 +257,7 @@
         </div>
 
         <!-- Información del destinatario -->
-        <div class="client-info">
+        <div class="client-info{{ $singlePage ? ' compact' : '' }}">
             <h3>🏠 INFORMACIÓN DEL DESTINATARIO</h3>
             <p><strong>Destinatario:</strong> {{ $venta->cliente->nombre ?? 'Cliente General' }}</p>
             <p><strong>RUC/DNI:</strong> {{ $venta->cliente->numero_documento ?? 'Sin documento' }}</p>
@@ -255,7 +281,7 @@
         </div>
 
         <!-- Detalle de bienes a trasladar -->
-        <table class="details-table">
+        <table class="details-table{{ $singlePage ? ' compact' : '' }}">
             <thead>
                 <tr>
                     <th style="width: 8%;">Item</th>
@@ -298,9 +324,9 @@
         </table>
 
         <!-- Observaciones y firmas -->
-        <div class="totals">
-            <div class="totals-left">
-                <div class="observaciones">
+        <div class="totals{{ $singlePage ? ' compact' : '' }}">
+            <div class="totals-left{{ $singlePage ? ' compact' : '' }}">
+                <div class="observaciones{{ $singlePage ? ' compact' : '' }}">
                     <h4>OBSERVACIONES DEL TRASLADO:</h4>
                     <p>• Mercadería entregada en perfecto estado</p>
                     <p>• El destinatario debe verificar la mercadería al momento de la entrega</p>
@@ -315,19 +341,19 @@
                 </div>
             </div>
             
-            <div class="totals-right">
-                <div class="firmas">
+            <div class="totals-right{{ $singlePage ? ' compact' : '' }}">
+                <div class="firmas{{ $singlePage ? ' compact' : '' }}">
                     <div style="text-align: center; font-weight: bold; color: #6f42c1; margin-bottom: 15px;">
                         CONFORMIDAD DE ENTREGA
                     </div>
                     
-                    <div class="firma-section">
+                    <div class="firma-section{{ $singlePage ? ' compact' : '' }}">
                         <div class="firma-line">
                             Firma y sello del transportista
                         </div>
                     </div>
                     
-                    <div class="firma-section">
+                    <div class="firma-section{{ $singlePage ? ' compact' : '' }}">
                         <div class="firma-line">
                             Firma y sello del destinatario
                         </div>
@@ -341,7 +367,7 @@
         </div>
 
         <!-- Footer -->
-        <div class="footer">
+        <div class="footer{{ $singlePage ? ' compact' : '' }}">
             <p style="color: #6f42c1; font-weight: bold;">GUÍA DE REMISIÓN ELECTRÓNICA - DOCUMENTO OFICIAL SUNAT</p>
             <p>Este documento sustenta el traslado de bienes según el artículo 18° del Reglamento de Comprobantes de Pago</p>
             <p>{{ $empresa['web'] ?? 'www.irmmaquinarias.com' }} | {{ $empresa['email'] ?? 'ventas@irmmaquinarias.com' }} | Teléfono: {{ $empresa['telefono'] ?? '(01) 234-5678' }}</p>

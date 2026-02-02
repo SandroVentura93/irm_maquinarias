@@ -17,12 +17,16 @@
             line-height: 1.4;
             color: #333;
         }
+        body.compact-mode { font-size: 11px; line-height: 1.25; }
+        body.compact-mode p,
+        body.compact-mode li { margin: 2px 0; }
         
         .container {
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
         }
+        .container.compact { padding: 14px; }
         
         .header {
             display: table;
@@ -31,6 +35,7 @@
             border-bottom: 2px solid #fd7e14;
             padding-bottom: 15px;
         }
+        .header.compact { margin-bottom: 14px; padding-bottom: 10px; }
         
         .company-info {
             display: table-cell;
@@ -57,6 +62,8 @@
             margin-bottom: 5px;
             font-size: 18px;
         }
+        .compact-mode .company-details h2 { font-size: 16px; margin-bottom: 4px; }
+        .compact-mode .company-details p { font-size: 11px; }
         
         .document-info {
             display: table-cell;
@@ -67,12 +74,14 @@
             padding: 15px;
             background: #fff3cd;
         }
+        .document-info.compact { padding: 10px; }
         
         .document-info h1 {
             color: #fd7e14;
             margin-bottom: 10px;
             font-size: 18px;
         }
+        .document-info.compact h1 { font-size: 16px; margin-bottom: 6px; }
         
         .document-number {
             font-size: 16px;
@@ -80,6 +89,7 @@
             color: #fd7e14;
             margin-bottom: 10px;
         }
+        .document-info.compact .document-number { font-size: 14px; margin-bottom: 6px; }
         
         .motivo-nota {
             background: #fff3cd;
@@ -87,6 +97,9 @@
             padding: 10px;
             margin: 15px 0;
         }
+        .motivo-nota.compact { padding: 8px; margin: 12px 0; }
+        .motivo-nota.compact h4 { margin-bottom: 6px; }
+        .motivo-nota.compact p { margin: 2px 0; }
         
         .client-info {
             background: #f8f9fa;
@@ -94,6 +107,9 @@
             margin: 20px 0;
             border-left: 4px solid #fd7e14;
         }
+        .client-info.compact { padding: 10px; margin: 14px 0; }
+        .client-info.compact h3 { margin-bottom: 6px; }
+        .client-info.compact p { margin: 2px 0; }
         
         .client-info h3 {
             color: #fd7e14;
@@ -106,6 +122,7 @@
             border-collapse: collapse;
             margin: 20px 0;
         }
+        .details-table.compact { margin: 14px 0; }
         
         .details-table th {
             background: #fd7e14;
@@ -114,6 +131,7 @@
             text-align: center;
             font-size: 11px;
         }
+        .details-table.compact th { padding: 8px 6px; font-size: 10px; }
         
         .details-table td {
             padding: 8px;
@@ -121,6 +139,7 @@
             text-align: center;
             font-size: 11px;
         }
+        .details-table.compact td { padding: 6px 5px; font-size: 10px; }
         
         .details-table .description {
             text-align: left;
@@ -137,6 +156,7 @@
             width: 100%;
             margin-top: 20px;
         }
+        .totals.compact { margin-top: 16px; }
         
         .totals-left {
             display: table-cell;
@@ -144,12 +164,14 @@
             vertical-align: top;
             padding-right: 20px;
         }
+        .totals-left.compact { padding-right: 12px; }
         
         .totals-right {
             display: table-cell;
             width: 40%;
             vertical-align: top;
         }
+        .totals-right.compact { padding-left: 6px; }
         
         .total-letras {
             background: #f8f9fa;
@@ -157,17 +179,21 @@
             border: 1px solid #ddd;
             margin-bottom: 15px;
         }
+        .total-letras.compact { padding: 8px; margin-bottom: 10px; }
         
         .observaciones {
             background: #f8f9fa;
             padding: 10px;
             border-left: 4px solid #fd7e14;
         }
+        .observaciones.compact { padding: 8px; }
+        .observaciones.compact p { margin: 2px 0; }
         
         .totals-table {
             width: 100%;
             border-collapse: collapse;
         }
+        .totals-table.compact td { padding: 6px 10px; font-size: 11px; }
         
         .totals-table td {
             padding: 8px 12px;
@@ -192,6 +218,7 @@
             font-weight: bold;
             font-size: 14px;
         }
+        .totals-table.compact .total { font-size: 12px; }
         
         .footer {
             margin-top: 30px;
@@ -201,16 +228,17 @@
             border-top: 1px solid #ddd;
             padding-top: 15px;
         }
+        .footer.compact { margin-top: 20px; padding-top: 10px; }
         
         .text-right { text-align: right; }
         .text-center { text-align: center; }
         .font-bold { font-weight: bold; }
     </style>
-</head>
-<body>
-    <div class="container">
+    </head>
+    <body class="{{ $singlePage ? 'compact-mode' : '' }}">
+        <div class="container{{ $singlePage ? ' compact' : '' }}">
         <!-- Header -->
-        <div class="header">
+            <div class="header{{ $singlePage ? ' compact' : '' }}">
             <div class="company-info">
                 @include('comprobantes.partials.logo')
                 <div class="company-details">
@@ -222,7 +250,7 @@
                 </div>
             </div>
             
-            <div class="document-info">
+            <div class="document-info{{ $singlePage ? ' compact' : '' }}">
                 <h1>{{ $tipoConfig['titulo'] ?? 'NOTA DE DÉBITO ELECTRÓNICA' }}</h1>
                 <div class="document-number">{{ $venta->numero }}</div>
                 <p><strong>Código SUNAT:</strong> {{ $tipoConfig['codigo_sunat'] ?? '08' }}</p>
@@ -230,7 +258,7 @@
         </div>
 
         <!-- Motivo de la nota de débito -->
-        <div class="motivo-nota">
+        <div class="motivo-nota{{ $singlePage ? ' compact' : '' }}">
             <h4>📋 MOTIVO DE LA NOTA DE DÉBITO</h4>
             <p><strong>Código:</strong> 01 - Intereses por mora</p>
             <p><strong>Descripción:</strong> Cargo adicional por servicios</p>
@@ -238,7 +266,7 @@
         </div>
 
         <!-- Información del cliente -->
-        <div class="client-info">
+        <div class="client-info{{ $singlePage ? ' compact' : '' }}">
             <h3>INFORMACIÓN DEL CLIENTE</h3>
             <p><strong>Razón Social/Nombre:</strong> {{ $venta->cliente->nombre ?? 'Cliente General' }}</p>
             <p><strong>RUC/DNI:</strong> {{ $venta->cliente->numero_documento ?? 'Sin documento' }}</p>
@@ -266,7 +294,7 @@
         </div>
 
         <!-- Detalle de cargos -->
-        <table class="details-table">
+        <table class="details-table{{ $singlePage ? ' compact' : '' }}">
             <thead>
                 <tr>
                     <th style="width: 8%;">Item</th>
@@ -298,14 +326,14 @@
         </table>
 
         <!-- Totales -->
-        <div class="totals">
-            <div class="totals-left">
-                <div class="total-letras">
+        <div class="totals{{ $singlePage ? ' compact' : '' }}">
+            <div class="totals-left{{ $singlePage ? ' compact' : '' }}">
+                <div class="total-letras{{ $singlePage ? ' compact' : '' }}">
                     <h4>IMPORTE DE LA NOTA EN LETRAS:</h4>
                     <p class="font-bold">{{ $datos['total_en_letras'] ?? 'CIEN CON 00/100 SOLES' }}</p>
                 </div>
                 
-                <div class="observaciones">
+                <div class="observaciones{{ $singlePage ? ' compact' : '' }}">
                     <h4>INFORMACIÓN SOBRE EL CARGO ADICIONAL:</h4>
                     <p>• Esta Nota de Débito incrementa el monto del documento de referencia</p>
                     <p>• El importe adicional debe ser cancelado junto con la deuda principal</p>
@@ -314,8 +342,8 @@
                 </div>
             </div>
             
-            <div class="totals-right">
-                <table class="totals-table">
+            <div class="totals-right{{ $singlePage ? ' compact' : '' }}">
+                <table class="totals-table{{ $singlePage ? ' compact' : '' }}">
                     <tr>
                         <td class="label">Operación Gravada:</td>
                         <td class="value">+{{ $simbolo }} {{ number_format($datos['base_imponible'] ?? 0, 2) }}</td>
@@ -333,7 +361,7 @@
         </div>
 
         <!-- Footer -->
-        <div class="footer">
+        <div class="footer{{ $singlePage ? ' compact' : '' }}">
             <p style="color: #fd7e14; font-weight: bold;">NOTA DE DÉBITO ELECTRÓNICA - DOCUMENTO OFICIAL SUNAT</p>
             <p>Este documento incrementa el importe del comprobante de referencia según la normativa tributaria vigente</p>
             <p>{{ $empresa['web'] ?? 'www.irmmaquinarias.com' }} | {{ $empresa['email'] ?? 'ventas@irmmaquinarias.com' }} | Teléfono: {{ $empresa['telefono'] ?? '(01) 234-5678' }}</p>

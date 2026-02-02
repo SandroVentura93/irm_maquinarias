@@ -17,12 +17,16 @@
             line-height: 1.4;
             color: #333;
         }
+        body.compact-mode { font-size: 11px; line-height: 1.25; }
+        body.compact-mode p,
+        body.compact-mode li { margin: 2px 0; }
         
         .container {
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
         }
+        .container.compact { padding: 14px; }
         
         .header {
             display: table;
@@ -31,6 +35,7 @@
             border-bottom: 2px solid #6c757d;
             padding-bottom: 15px;
         }
+        .header.compact { margin-bottom: 14px; padding-bottom: 10px; }
         
         .company-info {
             display: table-cell;
@@ -67,6 +72,7 @@
             padding: 15px;
             background: #f8f9fa;
         }
+        .document-info.compact { padding: 12px; }
         
         .document-info h1 {
             color: #6c757d;
@@ -87,6 +93,7 @@
             padding: 10px;
             margin: 15px 0;
         }
+        .retencion-info.compact { padding: 8px; margin: 12px 0; }
         
         .client-info {
             background: #f8f9fa;
@@ -94,6 +101,8 @@
             margin: 20px 0;
             border-left: 4px solid #6c757d;
         }
+        .client-info.compact { padding: 12px; margin: 14px 0; }
+        .client-info.compact p { margin: 2px 0; }
         
         .client-info h3 {
             color: #6c757d;
@@ -106,6 +115,7 @@
             border-collapse: collapse;
             margin: 20px 0;
         }
+        .details-table.compact { margin: 14px 0; }
         
         .details-table th {
             background: #6c757d;
@@ -114,6 +124,7 @@
             text-align: center;
             font-size: 11px;
         }
+        .details-table.compact th { padding: 8px 6px; font-size: 10px; }
         
         .details-table td {
             padding: 8px;
@@ -121,6 +132,7 @@
             text-align: center;
             font-size: 11px;
         }
+        .details-table.compact td { padding: 6px 5px; font-size: 10px; }
         
         .details-table .description {
             text-align: left;
@@ -136,6 +148,7 @@
             width: 100%;
             margin-top: 20px;
         }
+        .totals.compact { margin-top: 18px; }
         
         .totals-left {
             display: table-cell;
@@ -143,12 +156,14 @@
             vertical-align: top;
             padding-right: 20px;
         }
+        .totals-left.compact { padding-right: 12px; }
         
         .totals-right {
             display: table-cell;
             width: 40%;
             vertical-align: top;
         }
+        .totals-right.compact { padding-left: 4px; }
         
         .total-letras {
             background: #f8f9fa;
@@ -156,17 +171,21 @@
             border: 1px solid #ddd;
             margin-bottom: 15px;
         }
+        .total-letras.compact { padding: 8px; margin-bottom: 10px; font-size: 11px; }
         
         .observaciones {
             background: #f8f9fa;
             padding: 10px;
             border-left: 4px solid #6c757d;
         }
+        .observaciones.compact { padding: 8px; }
+        .observaciones.compact p { margin: 2px 0; font-size: 11px; }
         
         .totals-table {
             width: 100%;
             border-collapse: collapse;
         }
+        .totals-table.compact td { padding: 6px 10px; font-size: 11px; }
         
         .totals-table td {
             padding: 8px 12px;
@@ -203,6 +222,7 @@
             border-radius: 5px;
             text-align: center;
         }
+        .retencion-box.compact { margin-top: 10px; padding: 8px; font-size: 10px; }
         
         .footer {
             margin-top: 30px;
@@ -212,16 +232,31 @@
             border-top: 1px solid #ddd;
             padding-top: 15px;
         }
+        .footer.compact { margin-top: 20px; padding-top: 10px; }
+
+        .info-grid {
+            display: table;
+            width: 100%;
+            margin: 15px 0;
+        }
+        .info-grid .cell {
+            display: table-cell;
+            width: 33.33%;
+            padding: 5px;
+            vertical-align: top;
+        }
+        .info-grid.compact { margin: 10px 0; }
+        .info-grid.compact .cell { padding: 4px; }
         
         .text-right { text-align: right; }
         .text-center { text-align: center; }
         .font-bold { font-weight: bold; }
     </style>
 </head>
-<body>
-    <div class="container">
+<body class="{{ $singlePage ? 'compact-mode' : '' }}">
+    <div class="container{{ $singlePage ? ' compact' : '' }}">
         <!-- Header -->
-        <div class="header">
+        <div class="header{{ $singlePage ? ' compact' : '' }}">
             <div class="company-info">
                 @include('comprobantes.partials.logo')
                 <div class="company-details">
@@ -233,7 +268,7 @@
                 </div>
             </div>
             
-            <div class="document-info">
+            <div class="document-info{{ $singlePage ? ' compact' : '' }}">
                 <h1>{{ $tipoConfig['titulo'] ?? 'RECIBO POR HONORARIOS' }}</h1>
                 <div class="document-number">{{ $venta->serie }}-{{ str_pad($venta->numero_comprobante, 8, '0', STR_PAD_LEFT) }}</div>
                 <p><strong>Código SUNAT:</strong> {{ $tipoConfig['codigo_sunat'] ?? '14' }}</p>
@@ -248,13 +283,13 @@
         @endphp
 
         <!-- Información sobre la retención -->
-        <div class="retencion-info">
+        <div class="retencion-info{{ $singlePage ? ' compact' : '' }}">
             <h4 style="color: #856404; margin-bottom: 5px;">💰 INFORMACIÓN SOBRE RETENCIÓN</h4>
             <p style="color: #856404; font-size: 11px;">Este recibo está sujeto a retención del 8% del Impuesto a la Renta según normativa SUNAT para servicios profesionales independientes.</p>
         </div>
 
         <!-- Información del profesional -->
-        <div class="client-info">
+        <div class="client-info{{ $singlePage ? ' compact' : '' }}">
             <h3>👨‍💼 INFORMACIÓN DEL PROFESIONAL</h3>
             <p><strong>Profesional:</strong> {{ $venta->cliente->nombre ?? 'Profesional Independiente' }}</p>
             <p><strong>RUC:</strong> {{ $venta->cliente->numero_documento ?? 'Sin RUC' }}</p>
@@ -262,23 +297,23 @@
         </div>
 
         <!-- Información del recibo -->
-        <div style="display: table; width: 100%; margin: 15px 0;">
-            <div style="display: table-cell; width: 33.33%; padding: 5px;">
+        <div class="info-grid{{ $singlePage ? ' compact' : '' }}">
+            <div class="cell">
                 <p><strong>Fecha de Emisión:</strong> {{ $venta->fecha->format('d/m/Y') }}</p>
                 <p><strong>Período del Servicio:</strong> {{ $venta->fecha->format('m/Y') }}</p>
             </div>
-            <div style="display: table-cell; width: 33.33%; padding: 5px;">
+            <div class="cell">
                 <p><strong>Moneda:</strong> {{ $codigoIso === 'PEN' ? 'Soles Peruanos' : 'Dólares Americanos' }} <span style="display:inline-block; padding:2px 6px; background:#2c5aa0; color:white; border-radius:4px; font-size:10px;">{{ $codigoIso }}</span></p>
                 <p><strong>Tipo de Servicio:</strong> Servicios Profesionales</p>
             </div>
-            <div style="display: table-cell; width: 33.33%; padding: 5px;">
+            <div class="cell">
                 <p><strong>Condición de Pago:</strong> {{ $datos['condiciones_pago'] ?? 'Contado' }}</p>
                 <p><strong>Retención IR:</strong> 8% Aplicada</p>
             </div>
         </div>
 
         <!-- Detalle de servicios -->
-        <table class="details-table">
+        <table class="details-table{{ $singlePage ? ' compact' : '' }}">
             <thead>
                 <tr>
                     <th style="width: 8%;">Item</th>
@@ -311,14 +346,14 @@
         </table>
 
         <!-- Totales con retención -->
-        <div class="totals">
-            <div class="totals-left">
-                <div class="total-letras">
+        <div class="totals{{ $singlePage ? ' compact' : '' }}">
+            <div class="totals-left{{ $singlePage ? ' compact' : '' }}">
+                <div class="total-letras{{ $singlePage ? ' compact' : '' }}">
                     <h4>IMPORTE NETO A PAGAR EN LETRAS:</h4>
                     <p class="font-bold">{{ $datos['total_en_letras'] ?? 'CIEN CON 00/100 SOLES' }}</p>
                 </div>
                 
-                <div class="observaciones">
+                <div class="observaciones{{ $singlePage ? ' compact' : '' }}">
                     <h4>INFORMACIÓN SOBRE HONORARIOS PROFESIONALES:</h4>
                     <p>• Los honorarios están sujetos a retención del Impuesto a la Renta (8%)</p>
                     <p>• El profesional debe declarar estos ingresos en su declaración anual</p>
@@ -328,15 +363,15 @@
                 </div>
                 
                 @if($datos['observaciones'] ?? false)
-                <div class="observaciones" style="margin-top: 10px;">
+                <div class="observaciones{{ $singlePage ? ' compact' : '' }}" style="margin-top: 10px;">
                     <h4>OBSERVACIONES ADICIONALES:</h4>
                     <p>{{ $datos['observaciones'] }}</p>
                 </div>
                 @endif
             </div>
             
-            <div class="totals-right">
-                <table class="totals-table">
+            <div class="totals-right{{ $singlePage ? ' compact' : '' }}">
+                <table class="totals-table{{ $singlePage ? ' compact' : '' }}">
                     <tr>
                         <td class="label">Valor del Servicio:</td>
                         <td class="value">{{ $simbolo }} {{ number_format($datos['base_imponible'] ?? 0, 2) }}</td>
@@ -352,7 +387,7 @@
                 </table>
                 
                 <!-- Información de retención -->
-                <div class="retencion-box">
+                <div class="retencion-box{{ $singlePage ? ' compact' : '' }}">
                     <h4 style="color: #6c757d; margin-bottom: 5px;">CONSTANCIA DE RETENCIÓN</h4>
                     <p style="font-size: 10px; color: #666;">
                         La empresa retendrá el 8% del Impuesto a la Renta<br>
@@ -364,7 +399,7 @@
         </div>
 
         <!-- Footer -->
-        <div class="footer">
+        <div class="footer{{ $singlePage ? ' compact' : '' }}">
             <p style="color: #6c757d; font-weight: bold;">RECIBO POR HONORARIOS - SERVICIOS PROFESIONALES INDEPENDIENTES</p>
             <p>Este documento sustenta el pago por servicios profesionales independientes según normativa tributaria vigente</p>
             <p>{{ $empresa['web'] ?? 'www.irmmaquinarias.com' }} | {{ $empresa['email'] ?? 'ventas@irmmaquinarias.com' }} | Teléfono: {{ $empresa['telefono'] ?? '(01) 234-5678' }}</p>
