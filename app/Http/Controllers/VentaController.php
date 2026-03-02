@@ -1845,7 +1845,44 @@ class VentaController extends Controller
 
     public function index(Request $request)
     {
-        $ventas = Venta::orderBy('created_at', 'desc')->paginate(20);
+        $query = Venta::query();
+
+        // Filtro de búsqueda (número de documento, cliente, etc.)
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function($q) use ($search) {
+                $q->where('numero', 'like', "%{$search}%")
+                  ->orWhereHas('cliente', function($clienteQ) use ($search) {
+                      $clienteQ->where('nombre', 'like', "%{$search}%")
+                               ->orWhere('numero_documento', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Filtro por tipo de comprobante
+        if ($request->filled('tipo_comprobante')) {
+            $tipo = $request->input('tipo_comprobante');
+            $query->whereHas('tipoComprobante', function($q) use ($tipo) {
+                $q->where('descripcion', 'like', "%{$tipo}%");
+            });
+        }
+
+        // Filtro por estado XML
+        if ($request->filled('xml_estado')) {
+            $query->where('xml_estado', $request->input('xml_estado'));
+        }
+
+        // Filtro por fecha desde
+        if ($request->filled('fecha_desde')) {
+            $query->whereDate('created_at', '>=', $request->input('fecha_desde'));
+        }
+
+        // Filtro por fecha hasta
+        if ($request->filled('fecha_hasta')) {
+            $query->whereDate('created_at', '<=', $request->input('fecha_hasta'));
+        }
+
+        $ventas = $query->orderBy('created_at', 'desc')->paginate(20);
         return view('ventas.index', compact('ventas'));
     }
 

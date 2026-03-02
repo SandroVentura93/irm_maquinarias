@@ -186,7 +186,7 @@
                         <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">
                             <i class="fas fa-print me-1"></i> Imprimir
                         </button>
-                        <div class="dropdown">
+                        <!-- <div class="dropdown">
                             <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                                 <i class="fas fa-filter me-1"></i> Filtrar
                             </button>
@@ -201,7 +201,7 @@
                                 <li><a class="dropdown-item" href="#" onclick="filterByCurrency('PEN')">Solo PEN</a></li>
                                 <li><a class="dropdown-item" href="#" onclick="filterByCurrency('USD')">Solo USD</a></li>
                             </ul>
-                        </div>
+                        </div> -->
                         <div class="input-group input-group-sm ms-2" style="width: 200px;">
                             <span class="input-group-text">TC USD</span>
                             <input type="number" step="0.0001" min="0" class="form-control" id="tipoCambioManualLista" placeholder="3.8000">
@@ -468,7 +468,67 @@
                 </tbody>
             </table>
         </div>
-        
+
+        <!-- Paginación -->
+        @if($ventas->hasPages())
+        <div class="d-flex justify-content-center mt-4">
+            <nav aria-label="Navegación de páginas">
+                <ul class="pagination pagination-modern">
+                    {{-- Botón Anterior --}}
+                    @if ($ventas->onFirstPage())
+                        <li class="page-item disabled">
+                            <span class="page-link">
+                                <i class="fas fa-chevron-left me-1"></i>Anterior
+                            </span>
+                        </li>
+                    @else
+                        <li class="page-item">
+                            <a class="page-link" href="{{ $ventas->previousPageUrl() }}" rel="prev">
+                                <i class="fas fa-chevron-left me-1"></i>Anterior
+                            </a>
+                        </li>
+                    @endif
+
+                    {{-- Páginas --}}
+                    @foreach ($ventas->getUrlRange(1, $ventas->lastPage()) as $page => $url)
+                        @if ($page == $ventas->currentPage())
+                            <li class="page-item active">
+                                <span class="page-link">{{ $page }}</span>
+                            </li>
+                        @else
+                            <li class="page-item">
+                                <a class="page-link" href="{{ $url }}">{{ $page }}</a>
+                            </li>
+                        @endif
+                    @endforeach
+
+                    {{-- Botón Siguiente --}}
+                    @if ($ventas->hasMorePages())
+                        <li class="page-item">
+                            <a class="page-link" href="{{ $ventas->nextPageUrl() }}" rel="next">
+                                Siguiente<i class="fas fa-chevron-right ms-1"></i>
+                            </a>
+                        </li>
+                    @else
+                        <li class="page-item disabled">
+                            <span class="page-link">
+                                Siguiente<i class="fas fa-chevron-right ms-1"></i>
+                            </span>
+                        </li>
+                    @endif
+                </ul>
+            </nav>
+        </div>
+
+        {{-- Información de paginación --}}
+        <div class="text-center mt-3 text-muted">
+            <small>
+                Mostrando {{ $ventas->firstItem() ?? 0 }} a {{ $ventas->lastItem() ?? 0 }} de {{ $ventas->total() }} ventas
+                (Página {{ $ventas->currentPage() }} de {{ $ventas->lastPage() }})
+            </small>
+        </div>
+        @endif
+
         @if($ventas->isEmpty())
         <div class="empty-state">
             <div class="empty-icon">
@@ -1013,6 +1073,76 @@
 .stats-card:nth-child(3) { animation-delay: 0.3s; }
 .stats-card:nth-child(4) { animation-delay: 0.4s; }
 .modern-card { animation-delay: 0.5s; }
+
+/* Paginación Moderna */
+.pagination-modern {
+    margin: 0;
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.pagination-modern .page-item {
+    margin: 0;
+}
+
+.pagination-modern .page-link {
+    border: none;
+    padding: 12px 16px;
+    color: #6c757d;
+    background-color: #fff;
+    border-radius: 0;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 45px;
+}
+
+.pagination-modern .page-link:hover {
+    color: #495057;
+    background-color: #f8f9fa;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+.pagination-modern .page-item.active .page-link {
+    color: #fff;
+    background: var(--primary-gradient);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+.pagination-modern .page-item.disabled .page-link {
+    color: #adb5bd;
+    background-color: #f8f9fa;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.pagination-modern .page-item:first-child .page-link {
+    border-top-left-radius: var(--border-radius);
+    border-bottom-left-radius: var(--border-radius);
+}
+
+.pagination-modern .page-item:last-child .page-link {
+    border-top-right-radius: var(--border-radius);
+    border-bottom-right-radius: var(--border-radius);
+}
+
+/* Responsive Paginación */
+@media (max-width: 576px) {
+    .pagination-modern .page-link {
+        padding: 10px 12px;
+        font-size: 0.875rem;
+        min-width: 40px;
+    }
+
+    .pagination-modern .page-link i {
+        margin: 0;
+    }
+}
 </style>
 
 @endsection

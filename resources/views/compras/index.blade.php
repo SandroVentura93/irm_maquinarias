@@ -351,6 +351,76 @@
         .page-header .btn-modern { width: 100%; justify-content: center; padding: 0.6rem; }
         .page-header .page-title i { font-size: 1rem; }
     }
+
+    /* Paginación Moderna */
+    .pagination-modern {
+        margin: 0;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .pagination-modern .page-item {
+        margin: 0;
+    }
+
+    .pagination-modern .page-link {
+        border: none;
+        padding: 12px 16px;
+        color: #6c757d;
+        background-color: #fff;
+        border-radius: 0;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 45px;
+    }
+
+    .pagination-modern .page-link:hover {
+        color: #495057;
+        background-color: #f8f9fa;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+    }
+
+    .pagination-modern .page-item.active .page-link {
+        color: #fff;
+        background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+        box-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);
+    }
+
+    .pagination-modern .page-item.disabled .page-link {
+        color: #adb5bd;
+        background-color: #f8f9fa;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .pagination-modern .page-item:first-child .page-link {
+        border-top-left-radius: 12px;
+        border-bottom-left-radius: 12px;
+    }
+
+    .pagination-modern .page-item:last-child .page-link {
+        border-top-right-radius: 12px;
+        border-bottom-right-radius: 12px;
+    }
+
+    /* Responsive Paginación */
+    @media (max-width: 576px) {
+        .pagination-modern .page-link {
+            padding: 10px 12px;
+            font-size: 0.875rem;
+            min-width: 40px;
+        }
+
+        .pagination-modern .page-link i {
+            margin: 0;
+        }
+    }
 </style>
 
 <div class="container-fluid px-4 py-4">
@@ -556,9 +626,62 @@
             </div>
         </div>
         @if($compras->hasPages())
-            <div class="card-footer d-flex justify-content-center">
-                {{ $compras->links('pagination::bootstrap-4') }}
-            </div>
+        <div class="d-flex justify-content-center mt-4">
+            <nav aria-label="Navegación de páginas">
+                <ul class="pagination pagination-modern">
+                    {{-- Botón Anterior --}}
+                    @if ($compras->onFirstPage())
+                        <li class="page-item disabled">
+                            <span class="page-link">
+                                <i class="fas fa-chevron-left me-1"></i>Anterior
+                            </span>
+                        </li>
+                    @else
+                        <li class="page-item">
+                            <a class="page-link" href="{{ $compras->previousPageUrl() }}" rel="prev">
+                                <i class="fas fa-chevron-left me-1"></i>Anterior
+                            </a>
+                        </li>
+                    @endif
+
+                    {{-- Páginas --}}
+                    @foreach ($compras->getUrlRange(1, $compras->lastPage()) as $page => $url)
+                        @if ($page == $compras->currentPage())
+                            <li class="page-item active">
+                                <span class="page-link">{{ $page }}</span>
+                            </li>
+                        @else
+                            <li class="page-item">
+                                <a class="page-link" href="{{ $url }}">{{ $page }}</a>
+                            </li>
+                        @endif
+                    @endforeach
+
+                    {{-- Botón Siguiente --}}
+                    @if ($compras->hasMorePages())
+                        <li class="page-item">
+                            <a class="page-link" href="{{ $compras->nextPageUrl() }}" rel="next">
+                                Siguiente<i class="fas fa-chevron-right ms-1"></i>
+                            </a>
+                        </li>
+                    @else
+                        <li class="page-item disabled">
+                            <span class="page-link">
+                                Siguiente<i class="fas fa-chevron-right ms-1"></i>
+                            </span>
+                        </li>
+                    @endif
+                </ul>
+            </nav>
+        </div>
+
+        {{-- Información de paginación --}}
+        <div class="text-center mt-3 text-muted">
+            <small>
+                Mostrando {{ $compras->firstItem() ?? 0 }} a {{ $compras->lastItem() ?? 0 }} de {{ $compras->total() }} compras
+                (Página {{ $compras->currentPage() }} de {{ $compras->lastPage() }})
+            </small>
+        </div>
         @endif
     </div>
 </div>

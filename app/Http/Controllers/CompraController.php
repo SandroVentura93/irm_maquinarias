@@ -21,9 +21,39 @@ class CompraController extends Controller
         $proveedores = Proveedor::orderBy('razon_social')->get();
 
         $comprasQuery = Compra::with(['proveedor', 'moneda']);
+
+        // Filtro de búsqueda (número, proveedor)
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $comprasQuery->where(function($q) use ($search) {
+                $q->where('numero', 'like', "%{$search}%")
+                  ->orWhereHas('proveedor', function($proveedorQ) use ($search) {
+                      $proveedorQ->where('razon_social', 'like', "%{$search}%")
+                                 ->orWhere('numero_documento', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Filtro por proveedor
         if ($request->filled('id_proveedor')) {
             $comprasQuery->where('id_proveedor', $request->id_proveedor);
         }
+
+        // Filtro por estado
+        if ($request->filled('estado')) {
+            $comprasQuery->where('estado', $request->input('estado'));
+        }
+
+        // Filtro por fecha desde
+        if ($request->filled('fecha_desde')) {
+            $comprasQuery->whereDate('fecha', '>=', $request->input('fecha_desde'));
+        }
+
+        // Filtro por fecha hasta
+        if ($request->filled('fecha_hasta')) {
+            $comprasQuery->whereDate('fecha', '<=', $request->input('fecha_hasta'));
+        }
+
         // Importante: clonar antes de ordenar/paginar para no contaminar el query base usado en agregaciones
         $compras = (clone $comprasQuery)
             ->orderByDesc('fecha')
