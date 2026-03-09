@@ -169,9 +169,10 @@
                     $pu = $puRaw ?: $netUnit;
                 }
                 $descUnit = max($pu - $netUnit, 0);
-                // Valor venta neto total: preferir 'total' si existe; si no, netUnit * cantidad
-                if (isset($detalle->total) && (float)$detalle->total > 0) {
-                    $netTotal = (float)$detalle->total;
+                // Valor venta neto total (SIN IGV): usar subtotal de línea cuando exista.
+                // Nota: en algunas ventas editadas, detalle->total puede incluir IGV por línea.
+                if (isset($detalle->subtotal) && (float)$detalle->subtotal > 0) {
+                    $netTotal = (float)$detalle->subtotal;
                 } else {
                     $netTotal = $netUnit * $cant;
                 }
