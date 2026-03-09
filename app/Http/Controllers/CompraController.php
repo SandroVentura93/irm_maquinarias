@@ -99,7 +99,7 @@ class CompraController extends Controller
     {
         $proveedores = Proveedor::all();
         $monedas = Moneda::all();
-        // Cargar una muestra inicial pequeña para no inflar el HTML (el resto va por AJAX)
+        // Asegurar que el buscador tenga los campos necesarios e incluir nombre del proveedor
         $productos = Producto::leftJoin('proveedores', 'proveedores.id_proveedor', '=', 'productos.id_proveedor')
             ->select(
                 'productos.id_producto',
@@ -110,7 +110,6 @@ class CompraController extends Controller
                 DB::raw('COALESCE(proveedores.numero_documento, "") as proveedor_ruc')
             )
             ->orderBy('productos.descripcion')
-            ->limit(80)
             ->get();
         return view('compras.create', compact('proveedores', 'monedas', 'productos'));
     }
@@ -208,7 +207,7 @@ class CompraController extends Controller
         $compra = Compra::with(['proveedor', 'moneda', 'detalles.producto.proveedor'])->findOrFail($id);
         $proveedores = Proveedor::all();
         $monedas = Moneda::all();
-        // Incluir una muestra inicial pequeña para buscador (el catálogo completo se consulta por AJAX)
+        // Incluir datos de proveedor para buscador en la vista de edición
         $productos = Producto::leftJoin('proveedores', 'proveedores.id_proveedor', '=', 'productos.id_proveedor')
             ->select(
                 'productos.id_producto',
@@ -219,52 +218,8 @@ class CompraController extends Controller
                 DB::raw('COALESCE(proveedores.numero_documento, "") as proveedor_ruc')
             )
             ->orderBy('productos.descripcion')
-            ->limit(80)
             ->get();
         return view('compras.edit', compact('compra', 'proveedores', 'monedas', 'productos'));
-    }
-
-    public function buscarProductos(Request $request)
-    {
-        $q = trim((string) $request->query('q', ''));
-        $idProveedor = $request->query('id_proveedor');
-
-        if (mb_strlen($q) < 2) {
-            return response()->json([]);
-        }
-
-        $query = Producto::leftJoin('proveedores', 'proveedores.id_proveedor', '=', 'productos.id_proveedor')
-            ->select(
-                'productos.id_producto',
-                'productos.codigo',
-                'productos.descripcion',
-                'productos.id_proveedor',
-                DB::raw('COALESCE(proveedores.razon_social, "") as proveedor_nombre')
-            )
-            ->where(function ($sub) use ($q) {
-                $sub->where('productos.codigo', 'like', "%{$q}%")
-                    ->orWhere('productos.descripcion', 'like', "%{$q}%");
-            });
-
-        if (!empty($idProveedor)) {
-            $query->where('productos.id_proveedor', $idProveedor);
-        }
-
-        $productos = $query
-            ->orderBy('productos.descripcion')
-            ->limit(20)
-            ->get()
-            ->map(function ($producto) {
-                return [
-                    'id' => (int) $producto->id_producto,
-                    'codigo' => $producto->codigo ?? '',
-                    'descripcion' => $producto->descripcion ?? '',
-                    'id_proveedor' => $producto->id_proveedor,
-                    'proveedor' => $producto->proveedor_nombre ?? '',
-                ];
-            });
-
-        return response()->json($productos)->header('Cache-Control', 'private, max-age=60');
     }
 
     public function update(Request $request, $id)

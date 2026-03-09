@@ -928,8 +928,6 @@ function agregarFilaProducto(idProducto, codigo, descripcion) {
 // Variables para el buscador
 let productos = [];
 let selectedIndex = -1;
-let searchTimer = null;
-const productSearchCache = new Map();
 
 // No cargar productos al inicio - se cargarán al seleccionar proveedor
 document.addEventListener('DOMContentLoaded', function() {
@@ -979,68 +977,36 @@ function buscarProducto(event) {
         suggestionsList.classList.remove('show');
         return;
     }
-
-    if (busqueda.length < 2) {
-        suggestionsList.classList.remove('show');
-        return;
-    }
-
+    
+    // Filtrar productos considerando proveedor seleccionado
     const hiddenProv = document.getElementById('id_proveedor_hidden');
     const provFilter = (hiddenProv && hiddenProv.value) ? String(hiddenProv.value) : '';
-
-    if (searchTimer) {
-        clearTimeout(searchTimer);
-    }
-
-    searchTimer = setTimeout(async () => {
-        const cacheKey = `${busqueda}|${provFilter || 'all'}`;
-        let resultados = productSearchCache.get(cacheKey);
-
-        if (!resultados) {
-            try {
-                const params = new URLSearchParams({ q: busqueda });
-                if (provFilter) params.set('id_proveedor', provFilter);
-
-                const resp = await fetch(`{{ route('compras.productos.buscar') }}?${params.toString()}`, {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                });
-
-                if (resp.ok) {
-                    resultados = await resp.json();
-                    productSearchCache.set(cacheKey, resultados);
-                } else {
-                    resultados = [];
-                }
-            } catch (e) {
-                resultados = productos.filter(producto => {
-                    const codigo = (producto.codigo || '').toLowerCase();
-                    const descripcion = (producto.descripcion || '').toLowerCase();
-                    const proveedor = (producto.proveedor || '').toLowerCase();
-                    const matchTexto = codigo.includes(busqueda) || descripcion.includes(busqueda) || proveedor.includes(busqueda);
-                    const matchProv = provFilter ? String(producto.id_proveedor) === provFilter : true;
-                    return matchTexto && matchProv;
-                }).slice(0, 20);
-            }
-        }
-
-        if (!Array.isArray(resultados) || resultados.length === 0) {
-            suggestionsList.innerHTML = '<div class="no-results"><i class="fas fa-search"></i> No se encontraron productos</div>';
-            suggestionsList.classList.add('show');
-            return;
-        }
-
+    const resultados = productos.filter(producto => {
+        const codigo = (producto.codigo || '').toLowerCase();
+        const descripcion = (producto.descripcion || '').toLowerCase();
+        const proveedor = (producto.proveedor || '').toLowerCase();
+        const matchTexto = codigo.includes(busqueda) || descripcion.includes(busqueda) || proveedor.includes(busqueda);
+        const matchProv = provFilter ? String(producto.id_proveedor) === provFilter : true;
+        return matchTexto && matchProv;
+    });
+    
+    // Mostrar resultados
+    if (resultados.length > 0) {
         suggestionsList.innerHTML = resultados.map((producto, index) => `
-            <div class="suggestion-item" data-index="${index}" onclick="seleccionarProducto(${producto.id}, '${(producto.codigo || '').replace(/'/g, "\\'")}', '${(producto.descripcion || '').replace(/'/g, "\\'")}')">
+            <div class="suggestion-item" data-index="${index}" onclick="seleccionarProducto(${producto.id}, '${producto.codigo}', '${producto.descripcion.replace(/'/g, "\\'")}')">
                 <div class="d-flex align-items-center flex-wrap" style="gap:6px;">
                     ${producto.codigo ? `<span class="suggestion-codigo">${producto.codigo}</span>` : ''}
-                    <span class="suggestion-descripcion">${producto.descripcion || ''}</span>
+                    <span class="suggestion-descripcion">${producto.descripcion}</span>
                     ${producto.proveedor ? `<span class="suggestion-proveedor"><i class='fas fa-truck me-1'></i>${producto.proveedor}</span>` : ''}
                 </div>
                 <i class="fas fa-plus-circle text-success"></i>
             </div>
         `).join('');
         suggestionsList.classList.add('show');
-    }, 250);
+    } else {
+        suggestionsList.innerHTML = '<div class="no-results"><i class="fas fa-search"></i> No se encontraron productos</div>';
+        suggestionsList.classList.add('show');
+    }
 }
 
 function actualizarSeleccion() {
