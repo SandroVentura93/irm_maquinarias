@@ -52,10 +52,12 @@ Route::get('/', function () {
 Route::middleware('guest')->group(function () {
 
     // Ruta temporal de desarrollo para ejecutar el seeder de ventas de prueba
-    Route::get('/dev/seed-ventas-prueba', function () {
-        (new SeedVentasPrueba())->run();
-        return response()->json(['status' => 'ok']);
-    });
+    if (app()->environment('local')) {
+        Route::get('/dev/seed-ventas-prueba', function () {
+            (new SeedVentasPrueba())->run();
+            return response()->json(['status' => 'ok']);
+        });
+    }
     // Login
     Route::get('/login', fn() => view('auth.login'))->name('login');
     Route::post('/login', function (Request $request) {
@@ -95,17 +97,17 @@ Route::post('/logout', function () {
     return redirect()->route('login')->with('message', 'Sesión cerrada exitosamente');
 })->name('logout');
 
-// Ruta de desarrollo para login rápido (solo para desarrollo)
-Route::get('/quick-login', function () {
-    if (app()->environment('local')) {
+// Ruta de desarrollo para login rápido (solo entorno local)
+if (app()->environment('local')) {
+    Route::get('/quick-login', function () {
         $user = \App\Models\Usuario::where('usuario', 'admin')->first();
         if ($user) {
             Auth::login($user);
             return redirect('/');
         }
-    }
-    return redirect()->route('login');
-})->name('quick-login');
+        return redirect()->route('login');
+    })->name('quick-login');
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -193,7 +195,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('lote/generar', [PdfController::class, 'generarLotePdfs'])->name('lote.generar');
         Route::post('comprobante/{venta}/enviar-email', [PdfController::class, 'enviarPorEmail'])->name('enviar-email');
         Route::get('estadisticas', [PdfController::class, 'estadisticasPdf'])->name('estadisticas');
-        Route::get('debug/tipos-comprobante', [PdfController::class, 'debugTiposComprobante'])->name('debug.tipos');
+        if (app()->environment('local')) {
+            Route::get('debug/tipos-comprobante', [PdfController::class, 'debugTiposComprobante'])->name('debug.tipos');
+        }
     });
     
     // Detalle de ventas - Ver y editar para Admin, Gerente y Vendedor
@@ -412,6 +416,7 @@ Route::middleware(['auth'])->group(function () {
     */
     Route::middleware(['role:1,2,3,4'])->group(function () {
         // API para productos por proveedor
+        Route::get('compras/productos/buscar', [\App\Http\Controllers\CompraController::class, 'buscarProductos'])->name('compras.productos.buscar');
         Route::get('compras/productos-por-proveedor/{id_proveedor}', [\App\Http\Controllers\CompraController::class, 'productosPorProveedor'])->name('compras.productos-por-proveedor');
         
         // Compras - CRUD excepto DELETE

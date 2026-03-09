@@ -42,13 +42,15 @@ Route::prefix('pdf')->group(function () {
 | API Routes para búsquedas (Sin autenticación para el formulario de ventas)
 |--------------------------------------------------------------------------
 */
-// Búsqueda de productos para el formulario de ventas
-Route::get('/productos/search', [ProductoController::class, 'searchPublic']);
+Route::middleware('throttle:60,1')->group(function () {
+    // Búsqueda de productos para el formulario de ventas
+    Route::get('/productos/search', [ProductoController::class, 'searchPublic']);
 
-// Búsqueda de clientes para el formulario de ventas
-Route::get('/clientes/search', [ClienteController::class, 'searchPublic']);
-// Sugerencias de clientes (autocomplete)
-Route::get('/clientes/suggest', [ClienteController::class, 'suggestPublic']);
+    // Búsqueda de clientes para el formulario de ventas
+    Route::get('/clientes/search', [ClienteController::class, 'searchPublic']);
+    // Sugerencias de clientes (autocomplete)
+    Route::get('/clientes/suggest', [ClienteController::class, 'suggestPublic']);
+});
 
 // Crear nuevo cliente desde formulario de ventas
 Route::post('/clientes', [ClienteController::class, 'storePublic']);
